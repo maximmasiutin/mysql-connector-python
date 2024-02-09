@@ -671,7 +671,7 @@ mytopy_string(const char *data, enum_field_types field_type,
     }
 
     if (strcmp(charset, "binary") == 0) {
-        return PyByteArray_FromStringAndSize(data, field_length);
+        return PyBytes_FromStringAndSize(data, field_length);
     }
 
     /* 'binary' charset = 63 */
@@ -679,5 +679,5 @@ mytopy_string(const char *data, enum_field_types field_type,
         return PyUnicode_Decode(data, field_length, charset, "replace");
     }
 
-    return PyByteArray_FromStringAndSize(data, field_length);
+    return PyBytes_FromStringAndSize(data, field_length);
 }

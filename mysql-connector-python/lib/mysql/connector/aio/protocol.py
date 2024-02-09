@@ -305,13 +305,13 @@ class MySQLProtocol(_MySQLProtocol):
                     datas.append(packet[4:])
                     packet = await sock.read()
                 datas.append(packet[4:])
-                rowdata = read_lc_string_list(bytearray(b"").join(datas))
+                rowdata = read_lc_string_list(b"".join(datas))
             elif packet[4] == 254 and packet[0] < 7:
                 eof = self.parse_eof(packet)
                 rowdata = None
             else:
                 eof = None
-                rowdata = read_lc_string_list(packet[4:])
+                rowdata = read_lc_string_list(bytes(packet[4:]))
             if eof is None and rowdata is not None:
                 rows.append(rowdata)
             elif eof is None and rowdata is None:

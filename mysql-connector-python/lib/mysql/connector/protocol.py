@@ -54,6 +54,7 @@ from .constants import (
     FieldType,
     ServerCmd,
 )
+from .conversion import MySQLConverter
 from .errors import DatabaseError, InterfaceError, ProgrammingError, get_exception
 from .logger import logger
 from .plugins import MySQLAuthPlugin, get_auth_plugin
@@ -798,6 +799,10 @@ class MySQLProtocol:
             elif field[1] == FieldType.TIME:
                 (packet, value) = self._parse_binary_time(packet)
                 values.append(value)
+            elif field[1] == FieldType.VECTOR:
+                # pylint: disable=protected-access
+                (packet, value) = utils.read_lc_string(packet)
+                values.append(MySQLConverter._vector_to_python(value))
             elif field[7] == FieldFlag.BINARY or field[8] == 63:  # "binary" charset
                 (packet, value) = utils.read_lc_string(packet)
                 values.append(value)

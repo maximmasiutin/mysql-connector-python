@@ -29,6 +29,7 @@
 """Converting MySQL and Python types
 """
 
+import array
 import datetime
 import math
 import struct
@@ -37,7 +38,7 @@ import time
 from decimal import Decimal
 from typing import Any, Callable, Dict, List, Optional, Set, Tuple, Union
 
-from .constants import CharacterSet, FieldFlag, FieldType
+from .constants import MYSQL_VECTOR_TYPE_CODE, CharacterSet, FieldFlag, FieldType
 from .custom_types import HexLiteral
 from .types import (
     DescriptionType,
@@ -739,6 +740,22 @@ class MySQLConverter(MySQLConverterBase):
             ):
                 return bytes(value)
         return self._string_to_python(value, dsc)
+
+    @staticmethod
+    def _vector_to_python(
+        value: Optional[bytes], desc: Optional[DescriptionType] = None
+    ) -> Optional[array.array]:
+        """
+        Converts a MySQL VECTOR value to a Python array.array type.
+
+        Returns an array of floats if `value` isn't `None`, otherwise `None`.
+        """
+        if value is None or isinstance(value, array.array):
+            return value
+        elif isinstance(value, (bytes, bytearray)):
+            return array.array(MYSQL_VECTOR_TYPE_CODE, value)
+        else:
+            raise TypeError(f"Got unsupported type {value.__class__.__name__}")
 
     _long_blob_to_python = _blob_to_python
     _medium_blob_to_python = _blob_to_python

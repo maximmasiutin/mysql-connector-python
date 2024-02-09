@@ -39,8 +39,12 @@ from .tls_ciphers import APPROVED_TLS_VERSIONS, DEPRECATED_TLS_VERSIONS
 
 NET_BUFFER_LENGTH: int = 8192
 MAX_MYSQL_TABLE_COLUMNS: int = 4096
-# Flag used to send the Query Attributes with 0 (or more) parameters.
 PARAMETER_COUNT_AVAILABLE: int = 8
+"""Flag used to send the Query Attributes with 0 (or more) parameters."""
+MYSQL_VECTOR_TYPE_CODE = "f"
+"""Expected `typecode` when decoding VECTOR values from
+MySQL (blob) to Python (array.array).
+"""
 
 DEFAULT_CONFIGURATION: Dict[str, Optional[Union[str, bool, int]]] = {
     "database": None,
@@ -235,6 +239,7 @@ class FieldType(_Constants):
     NEWDATE: int = 0x0E
     VARCHAR: int = 0x0F
     BIT: int = 0x10
+    VECTOR: int = 0xF2
     JSON: int = 0xF5
     NEWDECIMAL: int = 0xF6
     ENUM: int = 0xF7
@@ -248,34 +253,35 @@ class FieldType(_Constants):
     GEOMETRY: int = 0xFF
 
     desc: Dict[str, Tuple[int, str]] = {
-        "DECIMAL": (0x00, "DECIMAL"),
-        "TINY": (0x01, "TINY"),
-        "SHORT": (0x02, "SHORT"),
-        "LONG": (0x03, "LONG"),
-        "FLOAT": (0x04, "FLOAT"),
-        "DOUBLE": (0x05, "DOUBLE"),
-        "NULL": (0x06, "NULL"),
-        "TIMESTAMP": (0x07, "TIMESTAMP"),
-        "LONGLONG": (0x08, "LONGLONG"),
-        "INT24": (0x09, "INT24"),
-        "DATE": (0x0A, "DATE"),
-        "TIME": (0x0B, "TIME"),
-        "DATETIME": (0x0C, "DATETIME"),
-        "YEAR": (0x0D, "YEAR"),
-        "NEWDATE": (0x0E, "NEWDATE"),
-        "VARCHAR": (0x0F, "VARCHAR"),
-        "BIT": (0x10, "BIT"),
-        "JSON": (0xF5, "JSON"),
-        "NEWDECIMAL": (0xF6, "NEWDECIMAL"),
-        "ENUM": (0xF7, "ENUM"),
-        "SET": (0xF8, "SET"),
-        "TINY_BLOB": (0xF9, "TINY_BLOB"),
-        "MEDIUM_BLOB": (0xFA, "MEDIUM_BLOB"),
-        "LONG_BLOB": (0xFB, "LONG_BLOB"),
-        "BLOB": (0xFC, "BLOB"),
-        "VAR_STRING": (0xFD, "VAR_STRING"),
-        "STRING": (0xFE, "STRING"),
-        "GEOMETRY": (0xFF, "GEOMETRY"),
+        "DECIMAL": (DECIMAL, "DECIMAL"),
+        "TINY": (TINY, "TINY"),
+        "SHORT": (SHORT, "SHORT"),
+        "LONG": (LONG, "LONG"),
+        "FLOAT": (FLOAT, "FLOAT"),
+        "DOUBLE": (DOUBLE, "DOUBLE"),
+        "NULL": (NULL, "NULL"),
+        "TIMESTAMP": (TIMESTAMP, "TIMESTAMP"),
+        "LONGLONG": (LONGLONG, "LONGLONG"),
+        "INT24": (INT24, "INT24"),
+        "DATE": (DATE, "DATE"),
+        "TIME": (TIME, "TIME"),
+        "DATETIME": (DATETIME, "DATETIME"),
+        "YEAR": (YEAR, "YEAR"),
+        "NEWDATE": (NEWDATE, "NEWDATE"),
+        "VARCHAR": (VARCHAR, "VARCHAR"),
+        "BIT": (BIT, "BIT"),
+        "VECTOR": (VECTOR, "VECTOR"),
+        "JSON": (JSON, "JSON"),
+        "NEWDECIMAL": (NEWDECIMAL, "NEWDECIMAL"),
+        "ENUM": (ENUM, "ENUM"),
+        "SET": (SET, "SET"),
+        "TINY_BLOB": (TINY_BLOB, "TINY_BLOB"),
+        "MEDIUM_BLOB": (MEDIUM_BLOB, "MEDIUM_BLOB"),
+        "LONG_BLOB": (LONG_BLOB, "LONG_BLOB"),
+        "BLOB": (BLOB, "BLOB"),
+        "VAR_STRING": (VAR_STRING, "VAR_STRING"),
+        "STRING": (STRING, "STRING"),
+        "GEOMETRY": (GEOMETRY, "GEOMETRY"),
     }
 
     @classmethod

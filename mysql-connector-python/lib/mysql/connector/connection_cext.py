@@ -50,7 +50,7 @@ from typing import (
 
 from . import version
 from .abstracts import CMySQLPrepStmt, MySQLConnectionAbstract
-from .constants import ClientFlag, FieldFlag, ServerFlag, ShutdownType
+from .constants import ClientFlag, FieldFlag, FieldType, ServerFlag, ShutdownType
 from .conversion import MySQLConverter
 from .errors import (
     InterfaceError,
@@ -473,18 +473,36 @@ class CMySQLConnection(MySQLConnectionAbstract):
                 # convert the values. This can be accomplished by setting
                 # the raw option to True.
                 self._cmysql.raw(True)
+
             row = fetch_row()
             while row:
+                row = list(row)
+
+                if not self._cmysql.raw() and not raw:
+                    # `not _cmysql.raw()` means the c-ext conversion layer will happen.
+                    # `not raw` means the caller wants conversion to happen.
+                    # For a VECTOR type, the c-ext conversion layer cannot return
+                    # an array.array type since such a type isn't part of the Python/C
+                    # API. Therefore, the c-ext will treat VECTOR types as if they
+                    # were BLOB types - be returned as `bytes` always.
+                    # Hence, a VECTOR type must be cast to an array.array type using the
+                    # built-in python conversion layer.
+                    # pylint: disable=protected-access
+                    for i, dsc in enumerate(self._columns):
+                        if dsc[1] == FieldType.VECTOR:
+                            row[i] = MySQLConverter._vector_to_python(row[i])
+
                 if not self._raw and self.converter:
-                    row = list(row)
                     for i, _ in enumerate(row):
                         if not raw:
                             row[i] = self.converter.to_python(self._columns[i], row[i])
-                    row = tuple(row)
-                rows.append(row)
+
+                rows.append(tuple(row))
                 counter += 1
+
                 if count and counter == count:
                     break
+
                 row = fetch_row()
             if not row:
                 _eof: Optional[CextEofPacketType] = self.fetch_eof_columns(prep_stmt)[

@@ -2695,7 +2695,7 @@ MySQL_fetch_row(MySQL *self)
             }
             else {
                 PyTuple_SET_ITEM(result_row, i,
-                                 PyByteArray_FromStringAndSize(row[i], field_lengths[i]));
+                                 PyBytes_FromStringAndSize(row[i], field_lengths[i]));
             }
             continue;
         }
@@ -2782,7 +2782,12 @@ MySQL_fetch_row(MySQL *self)
         else if (field_type == MYSQL_TYPE_BIT) {
             PyTuple_SET_ITEM(result_row, i, mytopy_bit(row[i], field_lengths[i]));
         }
-        else if (field_type == MYSQL_TYPE_BLOB) {
+    #if MYSQL_VERSION_ID >= 90000
+        else if (field_type == MYSQL_TYPE_BLOB || field_type == MYSQL_TYPE_VECTOR)
+    #else
+        else if (field_type == MYSQL_TYPE_BLOB)
+    #endif
+        {
             if ((field_flags & BLOB_FLAG) &&
                 (field_flags & BINARY_FLAG) && field_charsetnr == 63) {
                 value = PyBytes_FromStringAndSize(row[i], field_lengths[i]);
@@ -2795,7 +2800,7 @@ MySQL_fetch_row(MySQL *self)
         }
         else if (field_type == MYSQL_TYPE_GEOMETRY) {
             PyTuple_SET_ITEM(result_row, i,
-                             PyByteArray_FromStringAndSize(row[i], field_lengths[i]));
+                             PyBytes_FromStringAndSize(row[i], field_lengths[i]));
         }
         else {
             // Do our best to convert whatever we got from MySQL to a str/bytes
@@ -3740,8 +3745,8 @@ MySQLPrepStmt_fetch_row(MySQLPrepStmt *self)
                     Py_XDECREF(obj);
                 }
                 else if (field->type == MYSQL_TYPE_GEOMETRY) {
-                    obj = PyByteArray_FromStringAndSize(NULL, self->cols[i].length);
-                    self->bind[i].buffer = PyByteArray_AsString(obj);
+                    obj = PyBytes_FromStringAndSize(NULL, self->cols[i].length);
+                    self->bind[i].buffer = PyBytes_AsString(obj);
                     self->bind[i].buffer_length = self->cols[i].length;
 
                     Py_BEGIN_ALLOW_THREADS

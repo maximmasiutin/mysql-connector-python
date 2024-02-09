@@ -91,7 +91,7 @@ class Charsets:
         self._name_store.clear()
 
         charsets_tuple: Sequence[Tuple[int, str, str, bool]] = None
-        if version == 8:
+        if version >= 8:
             charsets_tuple = MYSQL_8_CHARSETS
         elif version == 5:
             charsets_tuple = MYSQL_5_CHARSETS

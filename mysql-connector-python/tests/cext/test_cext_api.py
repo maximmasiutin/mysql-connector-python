@@ -833,8 +833,8 @@ class CExtMySQLTests(tests.MySQLConnectorTests):
 
         self.assertTrue(cmy.query("SELECT 'ham', 'spam', 5", raw=True))
         row = cmy.fetch_row()
-        self.assertTrue(isinstance(row[0], bytearray))
-        self.assertEqual(bytearray(b"spam"), row[1])
+        self.assertTrue(isinstance(row[0], bytes))
+        self.assertEqual(b"spam", row[1])
         self.assertEqual(None, cmy.fetch_row())
         cmy.free_result()
 

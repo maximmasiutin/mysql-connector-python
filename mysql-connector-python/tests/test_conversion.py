@@ -31,7 +31,11 @@
 """Unittests for mysql.connector.conversion
 """
 
+import array
 import datetime
+import os
+import platform
+import struct
 import sys
 import time
 import uuid
@@ -49,6 +53,8 @@ except ImportError:
     MySQLInterfaceError = InterfaceError
 
 ARCH_64BIT = sys.maxsize > 2**32 and sys.platform != "win32"
+LOCAL_PLATFORM = platform.platform().lower() if hasattr(platform, "platform") else ""
+PLATFORM_IS_SOLARIS = "sunos-" in LOCAL_PLATFORM
 
 
 class CustomType:
@@ -641,6 +647,40 @@ class MySQLConverterTests(tests.MySQLConnectorTests):
         res = self.cnv._blob_to_python(data, desc)
 
         self.assertEqual(data, res)
+
+    def test__vector_to_python(self):
+        """Convert MySQL VECTOR to Python array.array type."""
+        exp = array.array(
+            constants.MYSQL_VECTOR_TYPE_CODE, [3.14159, 2.71828, -7.20846]
+        )
+
+        byte_order = "<"  # little-endian - true for most modern architectures
+        err_msg = ""
+        if PLATFORM_IS_SOLARIS:
+            _, _, _, _, arch = os.uname()
+            if "sun4v" in arch.lower():
+                byte_order = ">"  # big-endian - true for some legacy architectures
+            err_msg = (
+                f"Solaris with {arch} architecture using byte-order '{byte_order}'"
+            )
+
+        data = struct.pack(f"{byte_order}3f", *[3.14159, 2.71828, -7.20846])
+
+        res = self.cnv._vector_to_python(data)
+        self.assertEqual(exp, res, err_msg)
+
+        self.assertEqual(None, self.cnv._vector_to_python(None))
+        self.assertEqual(exp, self.cnv._vector_to_python(exp))
+
+        # check invalid `bytes` string
+        for val in ("Hello Kids", "Oracle"):
+            with self.assertRaises(ValueError):
+                self.cnv._vector_to_python(val.encode())
+
+        # check invalid input type
+        for val in (56, [56, 89], "Yoshi", datetime.date(1929, 8, 28)):
+            with self.assertRaises(TypeError):
+                self.cnv._vector_to_python(val)
 
     def test_str_fallback(self):
         """Test str fallback for unsupported types."""
