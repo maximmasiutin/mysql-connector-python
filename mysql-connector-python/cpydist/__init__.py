@@ -33,11 +33,10 @@ import os
 import platform
 import shutil
 import sys
-import tempfile
 
 from glob import glob
 from pathlib import Path
-from subprocess import PIPE, Popen, check_call
+from subprocess import PIPE, Popen
 from sysconfig import get_config_vars, get_python_version
 
 from setuptools import Command
@@ -110,6 +109,18 @@ handler = logging.StreamHandler()
 handler.setFormatter(logging.Formatter("%(levelname)s[%(name)s]: %(message)s"))
 LOGGER.addHandler(handler)
 LOGGER.setLevel(logging.WARNING)
+
+SASL_WIN_LIBS = [
+    "libsasl.dll",
+    "k5sprt64.dll",
+    "comerr64.dll",
+    "xpprof64.dll",
+    "krbcc64.dll",
+    "gssapi64.dll",
+    "krb5_64.dll",
+]
+
+SASL_WIN_LIBS_AUTH_METHODS = ["saslSCRAM.dll", "saslGSSAPI.dll"]
 
 
 def get_otel_src_package_data():
@@ -390,9 +401,36 @@ class BaseCommand(Command):
             site_packages_files.append(
                 os.path.join(self.with_mysql_capi, "lib", "libmysql.dll")
             )
+
+            # `SASL_WIN_LIBS` are loaded automatically as dependency of
+            # authentication_ldap_sasl_client.dll. On Windows, they are expected to be
+            # at `lib/site-packages` - next to `_mysql_connector`.
+            sasl_dll_paths = [
+                os.path.join(self.with_mysql_capi, "bin", dll) for dll in SASL_WIN_LIBS
+            ]
+            site_packages_files.extend(
+                [path for path in sasl_dll_paths if os.path.exists(path)]
+            )
+
             self.distribution.data_files = [
                 ("lib\\site-packages\\", site_packages_files)
             ]
+
+            # Also, we need to include the DLLs corresponding to the
+            # SASL authorization methods.
+            sasl_dll_auth_method_paths = [
+                os.path.join(self.with_mysql_capi, "bin", "sasl2", dll)
+                for dll in SASL_WIN_LIBS_AUTH_METHODS
+                if os.path.exists(
+                    os.path.join(self.with_mysql_capi, "bin", "sasl2", dll)
+                )
+            ]
+
+            if sasl_dll_auth_method_paths:
+                self.distribution.data_files.append(
+                    ("lib\\site-packages\\sasl2", sasl_dll_auth_method_paths)
+                )
+
             self.log.debug("# site_packages_files: %s", self.distribution.data_files)
         elif bundle_plugin_libs:
             # Bundle SASL libs
