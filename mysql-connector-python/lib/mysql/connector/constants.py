@@ -95,7 +95,6 @@ DEFAULT_CONFIGURATION: Dict[str, Optional[Union[str, bool, int]]] = {
     "krb_service_principal": None,
     "oci_config_file": None,
     "oci_config_profile": None,
-    "fido_callback": None,
     "webauthn_callback": None,
     "kerberos_auth_mode": None,
     "init_command": None,

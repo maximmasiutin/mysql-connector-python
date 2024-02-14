@@ -34,7 +34,6 @@ from __future__ import annotations
 
 import os
 import re
-import warnings
 import weakref
 
 from abc import ABC, abstractmethod
@@ -203,7 +202,6 @@ class MySQLConnectionAbstract(ABC):
         self._force_ipv6: bool = False
         self._oci_config_file: Optional[str] = None
         self._oci_config_profile: Optional[str] = None
-        self._fido_callback: Optional[Union[str, Callable[[str], None]]] = None
         self._webauthn_callback: Optional[Union[str, Callable[[str], None]]] = None
         self._krb_service_principal: Optional[str] = None
 
@@ -825,15 +823,6 @@ class MySQLConnectionAbstract(ABC):
                 raise InterfaceError(
                     KRB_SERVICE_PINCIPAL_ERROR.format(error="is incorrectly formatted")
                 )
-
-        if self._fido_callback:
-            warn_msg = (
-                "The `fido_callback` connection argument is deprecated and it will be "
-                "removed in a future release of MySQL Connector/Python. "
-                "Use `webauth_callback` instead"
-            )
-            warnings.warn(warn_msg, DeprecationWarning)
-            self._validate_callable("fido_callback", self._fido_callback, 1)
 
         if self._webauthn_callback:
             self._validate_callable("webauth_callback", self._webauthn_callback, 1)

@@ -78,16 +78,17 @@ MySQL_connected(MySQL *self);
 #define MYSQL_TYPE_VECTOR 242
 #endif
 
-// Python FIDO messages callback
-static PyObject *fido_callback = NULL;
+
+// Python webauthn messages callback
+static PyObject *webauthn_callback = NULL;
 
 void
-fido_messages_callback(const char *msg)
+webauthn_messages_callback(const char *msg)
 {
-    if (fido_callback && fido_callback != Py_None) {
+    if (webauthn_callback && webauthn_callback != Py_None) {
         PyGILState_STATE state = PyGILState_Ensure();
         PyObject *args = Py_BuildValue("(z)", msg);
-        PyObject *result = PyObject_Call(fido_callback, args, NULL);
+        PyObject *result = PyObject_Call(webauthn_callback, args, NULL);
         Py_DECREF(args);
         if (result) {
             Py_DECREF(result);
@@ -1159,7 +1160,7 @@ MySQL_connect(MySQL *self, PyObject *args, PyObject *kwds)
                              "load_data_local_dir",
                              "oci_config_file",
                              "oci_config_profile",
-                             "fido_callback",
+                             "webauthn_callback",
                              "use_kerberos_gssapi",
                              NULL};
 
@@ -1170,7 +1171,7 @@ MySQL_connect(MySQL *self, PyObject *args, PyObject *kwds)
             &tls_cipher_suites, &PyBool_Type, &ssl_verify_cert, &PyBool_Type,
             &ssl_verify_identity, &PyBool_Type, &ssl_disabled, &PyBool_Type, &compress,
             &PyDict_Type, &conn_attrs, &local_infile, &load_data_local_dir, &oci_config_file,
-            &oci_config_profile, &fido_callback, &use_kerberos_gssapi)) {
+            &oci_config_profile, &webauthn_callback, &use_kerberos_gssapi)) {
         return NULL;
     }
 
@@ -1403,19 +1404,19 @@ MySQL_connect(MySQL *self, PyObject *args, PyObject *kwds)
     }
 #endif
 
-    if (fido_callback && fido_callback != Py_None) {
-        /* verify if the `fido_callback` is a proper callable */
-        if (!PyCallable_Check(fido_callback)) {
-            PyErr_SetString(PyExc_TypeError, "Expected a callable for 'fido_callback'");
+    if (webauthn_callback && webauthn_callback != Py_None) {
+        /* verify if the `webauthn_callback` is a proper callable */
+        if (!PyCallable_Check(webauthn_callback)) {
+            PyErr_SetString(PyExc_TypeError, "Expected a callable for 'webauthn_callback'");
             return NULL;
         }
 
 #if MYSQL_VERSION_ID >= 80200
         /* load WebAuthn client authentication plugin if required */
-        struct st_mysql_client_plugin *fido_plugin = mysql_client_find_plugin(
+        struct st_mysql_client_plugin *webauthn_plugin = mysql_client_find_plugin(
             &self->session, "authentication_webauthn_client",
             MYSQL_CLIENT_AUTHENTICATION_PLUGIN);
-        if (!fido_plugin) {
+        if (!webauthn_plugin) {
             raise_with_string(
                 PyUnicode_FromString(
                     "The WebAuthn authentication plugin could not be loaded"),
@@ -1424,23 +1425,9 @@ MySQL_connect(MySQL *self, PyObject *args, PyObject *kwds)
         }
 
         /* register callback */
-        mysql_plugin_options(fido_plugin,
+        mysql_plugin_options(webauthn_plugin,
                              "plugin_authentication_webauthn_client_messages_callback",
-                             (const void *)(&fido_messages_callback));
-#else
-        /* load FIDO client authentication plugin if required */
-        struct st_mysql_client_plugin *fido_plugin = mysql_client_find_plugin(
-            &self->session, "authentication_fido_client", MYSQL_CLIENT_AUTHENTICATION_PLUGIN);
-        if (!fido_plugin) {
-            raise_with_string(
-                PyUnicode_FromString("The FIDO authentication plugin could not be loaded"),
-                NULL);
-            return NULL;
-        }
-
-        /* register callback */
-        mysql_plugin_options(fido_plugin, "fido_messages_callback",
-                             (const void *)(&fido_messages_callback));
+                             (const void *)(&webauthn_messages_callback));
 #endif
     }
 

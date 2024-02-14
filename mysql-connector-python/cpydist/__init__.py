@@ -310,7 +310,6 @@ class BaseCommand(Command):
                 ("LDAP", f"authentication_ldap_sasl_client.{plugin_ext}"),
                 ("Kerberos", f"authentication_kerberos_client.{plugin_ext}"),
                 ("OCI IAM", f"authentication_oci_client.{plugin_ext}"),
-                ("FIDO", f"authentication_fido_client.{plugin_ext}"),
                 ("WebAuthn", f"authentication_webauthn_client.{plugin_ext}"),
             ]
 

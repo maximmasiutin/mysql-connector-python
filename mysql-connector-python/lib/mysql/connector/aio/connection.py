@@ -341,7 +341,6 @@ class MySQLConnection(MySQLConnectionAbstract):
             oci_config_file=self._oci_config_file,
             oci_config_profile=self._oci_config_profile,
             webauthn_callback=self._webauthn_callback,
-            fido_callback=self._fido_callback,
         )
         self._handle_ok(ok_pkt)
 

@@ -1374,37 +1374,6 @@ class MySQLMultiFactorAuthenticationTests(MySQLConnectorAioTestCase):
 
 
 @unittest.skipIf(
-    tests.MYSQL_VERSION < (8, 0, 29), "Authentication with FIDO not supported"
-)
-@unittest.skipUnless(HAVE_CMYSQL, "C Extension not available")
-class MySQLFIDOAuthPluginTests(tests.MySQLConnectorTests):
-    """Test authentication.MySQLFIDOAuthPlugin.
-
-    Implemented by WL#14860: Support FIDO authentication (c-ext)
-    """
-
-    @foreach_cnx_aio(CMySQLConnection)
-    async def test_invalid_fido_callback(self):
-        """Test invalid 'fido_callback' option."""
-
-        def my_callback():
-            ...
-
-        test_cases = (
-            "abc",  # No callable named 'abc'
-            "abc.abc",  # module 'abc' has no attribute 'abc'
-            my_callback,  # 1 positional argument required
-        )
-        config = tests.get_mysql_config()
-        config["auth_plugin"] = "authentication_fido_client"
-        for case in test_cases:
-            config["fido_callback"] = case
-            with self.assertRaises(ProgrammingError):
-                cnx = self.cnx.__class__(**config)
-                await cnx.connect()
-
-
-@unittest.skipIf(
     tests.MYSQL_VERSION < (8, 2, 0), "Authentication with WebAuthn not supported"
 )
 class MySQLWebAuthnAuthPluginTests(tests.MySQLConnectorTests):
