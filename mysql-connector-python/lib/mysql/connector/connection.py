@@ -109,7 +109,14 @@ from .types import (
     StatsPacketType,
     StrOrBytes,
 )
-from .utils import get_platform, int1store, int4store, lc_int
+from .utils import (
+    get_platform,
+    int1store,
+    int4store,
+    lc_int,
+    warn_ciphersuites_deprecated,
+    warn_tls_version_deprecated,
+)
 
 if TYPE_CHECKING:
     from .abstracts import CMySQLPrepStmt
@@ -379,18 +386,18 @@ class MySQLConnection(MySQLConnectionAbstract):
 
         if (
             not self._ssl_disabled
-            and hasattr(self._socket.sock, "version")
-            and callable(self._socket.sock.version)
+            and hasattr(self._socket.sock, "cipher")
+            and callable(self._socket.sock.cipher)
         ):
-            # Raise a deprecation warning if TLSv1 or TLSv1.1 is being used
-            tls_version = self._socket.sock.version()
-            if tls_version in ("TLSv1", "TLSv1.1"):
-                warn_msg = (
-                    f"This connection is using {tls_version} which is now "
-                    "deprecated and will be removed in a future release of "
-                    "MySQL Connector/Python"
-                )
-                warnings.warn(warn_msg, DeprecationWarning)
+            # Raise a deprecation warning if deprecated TLS version
+            # or cipher is being used.
+
+            # `cipher()` returns a three-value tuple containing the name
+            # of the cipher being used, the version of the SSL protocol
+            # that defines its use, and the number of secret bits being used.
+            cipher, tls_version, _ = self._socket.sock.cipher()
+            warn_tls_version_deprecated(tls_version)
+            warn_ciphersuites_deprecated(cipher, tls_version)
 
     def shutdown(self) -> None:
         """Shut down connection to MySQL Server.

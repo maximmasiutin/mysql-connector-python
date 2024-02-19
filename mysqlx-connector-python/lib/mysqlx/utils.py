@@ -33,6 +33,8 @@ import subprocess
 import sys
 
 from typing import Dict, Optional, Tuple
+import warnings
+from .tls_ciphers import DEPRECATED_TLS_CIPHERSUITES, DEPRECATED_TLS_VERSIONS
 
 
 def _parse_os_release() -> Dict[str, str]:
@@ -134,3 +136,42 @@ def linux_distribution() -> Tuple[str, str, str]:
         )
 
     return ("", "", "")
+
+
+def warn_ciphersuites_deprecated(cipher_as_ossl: str, tls_version: str) -> None:
+    """Emits a warning if a deprecated cipher is being utilized.
+
+    Args:
+        cipher: Must be ingested as OpenSSL name.
+        tls_versions: TLS version to check the cipher against.
+
+    Raises:
+        DeprecationWarning: If the cipher is flagged as deprecated
+                            according to the OSSA cipher list.
+    """
+    if cipher_as_ossl in DEPRECATED_TLS_CIPHERSUITES.get(tls_version, {}).values():
+        warn_msg = (
+            f"This connection is using TLS cipher {cipher_as_ossl} which is now "
+            "deprecated and will be removed in a future release of "
+            "MySQL Connector/Python."
+        )
+        warnings.warn(warn_msg, DeprecationWarning)
+
+
+def warn_tls_version_deprecated(tls_version: str) -> None:
+    """Emits a warning if a deprecated TLS version is being utilized.
+
+    Args:
+        tls_versions: TLS version to check.
+
+    Raises:
+        DeprecationWarning: If the TLS version is flagged as deprecated
+                            according to the OSSA cipher list.
+    """
+    if tls_version in DEPRECATED_TLS_VERSIONS:
+        warn_msg = (
+            f"This connection is using TLS version {tls_version} which is now "
+            "deprecated and will be removed in a future release of "
+            "MySQL Connector/Python."
+        )
+        warnings.warn(warn_msg, DeprecationWarning)

@@ -39,8 +39,6 @@ try:
 
     SSL_AVAILABLE = True
     TLS_VERSIONS = {
-        "TLSv1": ssl.PROTOCOL_TLSv1,
-        "TLSv1.1": ssl.PROTOCOL_TLSv1_1,
         "TLSv1.2": ssl.PROTOCOL_TLSv1_2,
     }
     # TLSv1.3 included in PROTOCOL_TLS, but PROTOCOL_TLS is not included on 3.4
@@ -65,7 +63,6 @@ import socket
 import sys
 import threading
 import uuid
-import warnings
 
 from typing import Any, Callable, Dict, List, Mapping, Optional, Tuple, Type, Union
 
@@ -85,7 +82,6 @@ from urllib.parse import parse_qsl, unquote, urlparse
 from .authentication import MySQL41AuthPlugin, PlainAuthPlugin, Sha256MemoryAuthPlugin
 from .constants import (
     COMPRESSION_ALGORITHMS,
-    DEPRECATED_TLS_VERSIONS,
     OPENSSL_CS_NAMES,
     SUPPORTED_TLS_VERSIONS,
     TLS_CIPHER_SUITES,
@@ -126,7 +122,12 @@ from .types import ColumnType, MessageType, ResultBaseType, StatementType
 
 sys.path.append("..")
 
-from .utils import linux_distribution
+from .tls_ciphers import UNACCEPTABLE_TLS_CIPHERSUITES, UNACCEPTABLE_TLS_VERSIONS
+from .utils import (
+    linux_distribution,
+    warn_ciphersuites_deprecated,
+    warn_tls_version_deprecated,
+)
 from .version import LICENSE, VERSION
 
 DUPLICATED_IN_LIST_ERROR = (
@@ -139,7 +140,7 @@ TLS_VERSION_ERROR = (
     "TLS protocol version (should be one of {})."
 )
 
-TLS_VERSION_DEPRECATED_ERROR = (
+TLS_VERSION_UNACCEPTABLE_ERROR = (
     "The given tls_version: '{}' are no longer allowed (should be one of {})."
 )
 
@@ -438,15 +439,11 @@ class SocketStream:
 
         self._is_ssl = True
 
-        # Raise a deprecation warning if TLSv1 or TLSv1.1 is being used
-        tls_version = self._socket.version()
-        if tls_version in ("TLSv1", "TLSv1.1"):
-            warn_msg = (
-                f"This connection is using {tls_version} which is now "
-                "deprecated and will be removed in a future release of "
-                "MySQL Connector/Python"
-            )
-            warnings.warn(warn_msg, DeprecationWarning)
+        # Raise a deprecation warning if a deprecated TLS cipher or
+        # version is being used.
+        cipher, tls_version, _ = self._socket.cipher()
+        warn_tls_version_deprecated(tls_version)
+        warn_ciphersuites_deprecated(cipher, tls_version)
 
     def is_ssl(self) -> bool:
         """Verifies if SSL is being used.
@@ -1544,6 +1541,7 @@ class ConnectionPool(queue.Queue):
     """
 
     def __init__(self, name: str, **kwargs: Any) -> None:
+        self.name: Optional[str] = None
         self._set_pool_name(name)
         self._open_sessions: int = 0
         self._connections_openned: List[PooledConnection] = []
@@ -3093,13 +3091,13 @@ def _validate_tls_versions(settings: Dict[str, Any]) -> None:
         )
 
     use_tls_versions = []
-    deprecated_tls_versions = []
+    unacceptable_tls_versions = []
     not_tls_versions = []
     for tls_ver in tls_versions:
         if tls_ver in SUPPORTED_TLS_VERSIONS:
             use_tls_versions.append(tls_ver)
-        if tls_ver in DEPRECATED_TLS_VERSIONS:
-            deprecated_tls_versions.append(tls_ver)
+        if tls_ver in UNACCEPTABLE_TLS_VERSIONS:
+            unacceptable_tls_versions.append(tls_ver)
         else:
             not_tls_versions.append(tls_ver)
 
@@ -3108,12 +3106,11 @@ def _validate_tls_versions(settings: Dict[str, Any]) -> None:
             raise NotSupportedError(
                 TLS_VER_NO_SUPPORTED.format(tls_versions, SUPPORTED_TLS_VERSIONS)
             )
-        use_tls_versions.sort()
         settings["tls-versions"] = use_tls_versions
-    elif deprecated_tls_versions:
+    elif unacceptable_tls_versions:
         raise NotSupportedError(
-            TLS_VERSION_DEPRECATED_ERROR.format(
-                deprecated_tls_versions, SUPPORTED_TLS_VERSIONS
+            TLS_VERSION_UNACCEPTABLE_ERROR.format(
+                unacceptable_tls_versions, SUPPORTED_TLS_VERSIONS
             )
         )
     elif not_tls_versions:
@@ -3205,6 +3202,19 @@ def _validate_tls_ciphersuites(settings: Dict[str, Any]) -> None:
         raise InterfaceError(
             "No valid cipher suite found in the 'tls-ciphersuites' list"
         )
+
+    # raise an error when using an unacceptable cipher
+    for cipher_as_ossl in translated_names:
+        for tls_ver in SUPPORTED_TLS_VERSIONS[
+            : SUPPORTED_TLS_VERSIONS.index(newer_tls_ver) + 1
+        ]:
+            if (
+                cipher_as_ossl
+                in UNACCEPTABLE_TLS_CIPHERSUITES.get(tls_ver, {}).values()
+            ):
+                raise NotSupportedError(
+                    f"Cipher {cipher_as_ossl} when used with {tls_ver} is unacceptable."
+                )
 
     settings["tls-ciphersuites"] = translated_names
 

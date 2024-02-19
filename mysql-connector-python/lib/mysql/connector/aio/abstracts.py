@@ -70,13 +70,12 @@ from ..abstracts import (
     MYSQL_PY_TYPES,
     TLS_V1_3_SUPPORTED,
     TLS_VER_NO_SUPPORTED,
-    TLS_VERSION_DEPRECATED_ERROR,
     TLS_VERSION_ERROR,
+    TLS_VERSION_UNACCEPTABLE_ERROR,
 )
 from ..constants import (
     CONN_ATTRS_DN,
     DEFAULT_CONFIGURATION,
-    DEPRECATED_TLS_VERSIONS,
     OPENSSL_CS_NAMES,
     TLS_CIPHER_SUITES,
     TLS_VERSIONS,
@@ -90,6 +89,7 @@ from ..errors import (
     NotSupportedError,
     ProgrammingError,
 )
+from ..tls_ciphers import UNACCEPTABLE_TLS_CIPHERSUITES, UNACCEPTABLE_TLS_VERSIONS
 from ..types import (
     BinaryProtocolType,
     DescriptionType,
@@ -198,7 +198,8 @@ class MySQLConnectionAbstract(ABC):
         ssl_verify_cert: Optional[bool] = False,
         ssl_verify_identity: Optional[bool] = False,
         ssl_disabled: Optional[bool] = DEFAULT_CONFIGURATION["ssl_disabled"],
-        tls_versions: Optional[List[str]] = [],
+        tls_versions: Optional[List[str]] = None,
+        tls_ciphersuites: Optional[List[str]] = None,
         loop: Optional[asyncio.AbstractEventLoop] = None,
     ):
         self._user: str = user
@@ -231,7 +232,7 @@ class MySQLConnectionAbstract(ABC):
         self._ssl_verify_cert: Optional[bool] = ssl_verify_cert
         self._ssl_verify_identity: Optional[bool] = ssl_verify_identity
         self._tls_versions: Optional[List[str]] = tls_versions
-        self._tls_ciphersuites: Optional[List[str]] = []
+        self._tls_ciphersuites: Optional[List[str]] = tls_ciphersuites
         self._auth_plugin: Optional[str] = auth_plugin
         self._auth_plugin_class: Optional[str] = None
         self._handshake: Optional[HandShakeType] = None
@@ -339,10 +340,10 @@ class MySQLConnectionAbstract(ABC):
                 raise AttributeError(
                     "ssl_key and ssl_cert need to be both set, or neither"
                 )
-            if self._tls_versions:
+            if self._tls_versions is not None:
                 self._validate_tls_versions()
 
-            if self._tls_ciphersuites:
+            if self._tls_ciphersuites is not None:
                 self._validate_tls_ciphersuites()
 
         if not isinstance(self._connection_attrs, dict):
@@ -465,7 +466,7 @@ class MySQLConnectionAbstract(ABC):
         # an older version.
         tls_versions.sort(reverse=True)
         newer_tls_ver = tls_versions[0]
-        # translated_names[0] belongs to TLSv1, TLSv1.1 and TLSv1.2
+        # translated_names[0] are TLSv1.2 only
         # translated_names[1] are TLSv1.3 only
         translated_names: List[List[str]] = [[], []]
         iani_cipher_suites_names = {}
@@ -504,6 +505,18 @@ class MySQLConnectionAbstract(ABC):
             raise AttributeError(
                 "No valid cipher suite found in the 'tls_ciphersuites' list"
             )
+
+        # raise an error when using an unacceptable cipher
+        for cipher_as_ossl in translated_names[0]:
+            if cipher_as_ossl in UNACCEPTABLE_TLS_CIPHERSUITES["TLSv1.2"].values():
+                raise NotSupportedError(
+                    f"Cipher {cipher_as_ossl} when used with TLSv1.2 is unacceptable."
+                )
+        for cipher_as_ossl in translated_names[1]:
+            if cipher_as_ossl in UNACCEPTABLE_TLS_CIPHERSUITES["TLSv1.3"].values():
+                raise NotSupportedError(
+                    f"Cipher {cipher_as_ossl} when used with TLSv1.3 is unacceptable."
+                )
 
         self._tls_ciphersuites = [
             ":".join(translated_names[0]),
@@ -566,13 +579,13 @@ class MySQLConnectionAbstract(ABC):
             )
 
         use_tls_versions = []
-        deprecated_tls_versions = []
+        unacceptable_tls_versions = []
         invalid_tls_versions = []
         for tls_ver in tls_versions:
             if tls_ver in TLS_VERSIONS:
                 use_tls_versions.append(tls_ver)
-            if tls_ver in DEPRECATED_TLS_VERSIONS:
-                deprecated_tls_versions.append(tls_ver)
+            if tls_ver in UNACCEPTABLE_TLS_VERSIONS:
+                unacceptable_tls_versions.append(tls_ver)
             else:
                 invalid_tls_versions.append(tls_ver)
 
@@ -581,12 +594,11 @@ class MySQLConnectionAbstract(ABC):
                 raise NotSupportedError(
                     TLS_VER_NO_SUPPORTED.format(tls_version, TLS_VERSIONS)
                 )
-            use_tls_versions.sort()
             self._tls_versions = use_tls_versions
-        elif deprecated_tls_versions:
+        elif unacceptable_tls_versions:
             raise NotSupportedError(
-                TLS_VERSION_DEPRECATED_ERROR.format(
-                    deprecated_tls_versions, TLS_VERSIONS
+                TLS_VERSION_UNACCEPTABLE_ERROR.format(
+                    unacceptable_tls_versions, TLS_VERSIONS
                 )
             )
         elif invalid_tls_versions:
@@ -1821,7 +1833,6 @@ class MySQLCursorAbstract(ABC):
 
 
 class CMySQLPrepStmt(GenericWrapper):
-
     """Structure to represent a result from `CMySQLConnection.cmd_stmt_prepare`.
     It can be used consistently as a type hint.
 

@@ -69,7 +69,11 @@ from .types import (
     StatsPacketType,
     StrOrBytes,
 )
-from .utils import import_object
+from .utils import (
+    import_object,
+    warn_ciphersuites_deprecated,
+    warn_tls_version_deprecated,
+)
 
 HAVE_CMYSQL = False
 
@@ -330,6 +334,20 @@ class CMySQLConnection(MySQLConnectionAbstract):
             ) from err
 
         self._do_handshake()
+
+        if (
+            not self._ssl_disabled
+            and hasattr(self._cmysql, "get_ssl_cipher")
+            and callable(self._cmysql.get_ssl_cipher)
+        ):
+            # Raise a deprecation warning if deprecated TLS version
+            # or cipher is being used.
+
+            # `get_ssl_cipher()` returns the name of the cipher being used.
+            cipher = self._cmysql.get_ssl_cipher()
+            for tls_version in set(self._ssl.get("tls_versions", [])):
+                warn_tls_version_deprecated(tls_version)
+                warn_ciphersuites_deprecated(cipher, tls_version)
 
     def close(self) -> None:
         """Disconnect from the MySQL server"""

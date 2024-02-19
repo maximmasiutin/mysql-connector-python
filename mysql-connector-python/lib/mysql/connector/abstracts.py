@@ -73,7 +73,6 @@ except ImportError:
 from .constants import (
     CONN_ATTRS_DN,
     DEFAULT_CONFIGURATION,
-    DEPRECATED_TLS_VERSIONS,
     OPENSSL_CS_NAMES,
     TLS_CIPHER_SUITES,
     TLS_VERSIONS,
@@ -105,6 +104,7 @@ if OTEL_ENABLED:
     )
 
 from .optionfiles import read_option_files
+from .tls_ciphers import UNACCEPTABLE_TLS_CIPHERSUITES, UNACCEPTABLE_TLS_VERSIONS
 from .types import (
     BinaryProtocolType,
     DescriptionType,
@@ -129,7 +129,7 @@ TLS_VERSION_ERROR = (
     "TLS protocol version (should be one of {})."
 )
 
-TLS_VERSION_DEPRECATED_ERROR = (
+TLS_VERSION_UNACCEPTABLE_ERROR = (
     "The given tls_version: '{}' are no longer allowed (should be one of {})."
 )
 
@@ -340,7 +340,7 @@ class MySQLConnectionAbstract(ABC):
         # an older version.
         tls_versions.sort(reverse=True)  # type: ignore[union-attr]
         newer_tls_ver = tls_versions[0]
-        # translated_names[0] belongs to TLSv1, TLSv1.1 and TLSv1.2
+        # translated_names[0] are TLSv1.2 only
         # translated_names[1] are TLSv1.3 only
         translated_names: List[List[str]] = [[], []]
         iani_cipher_suites_names = {}
@@ -379,6 +379,18 @@ class MySQLConnectionAbstract(ABC):
             raise AttributeError(
                 "No valid cipher suite found in the 'tls_ciphersuites' list"
             )
+
+        # raise an error when using an unacceptable cipher
+        for cipher_as_ossl in translated_names[0]:
+            if cipher_as_ossl in UNACCEPTABLE_TLS_CIPHERSUITES["TLSv1.2"].values():
+                raise NotSupportedError(
+                    f"Cipher {cipher_as_ossl} when used with TLSv1.2 is unacceptable."
+                )
+        for cipher_as_ossl in translated_names[1]:
+            if cipher_as_ossl in UNACCEPTABLE_TLS_CIPHERSUITES["TLSv1.3"].values():
+                raise NotSupportedError(
+                    f"Cipher {cipher_as_ossl} when used with TLSv1.3 is unacceptable."
+                )
 
         self._ssl["tls_ciphersuites"] = [
             ":".join(translated_names[0]),
@@ -441,13 +453,13 @@ class MySQLConnectionAbstract(ABC):
             )
 
         use_tls_versions = []
-        deprecated_tls_versions = []
+        unacceptable_tls_versions = []
         invalid_tls_versions = []
         for tls_ver in tls_versions:
             if tls_ver in TLS_VERSIONS:
                 use_tls_versions.append(tls_ver)
-            if tls_ver in DEPRECATED_TLS_VERSIONS:
-                deprecated_tls_versions.append(tls_ver)
+            if tls_ver in UNACCEPTABLE_TLS_VERSIONS:
+                unacceptable_tls_versions.append(tls_ver)
             else:
                 invalid_tls_versions.append(tls_ver)
 
@@ -456,12 +468,11 @@ class MySQLConnectionAbstract(ABC):
                 raise NotSupportedError(
                     TLS_VER_NO_SUPPORTED.format(tls_version, TLS_VERSIONS)
                 )
-            use_tls_versions.sort()
             self._ssl["tls_versions"] = use_tls_versions
-        elif deprecated_tls_versions:
+        elif unacceptable_tls_versions:
             raise NotSupportedError(
-                TLS_VERSION_DEPRECATED_ERROR.format(
-                    deprecated_tls_versions, TLS_VERSIONS
+                TLS_VERSION_UNACCEPTABLE_ERROR.format(
+                    unacceptable_tls_versions, TLS_VERSIONS
                 )
             )
         elif invalid_tls_versions:
@@ -731,13 +742,10 @@ class MySQLConnectionAbstract(ABC):
                 raise AttributeError(
                     "ssl_key and ssl_cert need to be both set, or neither"
                 )
-            if "tls_versions" in self._ssl and self._ssl["tls_versions"] is not None:
+            if self._ssl.get("tls_versions") is not None:
                 self._validate_tls_versions()
 
-            if (
-                "tls_ciphersuites" in self._ssl
-                and self._ssl["tls_ciphersuites"] is not None
-            ):
+            if self._ssl.get("tls_ciphersuites") is not None:
                 self._validate_tls_ciphersuites()
 
         if self._conn_attrs is None:

@@ -87,7 +87,14 @@ from ..types import (
     StatsPacketType,
     StrOrBytes,
 )
-from ..utils import get_platform, int1store, int4store, lc_int
+from ..utils import (
+    get_platform,
+    int1store,
+    int4store,
+    lc_int,
+    warn_ciphersuites_deprecated,
+    warn_tls_version_deprecated,
+)
 from .abstracts import MySQLConnectionAbstract, MySQLCursorAbstract, ServerInfo
 from .charsets import charsets
 from .cursor import (
@@ -152,6 +159,22 @@ class MySQLConnection(MySQLConnectionAbstract):
 
         # Post connection settings
         await self._post_connection()
+
+        # pylint: disable=protected-access
+        if (
+            not self._ssl_disabled
+            and hasattr(self._socket._writer, "get_extra_info")
+            and callable(self._socket._writer.get_extra_info)
+        ):
+            # Raise a deprecation warning if deprecated TLS version
+            # or cipher is being used.
+
+            # `get_extra_info("cipher")` returns a three-value tuple containing the name
+            # of the cipher being used, the version of the SSL protocol
+            # that defines its use, and the number of secret bits being used.
+            cipher, tls_version, _ = self._socket._writer.get_extra_info("cipher")
+            warn_tls_version_deprecated(tls_version)
+            warn_ciphersuites_deprecated(cipher, tls_version)
 
     def _add_default_conn_attrs(self) -> None:
         """Add the default connection attributes."""

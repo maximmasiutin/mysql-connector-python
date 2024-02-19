@@ -36,7 +36,7 @@ import warnings
 
 from typing import Any, Callable, List, Optional, Union
 
-from .constants import TLS_CIPHER_SUITES, TLS_VERSIONS
+from .constants import TLS_CIPHER_SUITES, SUPPORTED_TLS_VERSIONS
 from .errors import InterfaceError
 from .types import EscapeTypes, StrOrBytes
 
@@ -207,8 +207,8 @@ def iani_to_openssl_cs_name(
     cipher_suites = {}  # TLS_CIPHER_SUITES[TLS_version]
 
     # Find the previews TLS versions of the given on TLS_version
-    for index in range(TLS_VERSIONS.index(tls_version) + 1):
-        cipher_suites.update(TLS_CIPHER_SUITES[TLS_VERSIONS[index]])
+    for index in range(SUPPORTED_TLS_VERSIONS.index(tls_version) + 1):
+        cipher_suites.update(TLS_CIPHER_SUITES[SUPPORTED_TLS_VERSIONS[index]])
 
     for name in cipher_suites_names:
         if "-" in name:
