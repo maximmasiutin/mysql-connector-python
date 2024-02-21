@@ -1,18 +1,18 @@
 # -*- coding: utf-8 -*-
 
-# Copyright (c) 2016, 2023, Oracle and/or its affiliates.
+# Copyright (c) 2016, 2024, Oracle and/or its affiliates.
 #
 # This program is free software; you can redistribute it and/or modify
 # it under the terms of the GNU General Public License, version 2.0, as
 # published by the Free Software Foundation.
 #
-# This program is also distributed with certain software (including
+# This program is designed to work with certain software (including
 # but not limited to OpenSSL) that is licensed under separate terms,
 # as designated in a particular file or component or in included license
-# documentation.  The authors of MySQL hereby grant you an
+# documentation. The authors of MySQL hereby grant you an
 # additional permission to link the program and your derivative works
-# with the separately licensed software that they have included with
-# MySQL.
+# with the separately licensed software that they have either included with
+# the program or referenced in the documentation.
 #
 # Without limiting anything contained in the foregoing, this file,
 # which is part of MySQL Connector/Python, is also subject to the
@@ -46,6 +46,8 @@ from threading import Thread
 from time import sleep
 from urllib.parse import quote, quote_plus
 
+import tests
+
 import mysqlx
 
 from mysqlx.connection import (
@@ -72,8 +74,6 @@ from mysqlx.protocol import (
 )
 from mysqlx.utils import linux_distribution
 from mysqlx.version import LICENSE, VERSION
-
-import tests
 
 from . import check_tls_versions_support, get_scenarios_matrix
 from .test_mysqlx_crud import drop_table

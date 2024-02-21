@@ -1,16 +1,16 @@
-# Copyright (c) 2023, Oracle and/or its affiliates.
+# Copyright (c) 2023, 2024, Oracle and/or its affiliates.
 #
 # This program is free software; you can redistribute it and/or modify
 # it under the terms of the GNU General Public License, version 2.0, as
 # published by the Free Software Foundation.
 #
-# This program is also distributed with certain software (including
+# This program is designed to work with certain software (including
 # but not limited to OpenSSL) that is licensed under separate terms,
 # as designated in a particular file or component or in included license
-# documentation.  The authors of MySQL hereby grant you an
+# documentation. The authors of MySQL hereby grant you an
 # additional permission to link the program and your derivative works
-# with the separately licensed software that they have included with
-# MySQL.
+# with the separately licensed software that they have either included with
+# the program or referenced in the documentation.
 #
 # Without limiting anything contained in the foregoing, this file,
 # which is part of MySQL Connector/Python, is also subject to the
@@ -44,6 +44,13 @@ from decimal import Decimal
 
 import tests
 
+from tests import (
+    AioDummySocket,
+    MySQLConnectorAioTestCase,
+    foreach_cnx_aio,
+    get_mysql_config,
+)
+
 from mysql.connector.abstracts import DEFAULT_CONFIGURATION
 from mysql.connector.aio import HAVE_DNSPYTHON, connect
 from mysql.connector.aio.charsets import charsets
@@ -73,12 +80,6 @@ from mysql.connector.errors import (
 )
 from mysql.connector.utils import linux_distribution
 from mysql.connector.version import LICENSE, VERSION
-from tests import (
-    AioDummySocket,
-    MySQLConnectorAioTestCase,
-    foreach_cnx_aio,
-    get_mysql_config,
-)
 
 from . import check_tls_versions_support, get_scenarios_matrix
 from .test_connection import (
