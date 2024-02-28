@@ -61,7 +61,7 @@
 %{?extra_link_args: %global extra_link_args %{extra_link_args}}
 
 # set version if not defined through 'rpmbuild'
-%{!?version: %global version 8.3.0}
+%{!?version: %global version 8.4.0}
 
 %global with_openssl_opts ""
 
@@ -243,6 +243,9 @@ cd mysql-connector-python
 %{python3_sitearch}/_mysql_connector.cpython*.so
 
 %changelog
+* Wed Feb 28 2024 Oscar Pacheco <oscar.p.pacheco@oracle.com> - 8.4.0-1
+- Updated for 8.4.0
+
 * Wed Dec 6 2023  Oscar Pacheco <oscar.p.pacheco@oracle.com> - 8.3.0-1
 - Updated Python version for openSUSE 15 from 3.9 to 3.11
 
