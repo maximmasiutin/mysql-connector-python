@@ -165,7 +165,10 @@ else:
         "MYSQL", os.path.join("/", "usr", "local", "mysql")
     )
 
-MY_CNF += "\nssl={ssl}"
+# When this option is enabled, connections attempted using
+# insecure transport will be rejected. Secure transports
+# are SSL/TLS, Unix socket or Shared Memory (on Windows).
+MY_CNF += "\nrequire_secure_transport={ssl}"
 
 MYSQL_DEFAULT_TOPDIR = _TOPDIR
 

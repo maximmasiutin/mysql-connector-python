@@ -4789,15 +4789,15 @@ class BugOra21947091(tests.MySQLConnectorTests):
         self.server.stop()
         self.server.wait_down()
 
-        self.server.start()
+        self.server.start(ssl=1)
         self.server.wait_up()
         time.sleep(1)
 
-    def _verify_ssl(self, cnx, available=True):
+    def _verify_ssl(self, cnx, ssl_available=True):
         cur = cnx.cursor()
         cur.execute("SHOW STATUS LIKE 'Ssl_version'")
         result = cur.fetchall()[0]
-        if available:
+        if ssl_available:
             self.assertNotEqual(result[1], "")
         else:
             self.assertEqual(result[1], "")
@@ -4812,33 +4812,24 @@ class BugOra21947091(tests.MySQLConnectorTests):
         self._test_ssl_modes()
 
     def _test_ssl_modes(self):
+        # SSL isn't disabled by default on the connector side,
+        # however, it is disabled, on the custom bootstrapped server.
         config = self.config.copy()
-        # With SSL on server
-        # default
-        cnx = mysql.connector.connect(**config)
-        self._verify_ssl(cnx)
 
         # disabled
         config["ssl_disabled"] = True
         cnx = mysql.connector.connect(**config)
-        self._verify_ssl(cnx, False)
+        self._verify_ssl(cnx, ssl_available=False)
 
-        self._disable_ssl()
-        config = self.config.copy()
-        config["ssl_ca"] = tests.SSL_CA
-        # Without SSL on server
+        # With SSL on server
         try:
-            # default
-            cnx = mysql.connector.connect(**config)
-            self._verify_ssl(cnx, False)
-
-            # disabled
-            config["ssl_disabled"] = True
-            cnx = mysql.connector.connect(**config)
-            self._verify_ssl(cnx, False)
-
-        finally:
             self._enable_ssl()
+            config["ssl_ca"] = tests.SSL_CA
+            config["ssl_disabled"] = False
+            cnx = mysql.connector.connect(**config)
+            self._verify_ssl(cnx, ssl_available=True)
+        finally:
+            self._disable_ssl()
 
 
 class BugOra25589496(tests.MySQLConnectorTests):

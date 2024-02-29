@@ -645,6 +645,9 @@ class MySQLServer(MySQLServerBase):
         return self._mysqlx_unix_socket
 
     def update_config(self, **kwargs):
+        if kwargs.get("ssl"):
+            kwargs["ssl"] = "on" if kwargs["ssl"] else "off"
+
         options = {
             "name": self._name,
             "basedir": _convert_forward_slash(self._basedir),
@@ -663,7 +666,7 @@ class MySQLServer(MySQLServerBase):
             "pid_file": _convert_forward_slash(self._pid_file),
             "serverid": self._serverid,
             "lc_messages_dir": _convert_forward_slash(self._lc_messages_dir),
-            "ssl": 1,
+            "ssl": "off",
         }
 
         cnf = kwargs.pop("my_cnf", self._cnf)
