@@ -26,7 +26,9 @@
 # along with this program; if not, write to the Free Software Foundation, Inc.,
 # 51 Franklin St, Fifth Floor, Boston, MA 02110-1301  USA
 
-"""Context propagation script.
+"""Sanity script.
+
+This a simple sanity/smoke test.
 
 Trace context propagation is carried on via query attributes.
 MySQL client/server protocol commands supporting query attributes
@@ -79,14 +81,36 @@ However you can override any of these defaults according to the following flags:
 --debug: bool
 
 Example: default config for mysql server and collector, using the c-ext
-implementation of connector-python and just running context propagation
+implementation of connector-python and just running the check
 for prepared statements:
 
-`$ python run_context_propagation --cpy-use-pure=False --test-cmd-query=False`
+`$ python sanity_check.py --cpy-use-pure=False --test-cmd-query=False`
+"""
+
+"""
+Connection methods not supporting context propagation
+    * cmd_quit: COM_QUIT does not support query attrs (N/A)
+    * shutdown: because it simply closes the socket
+    * close: relies on cmd_quit
+    * in_transaction: property
+    * get_row: does not produce a query
+    * get_rows: does not produce a query
+    * consume_results: relies on get_rows
+    * cmd_init_db: COM_INIT_DB N/A
+    * cmd_query_iter: query attrs code infrasctructure not implemented yet
+    * cmd_statistics: COM_STATISTICS N/A
+    * cmd_debug: COM_DEBUG N/A
+    * cmd_ping: N/A COM_PING
+
+Connection methods supporting context propagation
+    * cmd_query
+    * cmd_refresh
+    * cmd_shutdown
+    * cmd_process_kill
 """
 
 import datetime
-import io
+import logging
 
 from argparse import ArgumentParser, Namespace
 from contextlib import nullcontext
@@ -101,6 +125,13 @@ import mysql.connector
 
 from mysql.connector.opentelemetry.instrumentation import MySQLInstrumentor
 from mysql.connector.version import VERSION_TEXT
+
+logging.basicConfig(level=logging.DEBUG)
+logger = logging.getLogger("mysql.connector.connection")
+logger.setLevel(logging.DEBUG)
+handler = logging.StreamHandler()
+logger.addHandler(handler)
+
 
 instrumentor = MySQLInstrumentor()
 BOOL_ARGS = {"cpy_use_pure", "test_cmd_query", "test_cmd_stmt_execute"}
@@ -171,7 +202,9 @@ def setup_cmd_parser() -> Namespace:
     return parser.parse_args()
 
 
-class TestContextPropagation:
+class BaseContextPropagationTests:
+    """Base class."""
+
     def __init__(self, **config) -> None:
         self._config = config.copy()
         self._tracer = None
@@ -197,6 +230,10 @@ class TestContextPropagation:
         provider.add_span_processor(processor)
         trace.set_tracer_provider(provider)
         self._tracer = trace.get_tracer(__name__)
+
+
+class TestContextPropagation(BaseContextPropagationTests):
+    """Context Propagation Sanity Check."""
 
     def test_simple_stmts(
         self,
@@ -238,9 +275,11 @@ class TestContextPropagation:
         inti_database_name = "test"
 
         instrumentor.instrument()
-        with self._tracer.start_as_current_span(
-            app_span_name
-        ) if with_app_span else nullcontext():
+        with (
+            self._tracer.start_as_current_span(app_span_name)
+            if with_app_span
+            else nullcontext()
+        ):
             with mysql.connector.connect(**self._mysql_config) as cnx:
                 cnx.otel_context_propagation = with_otel_context_propagation
 
@@ -262,11 +301,15 @@ class TestContextPropagation:
                     cur.execute("FLUSH PRIVILEGES")
                     cur.execute(f"CREATE DATABASE IF NOT EXISTS {new_database}")
 
+                cnx.cmd_init_db("test")
+
                 cnx.cmd_change_user(
                     username=new_user_name,
                     password=new_user_password,
                     database=new_database,
                 )
+                _ = cnx.database
+                _ = cnx.autocommit
                 with cnx.cursor() as cur:
                     cur.execute(f"DROP DATABASE IF EXISTS {new_database}")
                     cur.execute(f"DROP DATABASE IF EXISTS {inti_database_name}")
@@ -283,6 +326,14 @@ class TestContextPropagation:
                     cur.execute("SELECT 2")
                     _ = cur.fetchall()
 
+                cnx.commit()
+                cnx.rollback()
+
+                cnx.cmd_query("SELECT @@version")
+                _ = cnx.get_rows()
+
+                cnx.autocommit = True
+
         instrumentor.uninstrument()
 
     def test_prepared_stmt(
@@ -297,9 +348,11 @@ class TestContextPropagation:
 
         instrumentor.instrument()
         stmt = "SELECT  %s, %s, %s"
-        with self._tracer.start_as_current_span(
-            app_span_name
-        ) if with_app_span else nullcontext:
+        with (
+            self._tracer.start_as_current_span(app_span_name)
+            if with_app_span
+            else nullcontext
+        ):
             with mysql.connector.connect(**self._mysql_config) as cnx:
                 cnx.otel_context_propagation = with_otel_context_propagation
 

@@ -28,7 +28,7 @@
 
 """MySQL instrumentation supporting mysql-connector."""
 # mypy: disable-error-code="no-redef"
-# pylint: disable=protected-access,global-statement,invalid-name
+# pylint: disable=protected-access,global-statement,invalid-name,unused-argument
 
 from __future__ import annotations
 
@@ -48,14 +48,7 @@ if TYPE_CHECKING:
     # is a circular import issue when there isn't.
 
     from ..abstracts import MySQLConnectionAbstract, MySQLCursorAbstract
-    from ..connection import MySQLConnection
     from ..pooling import PooledMySQLConnection
-
-    try:
-        from ..connection_cext import CMySQLConnection
-    except ImportError:
-        # The cext is not available.
-        pass
 
 from ... import connector
 from ..constants import CNX_POOL_ARGS, DEFAULT_CONFIGURATION
@@ -214,12 +207,10 @@ def set_connection_span_attrs(
     cnx_span.set_attributes(attrs)
 
 
-def with_connection_span_attached(method: Callable) -> Callable:
-    """Attach the connection span while executing a connection method."""
+def with_cnx_span_attached(method: Callable) -> Callable:
+    """Attach the connection span while executing the connection method."""
 
-    def wrapper(
-        cnx: Union["MySQLConnection", "CMySQLConnection"], *args: Any, **kwargs: Any
-    ) -> Any:
+    def wrapper(cnx: "MySQLConnectionAbstract", *args: Any, **kwargs: Any) -> Any:
         """Connection span attacher decorator."""
         with trace.use_span(
             cnx._span, end_on_exit=False
@@ -229,41 +220,62 @@ def with_connection_span_attached(method: Callable) -> Callable:
     return wrapper
 
 
-def _instrument_execution(
-    query_method: Callable,
-    tracer: trace.Tracer,
-    connection_span_link: trace.Link,
-    wrapped: "MySQLCursorAbstract",
-    *args: Any,
-    **kwargs: Any,
-) -> Callable:
-    """Instruments the execution of `query_method`.
+def with_cnx_query_span(method: Callable) -> Callable:
+    """Create a query span while executing the connection method."""
 
-    A query span with a link to the corresponding connection span is generated.
-    """
-    connection: Union["MySQLConnection", "CMySQLConnection"] = (
-        getattr(wrapped, "_connection")
-        if hasattr(wrapped, "_connection")
-        else getattr(wrapped, "_cnx")
-    )
+    def wrapper(cnx: TracedMySQLConnection, *args: Any, **kwargs: Any) -> Any:
+        """Query span creator decorator."""
+        logger.info("Creating query span for connection.%s", method.__name__)
 
-    # SpanAttributes.DB_NAME: connection.database or ""; introduces performance
-    # degradation, at this time the database attribute is something nice to have but
-    # not a requirement.
-    query_span_attributes: Dict = {
-        SpanAttributes.DB_SYSTEM: DB_SYSTEM,
-        SpanAttributes.DB_USER: connection._user,
-        SpanAttributes.THREAD_ID: DEFAULT_THREAD_ID,
-        SpanAttributes.THREAD_NAME: DEFAULT_THREAD_NAME,
-        "cursor_type": wrapped.__class__.__name__,
-    }
-    with tracer.start_as_current_span(
-        name=get_operation_name(args[0]) or "SQL statement",
-        kind=trace.SpanKind.CLIENT,
-        links=[connection_span_link],
-        attributes=query_span_attributes,
-    ):
-        return query_method(*args, **kwargs)
+        query_span_attributes: Dict = {
+            SpanAttributes.DB_SYSTEM: DB_SYSTEM,
+            SpanAttributes.DB_USER: cnx._user,
+            SpanAttributes.THREAD_ID: DEFAULT_THREAD_ID,
+            SpanAttributes.THREAD_NAME: DEFAULT_THREAD_NAME,
+            "connection_type": cnx.get_wrapped_class(),
+        }
+
+        with cnx._tracer.start_as_current_span(
+            name=method.__name__.upper(),
+            kind=trace.SpanKind.CLIENT,
+            links=[trace.Link(cnx._span.get_span_context())],
+            attributes=query_span_attributes,
+        ) if cnx._span and cnx._span.is_recording() else nullcontext():
+            return method(cnx, *args, **kwargs)
+
+    return wrapper
+
+
+def with_cursor_query_span(method: Callable) -> Callable:
+    """Create a query span while executing the cursor method."""
+
+    def wrapper(cur: TracedMySQLCursor, *args: Any, **kwargs: Any) -> Any:
+        """Query span creator decorator."""
+        logger.info("Creating query span for cursor.%s", method.__name__)
+
+        connection: "MySQLConnectionAbstract" = (
+            getattr(cur._wrapped, "_connection")
+            if hasattr(cur._wrapped, "_connection")
+            else getattr(cur._wrapped, "_cnx")
+        )
+
+        query_span_attributes: Dict = {
+            SpanAttributes.DB_SYSTEM: DB_SYSTEM,
+            SpanAttributes.DB_USER: connection._user,
+            SpanAttributes.THREAD_ID: DEFAULT_THREAD_ID,
+            SpanAttributes.THREAD_NAME: DEFAULT_THREAD_NAME,
+            "cursor_type": cur.get_wrapped_class(),
+        }
+
+        with cur._tracer.start_as_current_span(
+            name=get_operation_name(args[0]) or "SQL statement",
+            kind=trace.SpanKind.CLIENT,
+            links=[cur._connection_span_link],
+            attributes=query_span_attributes,
+        ):
+            return method(cur, *args, **kwargs)
+
+    return wrapper
 
 
 class BaseMySQLTracer(ABC):
@@ -291,7 +303,7 @@ class BaseMySQLTracer(ABC):
             self.__dict__["_wrapped"] = value
             return
 
-        if name in self.__dict__:
+        if name in self.__dict__ or name == "autocommit":
             # this object has it
             super().__setattr__(name, value)
             return
@@ -328,38 +340,20 @@ class TracedMySQLCursor(BaseMySQLTracer):
             connection_span.get_span_context()
         )
 
+    @with_cursor_query_span
     def execute(self, *args: Any, **kwargs: Any) -> Any:
-        """Instruments execute method."""
-        return _instrument_execution(
-            self._wrapped.execute,
-            self._tracer,
-            self._connection_span_link,
-            self._wrapped,
-            *args,
-            **kwargs,
-        )
+        """Instrument method."""
+        return self._wrapped.execute(*args, **kwargs)
 
+    @with_cursor_query_span
     def executemany(self, *args: Any, **kwargs: Any) -> Any:
-        """Instruments executemany method."""
-        return _instrument_execution(
-            self._wrapped.executemany,
-            self._tracer,
-            self._connection_span_link,
-            self._wrapped,
-            *args,
-            **kwargs,
-        )
+        """Instrument method."""
+        return self._wrapped.executemany(*args, **kwargs)
 
+    @with_cursor_query_span
     def callproc(self, *args: Any, **kwargs: Any) -> Any:
-        """Instruments callproc method."""
-        return _instrument_execution(
-            self._wrapped.callproc,
-            self._tracer,
-            self._connection_span_link,
-            self._wrapped,
-            *args,
-            **kwargs,
-        )
+        """Instrument method."""
+        return self._wrapped.callproc(*args, **kwargs)
 
 
 class TracedMySQLConnection(BaseMySQLTracer):
@@ -381,10 +375,155 @@ class TracedMySQLConnection(BaseMySQLTracer):
             connection_span=self._span,
         )
 
-    @with_connection_span_attached
+    @with_cnx_query_span
     def cmd_change_user(self, *args: Any, **kwargs: Any) -> Any:
-        """Wraps the object method."""
+        """Instrument method."""
         return self._wrapped.cmd_change_user(*args, **kwargs)
+
+    @with_cnx_query_span
+    def commit(self, *args: Any, **kwargs: Any) -> Any:
+        """Instrument method."""
+        return self._wrapped.commit(*args, **kwargs)
+
+    @with_cnx_query_span
+    def rollback(self, *args: Any, **kwargs: Any) -> Any:
+        """Instrument method."""
+        return self._wrapped.rollback(*args, **kwargs)
+
+    @with_cnx_query_span
+    def cmd_query(self, *args: Any, **kwargs: Any) -> Any:
+        """Instrument method."""
+        return self._wrapped.cmd_query(*args, **kwargs)
+
+    @with_cnx_query_span
+    def cmd_init_db(self, *args: Any, **kwargs: Any) -> Any:
+        """Instrument method."""
+        return self._wrapped.cmd_init_db(*args, **kwargs)
+
+    @with_cnx_query_span
+    def cmd_refresh(self, *args: Any, **kwargs: Any) -> Any:
+        """Instrument method."""
+        return self._wrapped.cmd_refresh(*args, **kwargs)
+
+    @with_cnx_query_span
+    def cmd_quit(self, *args: Any, **kwargs: Any) -> Any:
+        """Instrument method."""
+        return self._wrapped.cmd_quit(*args, **kwargs)
+
+    @with_cnx_query_span
+    def cmd_shutdown(self, *args: Any, **kwargs: Any) -> Any:
+        """Instrument method."""
+        return self._wrapped.cmd_shutdown(*args, **kwargs)
+
+    @with_cnx_query_span
+    def cmd_statistics(self, *args: Any, **kwargs: Any) -> Any:
+        """Instrument method."""
+        return self._wrapped.cmd_statistics(*args, **kwargs)
+
+    @with_cnx_query_span
+    def cmd_process_kill(self, *args: Any, **kwargs: Any) -> Any:
+        """Instrument method."""
+        return self._wrapped.cmd_process_kill(*args, **kwargs)
+
+    @with_cnx_query_span
+    def cmd_debug(self, *args: Any, **kwargs: Any) -> Any:
+        """Instrument method."""
+        return self._wrapped.cmd_debug(*args, **kwargs)
+
+    @with_cnx_query_span
+    def cmd_ping(self, *args: Any, **kwargs: Any) -> Any:
+        """Instrument method."""
+        return self._wrapped.cmd_ping(*args, **kwargs)
+
+    @property
+    @with_cnx_query_span
+    def database(self, *args: Any, **kwargs: Any) -> str:
+        """Instrument method."""
+        return self._wrapped.database
+
+    @with_cnx_query_span
+    def is_connected(self, *args: Any, **kwargs: Any) -> Any:
+        """Instrument method."""
+        return self._wrapped.is_connected(*args, **kwargs)
+
+    @with_cnx_query_span
+    def reset_session(self, *args: Any, **kwargs: Any) -> Any:
+        """Instrument method."""
+        return self._wrapped.reset_session(*args, **kwargs)
+
+    @with_cnx_query_span
+    def ping(self, *args: Any, **kwargs: Any) -> Any:
+        """Instrument method."""
+        return self._wrapped.ping(*args, **kwargs)
+
+    @with_cnx_query_span
+    def info_query(self, *args: Any, **kwargs: Any) -> Any:
+        """Instrument method."""
+        return self._wrapped.info_query(*args, **kwargs)
+
+    @with_cnx_query_span
+    def cmd_stmt_prepare(self, *args: Any, **kwargs: Any) -> Any:
+        """Instrument method."""
+        return self._wrapped.cmd_stmt_prepare(*args, **kwargs)
+
+    @with_cnx_query_span
+    def cmd_stmt_execute(self, *args: Any, **kwargs: Any) -> Any:
+        """Instrument method."""
+        return self._wrapped.cmd_stmt_execute(*args, **kwargs)
+
+    @with_cnx_query_span
+    def cmd_stmt_close(self, *args: Any, **kwargs: Any) -> Any:
+        """Instrument method."""
+        return self._wrapped.cmd_stmt_close(*args, **kwargs)
+
+    @with_cnx_query_span
+    def cmd_stmt_send_long_data(self, *args: Any, **kwargs: Any) -> Any:
+        """Instrument method."""
+        return self._wrapped.cmd_stmt_send_long_data(*args, **kwargs)
+
+    @with_cnx_query_span
+    def cmd_stmt_reset(self, *args: Any, **kwargs: Any) -> Any:
+        """Instrument method."""
+        return self._wrapped.cmd_stmt_reset(*args, **kwargs)
+
+    @with_cnx_query_span
+    def cmd_reset_connection(self, *args: Any, **kwargs: Any) -> Any:
+        """Instrument method."""
+        return self._wrapped.cmd_reset_connection(*args, **kwargs)
+
+    @property
+    @with_cnx_query_span
+    def time_zone(self, *args: Any, **kwargs: Any) -> str:
+        """Instrument method."""
+        return self._wrapped.time_zone
+
+    @property
+    @with_cnx_query_span
+    def sql_mode(self, *args: Any, **kwargs: Any) -> str:
+        """Instrument method."""
+        return self._wrapped.sql_mode
+
+    @property
+    @with_cnx_query_span
+    def autocommit(self, *args: Any, **kwargs: Any) -> bool:
+        """Instrument method."""
+        return self._wrapped.autocommit
+
+    @autocommit.setter
+    @with_cnx_query_span
+    def autocommit(self, value: bool) -> None:
+        """Instrument method."""
+        self._wrapped.autocommit = value
+
+    @with_cnx_query_span
+    def set_charset_collation(self, *args: Any, **kwargs: Any) -> Any:
+        """Instrument method."""
+        return self._wrapped.set_charset_collation(*args, **kwargs)
+
+    @with_cnx_query_span
+    def start_transaction(self, *args: Any, **kwargs: Any) -> Any:
+        """Instrument method."""
+        return self._wrapped.start_transaction(*args, **kwargs)
 
 
 def _instrument_connect(
