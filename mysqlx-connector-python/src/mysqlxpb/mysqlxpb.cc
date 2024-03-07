@@ -430,6 +430,7 @@ static void AddPyListToMessageRepeatedMessage(
         return;
       }
       mutable_field.Add(*msg);
+      delete msg;
     }
   }
 }
