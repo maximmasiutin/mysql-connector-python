@@ -28,9 +28,10 @@
 
 """VECTOR Type Tests."""
 
-import asyncio
 import datetime
 import math
+import os
+import platform
 import struct
 import unittest
 
@@ -43,6 +44,10 @@ import mysql.connector.aio
 
 from mysql.connector.constants import MYSQL_VECTOR_TYPE_CODE, FieldType
 from mysql.connector.errors import DatabaseError, InterfaceError, ProgrammingError
+
+
+LOCAL_PLATFORM = platform.platform().lower() if hasattr(platform, "platform") else ""
+PLATFORM_IS_SOLARIS = "sunos-" in LOCAL_PLATFORM
 
 
 @unittest.skipIf(
@@ -431,11 +436,22 @@ class VectorTests(_BaseVectorTests, tests.MySQLConnectorTests):
 
         Expect no error but a mismatch between the original sequence and the returned one.
         """
+        byte_order = ">"  # big-endian - true for most modern architectures
+        err_msg = ""
+        if PLATFORM_IS_SOLARIS:
+            # for some legacy architectures "<" must be used to indicate big-endian
+            _, _, _, _, arch = os.uname()
+            if "sun4v" in arch.lower():
+                byte_order = "<"
+            err_msg = (
+                f"Solaris with {arch} architecture using byte-order '{byte_order}'"
+            )
+
         record_id = 6
         row = [
             record_id,
             struct.pack(
-                f">{len(self.v1)}f", *(tuple(self.v1))
+                f"{byte_order}{len(self.v1)}f", *(tuple(self.v1))
             ).hex(),  # BigEndian encoding
             "Mario",
             datetime.date(1967, 3, 17),
@@ -462,7 +478,7 @@ class VectorTests(_BaseVectorTests, tests.MySQLConnectorTests):
 
         self.assertEqual(field_type, FieldType.VECTOR)
         self.assertIsInstance(v, exp_instance)
-        self.assertNotEqual(v, self.v1)
+        self.assertNotEqual(v, self.v1, err_msg)
 
     @tests.foreach_cnx()
     def test_vector_max_dim(self):
@@ -889,11 +905,22 @@ class VectorTestsAio(_BaseVectorTestsAio, tests.MySQLConnectorAioTestCase):
 
         Expect no error but a mismatch between the original sequence and the returned one.
         """
+        byte_order = ">"  # big-endian - true for most modern architectures
+        err_msg = ""
+        if PLATFORM_IS_SOLARIS:
+            # for some legacy architectures "<" must be used to indicate big-endian
+            _, _, _, _, arch = os.uname()
+            if "sun4v" in arch.lower():
+                byte_order = "<"
+            err_msg = (
+                f"Solaris with {arch} architecture using byte-order '{byte_order}'"
+            )
+
         record_id = 6
         row = [
             record_id,
             struct.pack(
-                f">{len(self.v1)}f", *(tuple(self.v1))
+                f"{byte_order}{len(self.v1)}f", *(tuple(self.v1))
             ).hex(),  # BigEndian encoding
             "Mario",
             datetime.date(1967, 3, 17),
@@ -922,7 +949,7 @@ class VectorTestsAio(_BaseVectorTestsAio, tests.MySQLConnectorAioTestCase):
 
         self.assertEqual(field_type, FieldType.VECTOR)
         self.assertIsInstance(v, exp_instance)
-        self.assertNotEqual(v, self.v1)
+        self.assertNotEqual(v, self.v1, err_msg)
 
     @tests.foreach_cnx()
     async def test_vector_max_dim(self):
