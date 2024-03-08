@@ -752,10 +752,11 @@ class MySQLConverter(MySQLConverterBase):
         """
         if value is None or isinstance(value, array.array):
             return value
-        elif isinstance(value, (bytes, bytearray)):
+
+        if isinstance(value, (bytes, bytearray)):
             return array.array(MYSQL_VECTOR_TYPE_CODE, value)
-        else:
-            raise TypeError(f"Got unsupported type {value.__class__.__name__}")
+
+        raise TypeError(f"Got unsupported type {value.__class__.__name__}")
 
     _long_blob_to_python = _blob_to_python
     _medium_blob_to_python = _blob_to_python

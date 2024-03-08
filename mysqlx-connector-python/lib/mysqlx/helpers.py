@@ -36,7 +36,7 @@ import warnings
 
 from typing import Any, Callable, List, Optional, Union
 
-from .constants import TLS_CIPHER_SUITES, SUPPORTED_TLS_VERSIONS
+from .constants import SUPPORTED_TLS_VERSIONS, TLS_CIPHER_SUITES
 from .errors import InterfaceError
 from .types import EscapeTypes, StrOrBytes
 

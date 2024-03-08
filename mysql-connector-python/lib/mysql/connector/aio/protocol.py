@@ -251,7 +251,10 @@ class MySQLProtocol(_MySQLProtocol):
         columns: List[DescriptionType],
         count: int = 1,
         charset: str = "utf-8",
-    ) -> Tuple[List[Tuple[BinaryProtocolType, ...]], Optional[EofPacketType],]:
+    ) -> Tuple[
+        List[Tuple[BinaryProtocolType, ...]],
+        Optional[EofPacketType],
+    ]:
         """Read MySQL binary protocol result.
 
         Reads all or given number of binary resultset rows from the socket.
@@ -280,7 +283,10 @@ class MySQLProtocol(_MySQLProtocol):
     # pylint: disable=invalid-overridden-method
     async def read_text_result(  # type: ignore[override]
         self, sock: MySQLSocket, version: Tuple[int, ...], count: int = 1
-    ) -> Tuple[List[Tuple[Optional[bytes], ...]], Optional[EofPacketType],]:
+    ) -> Tuple[
+        List[Tuple[Optional[bytes], ...]],
+        Optional[EofPacketType],
+    ]:
         """Read MySQL text result.
 
         Reads all or given number of rows from the socket.

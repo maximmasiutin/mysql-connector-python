@@ -973,9 +973,9 @@ class ExprParser:
             msg_expr["position"] = self.placeholder_name_to_position[place_holder_name]
         else:
             msg_expr["position"] = self.positional_placeholder_count
-            self.placeholder_name_to_position[
-                place_holder_name
-            ] = self.positional_placeholder_count
+            self.placeholder_name_to_position[place_holder_name] = (
+                self.positional_placeholder_count
+            )
             self.positional_placeholder_count += 1
         return msg_expr
 

@@ -212,9 +212,11 @@ def with_cnx_span_attached(method: Callable) -> Callable:
 
     def wrapper(cnx: "MySQLConnectionAbstract", *args: Any, **kwargs: Any) -> Any:
         """Connection span attacher decorator."""
-        with trace.use_span(
-            cnx._span, end_on_exit=False
-        ) if cnx._span and cnx._span.is_recording() else nullcontext():
+        with (
+            trace.use_span(cnx._span, end_on_exit=False)
+            if cnx._span and cnx._span.is_recording()
+            else nullcontext()
+        ):
             return method(cnx, *args, **kwargs)
 
     return wrapper
@@ -235,12 +237,16 @@ def with_cnx_query_span(method: Callable) -> Callable:
             "connection_type": cnx.get_wrapped_class(),
         }
 
-        with cnx._tracer.start_as_current_span(
-            name=method.__name__.upper(),
-            kind=trace.SpanKind.CLIENT,
-            links=[trace.Link(cnx._span.get_span_context())],
-            attributes=query_span_attributes,
-        ) if cnx._span and cnx._span.is_recording() else nullcontext():
+        with (
+            cnx._tracer.start_as_current_span(
+                name=method.__name__.upper(),
+                kind=trace.SpanKind.CLIENT,
+                links=[trace.Link(cnx._span.get_span_context())],
+                attributes=query_span_attributes,
+            )
+            if cnx._span and cnx._span.is_recording()
+            else nullcontext()
+        ):
             return method(cnx, *args, **kwargs)
 
     return wrapper

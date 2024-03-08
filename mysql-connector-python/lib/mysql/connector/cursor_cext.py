@@ -102,7 +102,6 @@ ERR_NO_RESULT_TO_FETCH = "No result set to fetch from"
 
 
 class _ParamSubstitutor:
-
     """
     Substitutes parameters into SQL statement.
     """
@@ -128,7 +127,6 @@ class _ParamSubstitutor:
 
 
 class CMySQLCursor(MySQLCursorAbstract):
-
     """Default cursor for interacting with MySQL using C Extension"""
 
     _raw: bool = False
@@ -746,6 +744,7 @@ class CMySQLCursor(MySQLCursorAbstract):
 
         Returns a iterator.
         """
+        # pylint: disable=use-yield-from
         for result in self._stored_results:
             yield result  # type: ignore[misc]
         self._stored_results = []
@@ -819,7 +818,6 @@ class CMySQLCursor(MySQLCursorAbstract):
 
 
 class CMySQLCursorBuffered(CMySQLCursor):
-
     """Cursor using C Extension buffering results"""
 
     def __init__(self, connection: CMySQLConnection):

@@ -260,9 +260,9 @@ class MySQLConnectionAbstract(ABC):
         self._in_transaction: bool = False
         self._oci_config_file: Optional[str] = None
         self._oci_config_profile: Optional[str] = None
-        self._webauthn_callback: Optional[
-            Union[str, Callable[[str], None]]
-        ] = webauthn_callback
+        self._webauthn_callback: Optional[Union[str, Callable[[str], None]]] = (
+            webauthn_callback
+        )
 
         self.converter: Optional[MySQLConverter] = None
 

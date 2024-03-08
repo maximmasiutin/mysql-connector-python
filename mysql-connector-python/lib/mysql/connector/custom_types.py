@@ -33,7 +33,6 @@ from typing import Type
 
 
 class HexLiteral(str):
-
     """Class holding MySQL hex literals"""
 
     charset: str = ""

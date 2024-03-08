@@ -31,9 +31,10 @@
 import os
 import subprocess
 import sys
+import warnings
 
 from typing import Dict, Optional, Tuple
-import warnings
+
 from .tls_ciphers import DEPRECATED_TLS_CIPHERSUITES, DEPRECATED_TLS_VERSIONS
 
 

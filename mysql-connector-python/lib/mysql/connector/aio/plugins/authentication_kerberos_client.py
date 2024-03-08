@@ -203,9 +203,11 @@ class MySQLKerberosAuthPlugin(MySQLBaseKerberosAuthPlugin):
         """
         krb5ccname = os.environ.get(
             "KRB5CCNAME",
-            f"/tmp/krb5cc_{os.getuid()}"
-            if os.name == "posix"
-            else Path("%TEMP%").joinpath("krb5cc"),
+            (
+                f"/tmp/krb5cc_{os.getuid()}"
+                if os.name == "posix"
+                else Path("%TEMP%").joinpath("krb5cc")
+            ),
         )
         if not krb5ccname:
             raise InterfaceError(
