@@ -12,16 +12,30 @@ MySQL Connector/Python enables Python programs to access MySQL databases, using 
 
 Installation
 ------------
-
 The recommended way to install Connector/Python is via `pip <https://pip.pypa.io/>`_.
 
 Make sure you have a recent `pip <https://pip.pypa.io/>`_ version installed on your system. If your system already has ``pip`` installed, you might need to update it. Or you can use the `standalone pip installer <https://pip.pypa.io/en/latest/installing/#installing-with-get-pip-py>`_.
+
++++++++
+Classic
++++++++
 
 .. code-block:: bash
 
     shell> pip install mysql-connector-python
 
-Please refer to the `installation tutorial <https://dev.mysql.com/doc/dev/connector-python/8.0/installation.html>`_ for installation alternatives.
+
++++++++
+XDevAPI
++++++++
+
+.. code-block:: bash
+
+    shell> pip install mysqlx-connector-python
+
+
+Please refer to the `installation tutorial <https://dev.mysql.com/doc/dev/connector-python/8.0/installation.html>`_ for installation alternatives of the X DevAPI.
+
 
 Getting Started
 ---------------
