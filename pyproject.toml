@@ -66,6 +66,7 @@ exclude = '''
   | mysqlx-connector-python/lib/mysqlx/locales/eng
   | venv
   )/
+  | mysql-connector-python/lib/mysql/connector/opentelemetry/instrumentation.py
   | mysqlx-connector-python/lib/mysqlx/protobuf/mysqlx_connection_pb2.py
   | mysqlx-connector-python/lib/mysqlx/protobuf/mysqlx_crud_pb2.py
   | mysqlx-connector-python/lib/mysqlx/protobuf/mysqlx_cursor_pb2.py
