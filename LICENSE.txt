@@ -10,7 +10,7 @@ Introduction
    third-party software which may be included in this distribution of
    MySQL Connector/Python 8.4.0 Community.
 
-   Last updated: February 2024
+   Last updated: March 2024
 
 Licensing Information
 
@@ -2142,6 +2142,13 @@ See Apache License v2.0, January 2004 in the
    ======================================================================
 
 OpenTelemetry C++
+
+You may be receiving a copy of the opentelemetry-cpp library with
+this MySQL product. The terms of the Oracle license do NOT apply
+to the opentelemetry-cpp library; it is licensed under the following
+license, separately from the Oracle programs you receive.
+If you do not wish to install this program, you may delete its files
+but the Oracle program might not operate properly or at all without it.
 
 // Copyright The OpenTelemetry Authors
 // SPDX-License-Identifier: Apache-2.0
