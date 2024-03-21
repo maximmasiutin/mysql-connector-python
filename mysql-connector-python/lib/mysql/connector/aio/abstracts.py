@@ -1289,7 +1289,7 @@ class MySQLConnectionAbstract(ABC):
 
         Raises:
             ProgrammingError: When cursor_class is not a subclass of
-                              CursorBase.
+                              MySQLCursor.
             ValueError: When cursor is not available.
         """
 
@@ -1773,8 +1773,6 @@ class MySQLCursorAbstract(ABC):
         Returns:
             List of existing query attributes.
         """
-        if hasattr(self, "_cnx"):
-            return self._cnx.query_attrs
         if hasattr(self, "_connection"):
             return self._connection.query_attrs
         return None

@@ -1160,15 +1160,13 @@ class MySQLConnectionTests(tests.MySQLConnectorTests):
         self.assertEqual(exp, cnx._client_flags & constants.ClientFlag.COMPRESS)
 
         # Test converter class
-        class TestConverter(MySQLConverterBase):
-            ...
+        class TestConverter(MySQLConverterBase): ...
 
         self.cnx.config(converter_class=TestConverter)
         self.assertTrue(isinstance(self.cnx.converter, TestConverter))
         self.assertEqual(self.cnx._converter_class, TestConverter)
 
-        class TestConverterWrong:
-            ...
+        class TestConverterWrong: ...
 
         self.assertRaises(
             AttributeError, self.cnx.config, converter_class=TestConverterWrong
@@ -1522,13 +1520,11 @@ class MySQLConnectionTests(tests.MySQLConnectorTests):
     def test_set_converter_class(self):
         """Set the converter class"""
 
-        class TestConverterWrong:
-            ...
+        class TestConverterWrong: ...
 
         self.assertRaises(TypeError, self.cnx.set_converter_class, TestConverterWrong)
 
-        class TestConverter(MySQLConverterBase):
-            ...
+        class TestConverter(MySQLConverterBase): ...
 
         self.cnx.set_converter_class(TestConverter)
         self.assertTrue(isinstance(self.cnx.converter, TestConverter))
@@ -1762,15 +1758,8 @@ class MySQLConnectionTests(tests.MySQLConnectorTests):
         class FalseCursor:
             pass
 
-        class TrueCursor(cursor.CursorBase):
-            def __init__(self, cnx=None):
-                super().__init__()
-
         self.assertRaises(
             errors.ProgrammingError, self.cnx.cursor, cursor_class=FalseCursor
-        )
-        self.assertTrue(
-            isinstance(self.cnx.cursor(cursor_class=TrueCursor), TrueCursor)
         )
 
         if HAVE_CMYSQL:
@@ -2972,7 +2961,7 @@ class MySQLConnectionTests(tests.MySQLConnectorTests):
             self.assertTrue(conn.is_connected())
             with conn.cursor() as cur:
                 self.assertIsInstance(cur, cursor_cext.CMySQLCursor)
-            self.assertIsNone(cur._cnx)
+            self.assertIsNone(cur._connection)
         self.assertFalse(conn.is_connected())
 
     def test_context_manager_pure(self):

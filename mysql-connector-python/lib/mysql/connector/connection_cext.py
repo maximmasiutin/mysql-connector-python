@@ -746,7 +746,7 @@ class CMySQLConnection(MySQLConnectionAbstract):
         mysql.connector.cursor_cext.CMySQLCursor.
 
         Raises ProgrammingError when cursor_class is not a subclass of
-        CursorBase. Raises ValueError when cursor is not available.
+        CMySQLCursor. Raises ValueError when cursor is not available.
 
         Returns instance of CMySQLCursor or subclass.
 

@@ -847,7 +847,7 @@ class MySQLCursorBuffered(MySQLCursor):
         column information in _handle_result(). For non-buffering cursors, this method
         is usually doing nothing.
         """
-        self._rows, eof = await self._connection.get_rows()
+        self._rows, eof = await self._connection.get_rows(raw=self._raw)
         self._rowcount = len(self._rows)
         await self._handle_eof(eof)
         self._next_row = 0
@@ -936,7 +936,9 @@ class MySQLCursorBufferedRaw(MySQLCursorBuffered):
     fetching rows and fetches rows within execute().
     """
 
-    _raw: bool = True
+    def __init__(self, connection: MySQLConnectionAbstract) -> None:
+        super().__init__(connection)
+        self._raw: bool = True
 
     @property
     def with_rows(self) -> bool:
@@ -1447,7 +1449,9 @@ class MySQLCursorPreparedRaw(MySQLCursorPrepared):
     This class is a blend of features from MySQLCursorRaw and MySQLCursorPrepared
     """
 
-    _raw: bool = True
+    def __init__(self, connection: MySQLConnectionAbstract):
+        super().__init__(connection)
+        self._raw: bool = True
 
     async def fetchone(self) -> Optional[RowType]:
         """Return next row of a query result set.

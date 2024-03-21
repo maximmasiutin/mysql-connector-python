@@ -69,7 +69,6 @@ from .constants import (
 )
 from .conversion import MySQLConverter
 from .cursor import (
-    CursorBase,
     MySQLCursor,
     MySQLCursorBuffered,
     MySQLCursorBufferedDict,
@@ -1227,10 +1226,10 @@ class MySQLConnection(MySQLConnectionAbstract):
 
         It is possible to also give a custom cursor through the
         cursor_class parameter, but it needs to be a subclass of
-        mysql.connector.cursor.CursorBase.
+        mysql.connector.cursor.MySQLCursor.
 
         Raises ProgrammingError when cursor_class is not a subclass of
-        CursorBase. Raises ValueError when cursor is not available.
+        MySQLCursor. Raises ValueError when cursor is not available.
 
         Returns a cursor-object
         """
@@ -1239,9 +1238,9 @@ class MySQLConnection(MySQLConnectionAbstract):
         if not self.is_connected():
             raise OperationalError("MySQL Connection not available")
         if cursor_class is not None:
-            if not issubclass(cursor_class, CursorBase):
+            if not issubclass(cursor_class, MySQLCursor):
                 raise ProgrammingError(
-                    "Cursor class needs be to subclass of cursor.CursorBase"
+                    "Cursor class needs be to subclass of MySQLCursor"
                 )
             return (cursor_class)(self)
 

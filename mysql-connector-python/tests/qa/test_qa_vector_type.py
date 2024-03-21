@@ -288,6 +288,11 @@ class _BaseVectorTests(_BaseCommon):
         self._test_cursor(cur_conf)
 
     @tests.foreach_cnx()
+    def test_cursor_buffered_raw(self):
+        cur_conf = {"buffered": True, "raw": True}
+        self._test_cursor(cur_conf)
+
+    @tests.foreach_cnx()
     def test_cursor_buffered_named_tuple(self):
         cur_conf = {"buffered": True, "named_tuple": True}
         self._test_cursor(cur_conf)
@@ -603,14 +608,6 @@ class VectorTestsPlusUtils(_BaseVectorTests, tests.MySQLConnectorTests):
 class _BaseVectorTestsAio(_BaseCommon):
     """Base class for VectorTestsAio."""
 
-    # TODO: MySQLCursorBufferedRaw and MySQLCursorPreparedRaw do
-    # not skip the conversion layer - it should since it's a
-    # raw-like kind. In this case, they should return a VECTOR
-    # entry as `bytes, but `array.array` is returned. See bug report:
-    # https://mybug.mysql.oraclecorp.com/orabugs/site/bug.php?id=36289767
-
-    # NOTE: this issue only happen for async connections
-
     async def _test_execute_kernel(self, cur_conf, fetch_method, record_id):
         """Execute statements **with** the `%s` parameter bounding style.
 
@@ -754,6 +751,11 @@ class _BaseVectorTestsAio(_BaseCommon):
     @tests.foreach_cnx_aio()
     async def test_cursor_buffered(self):
         cur_conf = {"buffered": True}
+        await self._test_cursor(cur_conf)
+
+    @tests.foreach_cnx_aio()
+    async def test_cursor_buffered_raw(self):
+        cur_conf = {"buffered": True, "raw": True}
         await self._test_cursor(cur_conf)
 
     @tests.foreach_cnx_aio()

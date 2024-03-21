@@ -13,6 +13,7 @@ v9.0.0
 
 - WL#16350: Update dnspython version
 - BUG#36476195: Incorrect escaping in pure Python mode if sql_mode includes NO_BACKSLASH_ESCAPES
+- BUG#36289767: MySQLCursorBufferedRaw does not skip conversion
 
 v8.4.0
 ======

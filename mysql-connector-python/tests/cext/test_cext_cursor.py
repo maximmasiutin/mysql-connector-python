@@ -76,7 +76,7 @@ class CExtMySQLCursorTests(tests.CMySQLCursorTests):
     def test___init__(self):
         self.assertRaises(errors.InterfaceError, CMySQLCursor, connection="ham")
         cur = self._get_cursor(self.cnx)
-        self.assertTrue(hex(id(self.cnx)).upper()[2:-1] in repr(cur._cnx).upper())
+        self.assertTrue(hex(id(self.cnx)).upper()[2:-1] in repr(cur._connection).upper())
 
     def test_lastrowid(self):
         cur = self._get_cursor(self.cnx)
@@ -100,7 +100,7 @@ class CExtMySQLCursorTests(tests.CMySQLCursorTests):
         self.cnx.get_warnings = True
         cur = self._get_cursor(self.cnx)
 
-        cur._cnx = None
+        cur._connection = None
         self.assertRaises(errors.InterfaceError, cur._fetch_warnings)
 
         cur = self._get_cursor(self.cnx)
@@ -657,7 +657,7 @@ class CExtMySQLCursorBufferedTests(tests.CMySQLCursorTests):
         self.assertRaises(errors.InterfaceError, CMySQLCursorBuffered, connection="ham")
 
         cur = self._get_cursor(self.cnx)
-        self.assertTrue(hex(id(self.cnx)).upper()[2:-1] in repr(cur._cnx).upper())
+        self.assertTrue(hex(id(self.cnx)).upper()[2:-1] in repr(cur._connection).upper())
 
     def test_execute(self):
         self.cnx.get_warnings = True

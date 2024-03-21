@@ -33,7 +33,6 @@ from __future__ import annotations
 
 import re
 import warnings
-import weakref
 
 from collections import namedtuple
 from typing import (
@@ -68,12 +67,7 @@ from .types import (
 # pylint: enable=import-error,no-name-in-module
 # isort: split
 
-from .abstracts import (
-    NAMED_TUPLE_CACHE,
-    CMySQLPrepStmt,
-    MySQLConnectionAbstract,
-    MySQLCursorAbstract,
-)
+from .abstracts import NAMED_TUPLE_CACHE, CMySQLPrepStmt, MySQLCursorAbstract
 from .cursor import (
     RE_PY_PARAM,
     RE_SQL_COMMENT,
@@ -129,24 +123,13 @@ class _ParamSubstitutor:
 class CMySQLCursor(MySQLCursorAbstract):
     """Default cursor for interacting with MySQL using C Extension"""
 
-    _raw: bool = False
-    _buffered: bool = False
-    _raw_as_string: bool = False
-
     def __init__(self, connection: CMySQLConnection) -> None:
         """Initialize"""
-        MySQLCursorAbstract.__init__(self)
+        super().__init__(connection)
 
         self._affected_rows: int = -1
-        self._rowcount: int = -1
-        self._nextrow: Tuple[Optional[RowType], Optional[CextEofPacketType]] = (
-            None,
-            None,
-        )
-
-        if not isinstance(connection, MySQLConnectionAbstract):
-            raise InterfaceError(errno=2048)
-        self._cnx: CMySQLConnection = weakref.proxy(connection)
+        self._raw_as_string: bool = False
+        self._buffered: bool = False
 
     def reset(self, free: bool = True) -> None:
         """Reset the cursor
@@ -163,8 +146,8 @@ class CMySQLCursor(MySQLCursorAbstract):
         self._warning_count = 0
         self._description: Optional[List[DescriptionType]] = None
         self._executed_list: List[StrOrBytes] = []
-        if free and self._cnx:
-            self._cnx.free_result()
+        if free and self._connection:
+            self._connection.free_result()
         super().reset()
 
     def _check_executed(self) -> None:
@@ -190,10 +173,10 @@ class CMySQLCursor(MySQLCursorAbstract):
         warns = []
         try:
             # force freeing result
-            self._cnx.consume_results()
-            _ = self._cnx.cmd_query("SHOW WARNINGS")
-            warns = self._cnx.get_rows()[0]
-            self._cnx.consume_results()
+            self._connection.consume_results()
+            _ = self._connection.cmd_query("SHOW WARNINGS")
+            warns = self._connection.get_rows()[0]
+            self._connection.consume_results()
         except MySQLInterfaceError as err:
             raise get_mysql_exception(
                 msg=err.msg, errno=err.errno, sqlstate=err.sqlstate
@@ -212,16 +195,16 @@ class CMySQLCursor(MySQLCursorAbstract):
         Raises:
             Error: Also raises exceptions if raise_on_warnings is set.
         """
-        if self._cnx.get_warnings and self._warning_count:
+        if self._connection.get_warnings and self._warning_count:
             self._warnings = self._fetch_warnings()
 
         if not self._warnings:
             return
 
         err = get_mysql_exception(
-            *self._warnings[0][1:3], warning=not self._cnx.raise_on_warnings
+            *self._warnings[0][1:3], warning=not self._connection.raise_on_warnings
         )
-        if self._cnx.raise_on_warnings:
+        if self._connection.raise_on_warnings:
             raise err
 
         warnings.warn(str(err), stacklevel=4)
@@ -247,10 +230,10 @@ class CMySQLCursor(MySQLCursorAbstract):
 
         Raises an Error on errors.
         """
-        self._warning_count = self._cnx.warning_count
+        self._warning_count = self._connection.warning_count
         self._handle_warnings()
-        if not self._cnx.more_results:
-            self._cnx.free_result()
+        if not self._connection.more_results:
+            self._connection.free_result()
 
     def _execute_iter(self) -> Generator[CMySQLCursor, None, None]:
         """Generator returns MySQLCursor objects for multiple statements.
@@ -306,7 +289,7 @@ class CMySQLCursor(MySQLCursorAbstract):
                     )
 
                 # at this point the result has been fetched already
-                result = self._cnx.result_set_available
+                result = self._connection.result_set_available
 
                 if is_eol_comment(stmt):
                     continue
@@ -338,25 +321,25 @@ class CMySQLCursor(MySQLCursorAbstract):
             return None
 
         try:
-            if not self._cnx or self._cnx.is_closed():
+            if not self._connection or self._connection.is_closed():
                 raise ProgrammingError
         except (ProgrammingError, ReferenceError) as err:
             raise ProgrammingError("Cursor is not connected", 2055) from err
-        self._cnx.handle_unread_result()
+        self._connection.handle_unread_result()
 
         stmt = b""
         self.reset()
 
         try:
             if isinstance(operation, str):
-                stmt = operation.encode(self._cnx.python_charset)
+                stmt = operation.encode(self._connection.python_charset)
             else:
                 stmt = operation
         except (UnicodeDecodeError, UnicodeEncodeError) as err:
             raise ProgrammingError(str(err)) from err
 
         if params:
-            prepared = self._cnx.prepare_for_mysql(params)
+            prepared = self._connection.prepare_for_mysql(params)
             if isinstance(prepared, dict):
                 for key, value in prepared.items():
                     stmt = stmt.replace(f"%({key})s".encode(), value)
@@ -369,7 +352,7 @@ class CMySQLCursor(MySQLCursorAbstract):
                     )
 
         try:
-            result = self._cnx.cmd_query(
+            result = self._connection.cmd_query(
                 stmt,
                 raw=self._raw,
                 buffered=self._buffered,
@@ -417,14 +400,14 @@ class CMySQLCursor(MySQLCursorAbstract):
             raise InterfaceError(
                 "Failed rewriting statement for multi-row INSERT. Check SQL syntax"
             )
-        fmt = matches.group(1).encode(self._cnx.python_charset)
+        fmt = matches.group(1).encode(self._connection.python_charset)
         values = []
 
         try:
-            stmt = operation.encode(self._cnx.python_charset)
+            stmt = operation.encode(self._connection.python_charset)
             for params in seq_params:
                 tmp = fmt
-                prepared = self._cnx.prepare_for_mysql(params)
+                prepared = self._connection.prepare_for_mysql(params)
                 if isinstance(prepared, dict):
                     for key, value in prepared.items():
                         tmp = tmp.replace(
@@ -479,11 +462,11 @@ class CMySQLCursor(MySQLCursorAbstract):
             return None
 
         try:
-            if not self._cnx:
+            if not self._connection:
                 raise ProgrammingError
         except (ProgrammingError, ReferenceError) as err:
             raise ProgrammingError("Cursor is not connected") from err
-        self._cnx.handle_unread_result()
+        self._connection.handle_unread_result()
 
         if not isinstance(seq_params, (list, tuple)):
             raise ProgrammingError("Parameters for query must be list or tuple.")
@@ -507,7 +490,7 @@ class CMySQLCursor(MySQLCursorAbstract):
             # why we use it as indicator for updating rowcnt.
             for params in seq_params:
                 self.execute(operation, params)
-                if self.with_rows and self._cnx.unread_result:
+                if self.with_rows and self._connection.unread_result:
                     self.fetchall()
                 rowcnt += self._rowcount if self.description else self._affected_rows
         except (ValueError, TypeError) as err:
@@ -533,12 +516,12 @@ class CMySQLCursor(MySQLCursorAbstract):
 
         The result will be freed.
         """
-        if not self._cnx:
+        if not self._connection:
             return False
 
-        self._cnx.handle_unread_result()
+        self._connection.handle_unread_result()
         self._warnings = None
-        self._cnx = None
+        self._connection = None
         return True
 
     def callproc(
@@ -581,13 +564,13 @@ class CMySQLCursor(MySQLCursorAbstract):
 
             call = f"CALL {procname}({','.join(argnames)})"
 
-            result = self._cnx.cmd_query(
+            result = self._connection.cmd_query(
                 call, raw=self._raw, raw_as_string=self._raw_as_string
             )
 
             results = []
-            while self._cnx.result_set_available:
-                result = self._cnx.fetch_eof_columns()
+            while self._connection.result_set_available:
+                result = self._connection.fetch_eof_columns()
                 if isinstance(self, (CMySQLCursorDict, CMySQLCursorBufferedDict)):
                     cursor_class = CMySQLCursorBufferedDict
                 elif isinstance(
@@ -600,12 +583,12 @@ class CMySQLCursor(MySQLCursorAbstract):
                 else:
                     cursor_class = CMySQLCursorBuffered
                 # pylint: disable=protected-access
-                cur = cursor_class(self._cnx.get_self())  # type: ignore[arg-type]
+                cur = cursor_class(self._connection.get_self())  # type: ignore[arg-type]
                 cur._executed = f"(a result of {call})"
                 cur._handle_result(result)
                 # pylint: enable=protected-access
                 results.append(cur)
-                self._cnx.next_result()
+                self._connection.next_result()
             self._stored_results = results
             self._handle_eof()
 
@@ -631,17 +614,17 @@ class CMySQLCursor(MySQLCursorAbstract):
 
     def nextset(self) -> Optional[bool]:
         """Skip to the next available result set"""
-        if not self._cnx.next_result():
+        if not self._connection.next_result():
             self.reset(free=True)
             return None
         self.reset(free=False)
 
-        if not self._cnx.result_set_available:
-            eof = self._cnx.fetch_eof_status()
+        if not self._connection.result_set_available:
+            eof = self._connection.fetch_eof_status()
             self._handle_result(eof)
             raise InterfaceError(errno=CR_NO_RESULT_SET)
 
-        self._handle_result(self._cnx.fetch_eof_columns())
+        self._handle_result(self._connection.fetch_eof_columns())
         return True
 
     def fetchall(self) -> List[RowType]:
@@ -651,10 +634,10 @@ class CMySQLCursor(MySQLCursorAbstract):
             list: A list of tuples with all rows of a query result set.
         """
         self._check_executed()
-        if not self._cnx.unread_result:
+        if not self._connection.unread_result:
             return []
 
-        rows = self._cnx.get_rows()
+        rows = self._connection.get_rows()
         if self._nextrow and self._nextrow[0]:
             rows[0].insert(0, self._nextrow[0])
 
@@ -664,7 +647,7 @@ class CMySQLCursor(MySQLCursorAbstract):
 
         self._rowcount += len(rows[0])
         self._handle_eof()
-        # self._cnx.handle_unread_result()
+        # self._connection.handle_unread_result()
         return rows[0]
 
     def fetchmany(self, size: int = 1) -> List[RowType]:
@@ -684,18 +667,18 @@ class CMySQLCursor(MySQLCursorAbstract):
         else:
             rows = []
 
-        if size and self._cnx.unread_result:
-            rows.extend(self._cnx.get_rows(size)[0])
+        if size and self._connection.unread_result:
+            rows.extend(self._connection.get_rows(size)[0])
 
         if size:
-            if self._cnx.unread_result:
-                self._nextrow = self._cnx.get_row()
+            if self._connection.unread_result:
+                self._nextrow = self._connection.get_row()
                 if (
                     self._nextrow
                     and not self._nextrow[0]
-                    and not self._cnx.more_results
+                    and not self._connection.more_results
                 ):
-                    self._cnx.free_result()
+                    self._connection.free_result()
             else:
                 self._nextrow = (None, None)
 
@@ -714,13 +697,13 @@ class CMySQLCursor(MySQLCursorAbstract):
         """
         self._check_executed()
         row = self._nextrow
-        if not row and self._cnx.unread_result:
-            row = self._cnx.get_row()
+        if not row and self._connection.unread_result:
+            row = self._connection.get_row()
 
         if row and row[0]:
-            self._nextrow = self._cnx.get_row()
-            if not self._nextrow[0] and not self._cnx.more_results:
-                self._cnx.free_result()
+            self._nextrow = self._connection.get_row()
+            if not self._nextrow[0] and not self._connection.more_results:
+                self._connection.free_result()
         else:
             self._handle_eof()
             return None
@@ -829,7 +812,7 @@ class CMySQLCursorBuffered(CMySQLCursor):
 
     def _handle_resultset(self) -> None:
         """Handle a result set"""
-        self._rows = self._cnx.get_rows()[0]
+        self._rows = self._connection.get_rows()[0]
         self._next_row = 0
         self._rowcount: int = len(self._rows)
         self._handle_eof()
@@ -910,19 +893,21 @@ class CMySQLCursorBuffered(CMySQLCursor):
 class CMySQLCursorRaw(CMySQLCursor):
     """Cursor using C Extension return raw results"""
 
-    _raw: bool = True
+    def __init__(self, connection: CMySQLConnection) -> None:
+        super().__init__(connection)
+        self._raw = True
 
 
 class CMySQLCursorBufferedRaw(CMySQLCursorBuffered):
     """Cursor using C Extension buffering raw results"""
 
-    _raw: bool = True
+    def __init__(self, connection: CMySQLConnection):
+        super().__init__(connection)
+        self._raw = True
 
 
 class CMySQLCursorDict(CMySQLCursor):
     """Cursor using C Extension returning rows as dictionaries"""
-
-    _raw: bool = False
 
     def fetchone(self) -> Optional[Dict[str, RowItemType]]:
         """Return next row of a query result set.
@@ -960,8 +945,6 @@ class CMySQLCursorDict(CMySQLCursor):
 
 class CMySQLCursorBufferedDict(CMySQLCursorBuffered):
     """Cursor using C Extension buffering and returning rows as dictionaries"""
-
-    _raw = False
 
     def _fetch_row(self) -> Optional[Dict[str, RowItemType]]:
         row = super()._fetch_row()
@@ -1081,7 +1064,7 @@ class CMySQLCursorPrepared(CMySQLCursor):
         row = None
 
         if self._nextrow == (None, None):
-            (row, eof) = self._cnx.get_row(
+            (row, eof) = self._connection.get_row(
                 binary=self._binary,
                 columns=self.description,
                 raw=raw,
@@ -1091,7 +1074,7 @@ class CMySQLCursorPrepared(CMySQLCursor):
             (row, eof) = self._nextrow
 
         if row:
-            self._nextrow = self._cnx.get_row(
+            self._nextrow = self._connection.get_row(
                 binary=self._binary,
                 columns=self.description,
                 raw=raw,
@@ -1126,14 +1109,14 @@ class CMySQLCursorPrepared(CMySQLCursor):
         """
         if self._stmt:
             self.reset()
-            self._cnx.cmd_stmt_close(self._stmt)
+            self._connection.cmd_stmt_close(self._stmt)
             self._stmt = None
         super().close()
 
     def reset(self, free: bool = True) -> None:
         """Resets the prepared statement."""
         if self._stmt:
-            self._cnx.cmd_stmt_reset(self._stmt)
+            self._connection.cmd_stmt_reset(self._stmt)
         super().reset(free=free)
 
     def execute(
@@ -1156,14 +1139,14 @@ class CMySQLCursorPrepared(CMySQLCursor):
             return
 
         try:
-            if not self._cnx or self._cnx.is_closed():
+            if not self._connection or self._connection.is_closed():
                 raise ProgrammingError
         except (ProgrammingError, ReferenceError) as err:
             raise ProgrammingError("Cursor is not connected", 2055) from err
 
-        self._cnx.handle_unread_result(prepared=True)
+        self._connection.handle_unread_result(prepared=True)
 
-        charset = self._cnx.charset
+        charset = self._connection.charset
         if charset == "utf8mb4":
             charset = "utf8"
 
@@ -1187,7 +1170,7 @@ class CMySQLCursorPrepared(CMySQLCursor):
 
         if operation is not self._executed:
             if self._stmt:
-                self._cnx.cmd_stmt_close(self._stmt)
+                self._connection.cmd_stmt_close(self._stmt)
             self._executed = operation
 
             try:
@@ -1200,13 +1183,13 @@ class CMySQLCursorPrepared(CMySQLCursor):
                 operation = re.sub(RE_SQL_FIND_PARAM, b"?", operation)
 
             try:
-                self._stmt = self._cnx.cmd_stmt_prepare(operation)
+                self._stmt = self._connection.cmd_stmt_prepare(operation)
             except Error:
                 self._executed = None
                 self._stmt = None
                 raise
 
-        self._cnx.cmd_stmt_reset(self._stmt)
+        self._connection.cmd_stmt_reset(self._stmt)
 
         if self._stmt.param_count > 0 and not params:
             return
@@ -1226,7 +1209,7 @@ class CMySQLCursorPrepared(CMySQLCursor):
 
         if params is None:
             params = ()
-        res = self._cnx.cmd_stmt_execute(self._stmt, *params)
+        res = self._connection.cmd_stmt_execute(self._stmt, *params)
         if res:
             self._handle_result(res)
 
@@ -1291,7 +1274,7 @@ class CMySQLCursorPrepared(CMySQLCursor):
         if not self._stmt.have_result_set:
             return []
 
-        rows = self._cnx.get_rows(prep_stmt=self._stmt)
+        rows = self._connection.get_rows(prep_stmt=self._stmt)
         if self._nextrow and self._nextrow[0]:
             rows[0].insert(0, self._nextrow[0])
 
@@ -1329,4 +1312,6 @@ class CMySQLCursorPreparedNamedTuple(CMySQLCursorNamedTuple, CMySQLCursorPrepare
 class CMySQLCursorPreparedRaw(CMySQLCursorPrepared):
     """This class is a blend of features from CMySQLCursorRaw and CMySQLCursorPrepared"""
 
-    _raw: bool = True
+    def __init__(self, connection: CMySQLConnection):
+        super().__init__(connection)
+        self._raw = True

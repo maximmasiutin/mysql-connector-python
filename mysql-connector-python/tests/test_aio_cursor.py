@@ -80,7 +80,7 @@ class MySQLCursorTestsMixin:
         await self._test_execute_setup(self.cnx, tbl)
 
         async with await self.cnx.cursor(cursor_class=cursor_class) as cur:
-            if issubclass(type(cur), MySQLCursorRaw):
+            if issubclass(type(cur), (MySQLCursorRaw, MySQLCursorBufferedRaw)):
                 exp = [(bytearray(b"1"), bytearray(b"100"))]
             elif issubclass(type(cur), MySQLCursorDict):
                 exp = [{"col1": 1, "col2": "100"}]
@@ -110,7 +110,7 @@ class MySQLCursorTestsMixin:
             )
 
             exp_stmt = b"CALL multi_results()"
-            if issubclass(type(cur), MySQLCursorRaw):
+            if issubclass(type(cur), (MySQLCursorRaw, MySQLCursorBufferedRaw)):
                 exp_results = [[(bytearray(b"1"),)], [(bytearray(b"ham"),)]]
             elif issubclass(type(cur), MySQLCursorDict):
                 exp_results = [[{"res": 1}], [{"ham": "ham"}]]
@@ -196,7 +196,7 @@ class MySQLCursorTestsMixin:
             await cur.execute(stmt_select)
 
             exp = [(1, "100"), (2, "200"), (3, "300")]
-            if issubclass(type(cur), MySQLCursorRaw):
+            if issubclass(type(cur), (MySQLCursorRaw, MySQLCursorBufferedRaw)):
                 exp = [(str(x).encode(), y.encode()) for x, y in exp]
             elif issubclass(type(cur), MySQLCursorDict):
                 exp = [{"col1": x, "col2": y} for x, y in exp]
@@ -220,7 +220,7 @@ class MySQLCursorTestsMixin:
             self.maxDiff = 2000
 
             exp = [(4, "100"), (5, "200"), (6, "300")]
-            if issubclass(type(cur), MySQLCursorRaw):
+            if issubclass(type(cur), (MySQLCursorRaw, MySQLCursorBufferedRaw)):
                 exp = [(str(x).encode(), y.encode()) for x, y in exp]
             elif issubclass(type(cur), MySQLCursorDict):
                 exp = [{"col1": x, "col2": y} for x, y in exp]
@@ -239,7 +239,7 @@ class MySQLCursorTestsMixin:
             await cur.execute(stmt_select)
 
             exp = [(4, "/*100*/"), (5, "/*100*/")]
-            if issubclass(type(cur), MySQLCursorRaw):
+            if issubclass(type(cur), (MySQLCursorRaw, MySQLCursorBufferedRaw)):
                 exp = [(str(x).encode(), y.encode()) for x, y in exp]
             elif issubclass(type(cur), MySQLCursorDict):
                 exp = [{"col1": x, "col2": y} for x, y in exp]
@@ -254,7 +254,7 @@ class MySQLCursorTestsMixin:
             with self.assertRaises(InterfaceError):
                 await cur.fetchone()
 
-            if issubclass(type(cur), MySQLCursorRaw):
+            if issubclass(type(cur), (MySQLCursorRaw, MySQLCursorBufferedRaw)):
                 res = (bytearray(b"1"),)
             elif issubclass(type(cur), MySQLCursorDict):
                 res = {"res": 1}
@@ -270,7 +270,7 @@ class MySQLCursorTestsMixin:
             with self.assertRaises(InterfaceError):
                 await cur.fetchall()
 
-            if issubclass(type(cur), MySQLCursorRaw):
+            if issubclass(type(cur), (MySQLCursorRaw, MySQLCursorBufferedRaw)):
                 res = [(bytearray(b"1"),)]
             elif issubclass(type(cur), MySQLCursorDict):
                 res = [{"res": 1}]
@@ -297,7 +297,7 @@ class MySQLCursorTestsMixin:
             await cur.execute(stmt_select)
 
             exp = [(9, "900"), (8, "800"), (7, "700"), (6, "600")]
-            if issubclass(type(cur), MySQLCursorRaw):
+            if issubclass(type(cur), (MySQLCursorRaw, MySQLCursorBufferedRaw)):
                 exp = [(str(x).encode(), y.encode()) for x, y in exp]
             elif issubclass(type(cur), MySQLCursorDict):
                 exp = [{"col1": x, "col2": y} for x, y in exp]
@@ -307,7 +307,7 @@ class MySQLCursorTestsMixin:
             )
 
             exp = [(5, "500"), (4, "400"), (3, "300")]
-            if issubclass(type(cur), MySQLCursorRaw):
+            if issubclass(type(cur), (MySQLCursorRaw, MySQLCursorBufferedRaw)):
                 exp = [(str(x).encode(), y.encode()) for x, y in exp]
             elif issubclass(type(cur), MySQLCursorDict):
                 exp = [{"col1": x, "col2": y} for x, y in exp]
@@ -317,7 +317,7 @@ class MySQLCursorTestsMixin:
             )
 
             exp = [(2, "200"), (1, "100"), (0, "0")]
-            if issubclass(type(cur), MySQLCursorRaw):
+            if issubclass(type(cur), (MySQLCursorRaw, MySQLCursorBufferedRaw)):
                 exp = [(str(x).encode(), y.encode()) for x, y in exp]
             elif issubclass(type(cur), MySQLCursorDict):
                 exp = [{"col1": x, "col2": y} for x, y in exp]
@@ -341,7 +341,7 @@ class MySQLCursorTestsMixin:
 
         async with await cnx.cursor(cursor_class=cursor_class) as cur:
             data = (5, 4, 20)
-            if issubclass(type(cur), MySQLCursorRaw):
+            if issubclass(type(cur), (MySQLCursorRaw, MySQLCursorBufferedRaw)):
                 exp = tuple(str(val).encode() for val in data)
             elif issubclass(type(cur), MySQLCursorDict):
                 exp = {f"myconnpy_sp_1_arg{i}": val for i, val in enumerate(data, 1)}
@@ -352,7 +352,7 @@ class MySQLCursorTestsMixin:
             self.assertEqual(exp, result)
 
             data = (6, 5, 30)
-            if issubclass(type(cur), MySQLCursorRaw):
+            if issubclass(type(cur), (MySQLCursorRaw, MySQLCursorBufferedRaw)):
                 exp = tuple(str(val).encode() for val in data)
             elif issubclass(type(cur), MySQLCursorDict):
                 exp = {f"myconnpy_sp_2_arg{i}": val for i, val in enumerate(data, 1)}
@@ -363,7 +363,7 @@ class MySQLCursorTestsMixin:
             self.assertEqual(exp, result)
 
             data = ("ham", "spam", "hamspam")
-            if issubclass(type(cur), MySQLCursorRaw):
+            if issubclass(type(cur), (MySQLCursorRaw, MySQLCursorBufferedRaw)):
                 exp = tuple(str(val).encode() for val in data)
                 result = await cur.callproc("myconnpy_sp_3", (exp[0], exp[1], 0))
             elif issubclass(type(cur), MySQLCursorDict):
@@ -379,7 +379,7 @@ class MySQLCursorTestsMixin:
             self.assertEqual(exp, result)
 
             data = ("ham", "spam", "hamspam")
-            if issubclass(type(cur), MySQLCursorRaw):
+            if issubclass(type(cur), (MySQLCursorRaw, MySQLCursorBufferedRaw)):
                 exp = tuple(str(val).encode() for val in data)
                 result = await cur.callproc("myconnpy_sp_4", (exp[0], exp[1], 0))
             elif issubclass(type(cur), MySQLCursorDict):
@@ -395,7 +395,7 @@ class MySQLCursorTestsMixin:
             self.assertEqual(exp, result)
 
             data = (5,)
-            if issubclass(type(cur), MySQLCursorRaw):
+            if issubclass(type(cur), (MySQLCursorRaw, MySQLCursorBufferedRaw)):
                 exp = tuple(str(val).encode() for val in data)
             elif issubclass(type(cur), MySQLCursorDict):
                 exp = {f"myconnpy_sp_5_arg{i}": val for i, val in enumerate(data, 1)}

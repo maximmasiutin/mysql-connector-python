@@ -106,7 +106,9 @@ from .optionfiles import read_option_files
 from .tls_ciphers import UNACCEPTABLE_TLS_CIPHERSUITES, UNACCEPTABLE_TLS_VERSIONS
 from .types import (
     BinaryProtocolType,
+    CextEofPacketType,
     DescriptionType,
+    EofPacketType,
     HandShakeType,
     MySQLConvertibleType,
     RowItemType,
@@ -1516,7 +1518,7 @@ class MySQLConnectionAbstract(ABC):
         but not raw.
 
         It is possible to also give a custom cursor through the `cursor_class`
-        parameter, but it needs to be a subclass of `mysql.connector.cursor.CursorBase`
+        parameter, but it needs to be a subclass of `mysql.connector.cursor.MySQLCursor`
         or `mysql.connector.cursor_cext.CMySQLCursor` according to the type of
         connection that's being used.
 
@@ -1529,9 +1531,9 @@ class MySQLConnectionAbstract(ABC):
                  better performance or when you want to do the conversion yourself.
             prepared: If `True`, the cursor is used for executing prepared statements.
             cursor_class: It can be used to pass a class to use for instantiating a
-                          new cursor. It must be a subclass of `cursor.CursorBase` or
-                          `cursor_cext.CMySQLCursor` according to the type of connection
-                          that's being used.
+                          new cursor. It must be a subclass of `cursor.MySQLCursor`
+                          or `cursor_cext.CMySQLCursor` according to the type of
+                          connection that's being used.
             dictionary: If `True`, the cursor returns rows as dictionaries.
             named_tuple: If `True`, the cursor returns rows as named tuples.
 
@@ -2164,8 +2166,15 @@ class MySQLCursorAbstract(ABC):
     required by the Python Database API Specification v2.0.
     """
 
-    def __init__(self) -> None:
-        """Initialization"""
+    def __init__(self, connection: Optional[MySQLConnectionAbstract] = None) -> None:
+        """Defines the MySQL cursor interface."""
+
+        self._connection: Optional[MySQLConnectionAbstract] = connection
+        if connection is not None:
+            if not isinstance(connection, MySQLConnectionAbstract):
+                raise InterfaceError(errno=2048)
+            self._connection = weakref.proxy(connection)
+
         self._description: Optional[List[DescriptionType]] = None
         self._rowcount: int = -1
         self._last_insert_id: Optional[int] = None
@@ -2175,6 +2184,14 @@ class MySQLCursorAbstract(ABC):
         self._executed_list: List[StrOrBytes] = []
         self._stored_results: List[MySQLCursorAbstract] = []
         self.arraysize: int = 1
+        self._binary: bool = False
+        self._raw: bool = False
+        self._nextrow: Tuple[
+            Optional[RowType], Optional[Union[EofPacketType, CextEofPacketType]]
+        ] = (
+            None,
+            None,
+        )
 
     def __enter__(self) -> MySQLCursorAbstract:
         return self
@@ -2431,7 +2448,6 @@ class MySQLCursorAbstract(ABC):
         """Resets the cursor to default"""
 
     @property
-    @abstractmethod
     def description(self) -> Optional[List[DescriptionType]]:
         """This read-only property returns a list of tuples describing the columns in a
         result set.
@@ -2460,7 +2476,6 @@ class MySQLCursorAbstract(ABC):
         return self._description
 
     @property
-    @abstractmethod
     def rowcount(self) -> int:
         """Returns the number of rows produced or affected.
 
@@ -2539,8 +2554,6 @@ class MySQLCursorAbstract(ABC):
         Returns:
             List of existing query attributes.
         """
-        if hasattr(self, "_cnx"):
-            return self._cnx.query_attrs
         if hasattr(self, "_connection"):
             return self._connection.query_attrs
         return None
@@ -2565,9 +2578,7 @@ class MySQLCursorAbstract(ABC):
             raise ProgrammingError(
                 f"Object {value} cannot be converted to a MySQL type"
             )
-        if hasattr(self, "_cnx"):
-            self._cnx.query_attrs_append((name, value))
-        elif hasattr(self, "_connection"):
+        if hasattr(self, "_connection"):
             self._connection.query_attrs_append((name, value))
 
     def remove_attribute(self, name: str) -> BinaryProtocolType:
@@ -2583,15 +2594,11 @@ class MySQLCursorAbstract(ABC):
         """
         if not isinstance(name, str):
             raise ProgrammingError("Parameter `name` must be a string type")
-        if hasattr(self, "_cnx"):
-            return self._cnx.query_attrs_remove(name)
         if hasattr(self, "_connection"):
             return self._connection.query_attrs_remove(name)
         return None
 
     def clear_attributes(self) -> None:
         """Clears the list of query attributes on the connector's side."""
-        if hasattr(self, "_cnx"):
-            self._cnx.query_attrs_clear()
-        elif hasattr(self, "_connection"):
+        if hasattr(self, "_connection"):
             self._connection.query_attrs_clear()

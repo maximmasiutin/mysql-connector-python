@@ -34,7 +34,6 @@ from __future__ import annotations
 import re
 import unicodedata
 import warnings
-import weakref
 
 from collections import deque, namedtuple
 from decimal import Decimal
@@ -65,7 +64,6 @@ from .errors import (
 from .types import (
     DescriptionType,
     EofPacketType,
-    MySQLConvertibleType,
     ParamsDictType,
     ParamsSequenceOrDictType,
     ParamsSequenceType,
@@ -239,202 +237,7 @@ def _bytestr_format_dict(bytestr: bytes, value_dict: Dict[bytes, bytes]) -> byte
     return stmt
 
 
-class CursorBase(MySQLCursorAbstract):
-    """
-    Base for defining MySQLCursor. This class is a skeleton and defines
-    methods and members as required for the Python Database API
-    Specification v2.0.
-
-    It's better to inherite from MySQLCursor.
-    """
-
-    _raw: bool = False
-
-    def __init__(self) -> None:
-        self._description: Optional[List[DescriptionType]] = None
-        self._rowcount: int = -1
-        self.arraysize: int = 1
-        super().__init__()
-
-    def callproc(
-        self, procname: str, args: Sequence = ()
-    ) -> Optional[Union[Dict[str, RowItemType], RowType]]:
-        """Calls a stored procedue with the given arguments
-
-        The arguments will be set during this session, meaning
-        they will be called like  _<procname>__arg<nr> where
-        <nr> is an enumeration (+1) of the arguments.
-
-        Coding Example:
-          1) Definining the Stored Routine in MySQL:
-          CREATE PROCEDURE multiply(IN pFac1 INT, IN pFac2 INT, OUT pProd INT)
-          BEGIN
-            SET pProd := pFac1 * pFac2;
-          END
-
-          2) Executing in Python:
-          args = (5,5,0) # 0 is to hold pprod
-          cursor.callproc('multiply', args)
-          print(cursor.fetchone())
-
-        Does not return a value, but a result set will be
-        available when the CALL-statement execute successfully.
-        Raises exceptions when something is wrong.
-        """
-
-    def close(self) -> None:
-        """Close the cursor."""
-
-    def execute(
-        self,
-        operation: str,
-        params: Union[
-            Sequence[MySQLConvertibleType], Dict[str, MySQLConvertibleType]
-        ] = (),
-        multi: bool = False,
-    ) -> Optional[Generator[MySQLCursorAbstract, None, None]]:
-        """Executes the given operation
-
-        Executes the given operation substituting any markers with
-        the given parameters.
-
-        For example, getting all rows where id is 5:
-          cursor.execute("SELECT * FROM t1 WHERE id = %s", (5,))
-
-        The multi argument should be set to True when executing multiple
-        statements in one operation. If not set and multiple results are
-        found, an InterfaceError will be raised.
-
-        If warnings where generated, and connection.get_warnings is True, then
-        self._warnings will be a list containing these warnings.
-
-        Returns an iterator when multi is True, otherwise None.
-        """
-
-    def executemany(
-        self,
-        operation: str,
-        seq_params: Sequence[
-            Union[Sequence[MySQLConvertibleType], Dict[str, MySQLConvertibleType]]
-        ],
-    ) -> Optional[Generator[MySQLCursorAbstract, None, None]]:
-        """Execute the given operation multiple times
-
-        The executemany() method will execute the operation iterating
-        over the list of parameters in seq_params.
-
-        Example: Inserting 3 new employees and their phone number
-
-        data = [
-            ('Jane','555-001'),
-            ('Joe', '555-001'),
-            ('John', '555-003')
-            ]
-        stmt = "INSERT INTO employees (name, phone) VALUES ('%s','%s')"
-        cursor.executemany(stmt, data)
-
-        INSERT statements are optimized by batching the data, that is
-        using the MySQL multiple rows syntax.
-
-        Results are discarded. If they are needed, consider looping over
-        data using the execute() method.
-        """
-
-    def fetchone(self) -> Optional[Union[RowType, Dict[str, RowItemType]]]:
-        """Return next row of a query result set.
-
-        Returns:
-            tuple or None: A row from query result set.
-        """
-
-    def fetchmany(self, size: int = 1) -> List[Union[RowType, Dict[str, RowItemType]]]:
-        """Return the next set of rows of a query result set.
-
-        When no more rows are available, it returns an empty list.
-        The number of rows returned can be specified using the size argument,
-        which defaults to one.
-
-        Returns:
-            list: The next set of rows of a query result set.
-        """
-
-    def fetchall(self) -> List[Union[RowType, Dict[str, RowItemType]]]:
-        """Return all rows of a query result set.
-
-        Returns:
-            list: A list of tuples with all rows of a query result set.
-        """
-
-    def stored_results(self) -> Iterator[MySQLCursorAbstract]:
-        """Returns an iterator for stored results.
-
-        This method returns an iterator over results which are stored when
-        callproc() is called. The iterator will provide `MySQLCursorBuffered`
-        instances.
-
-        Examples:
-            ```
-            >>> cursor.callproc('myproc')
-            ()
-            >>> for result in cursor.stored_results():
-            ...     print result.fetchall()
-            ...
-            [(1,)]
-            [(2,)]
-            ```
-        """
-
-    def nextset(self) -> NoReturn:
-        """Not Implemented."""
-
-    def setinputsizes(self, sizes: Any) -> NoReturn:
-        """Not Implemented."""
-
-    def setoutputsize(self, size: Any, column: Any = None) -> NoReturn:
-        """Not Implemented."""
-
-    def reset(self, free: bool = True) -> None:
-        """Resets the cursor to default"""
-
-    @property
-    def description(self) -> Optional[List[DescriptionType]]:
-        """Returns description of columns in a result
-
-        This property returns a list of tuples describing the columns in
-        in a result set. A tuple is described as follows::
-
-                (column_name,
-                 type,
-                 None,
-                 None,
-                 None,
-                 None,
-                 null_ok,
-                 column_flags)  # Addition to PEP-249 specs
-
-        Returns a list of tuples.
-        """
-        return self._description
-
-    @property
-    def rowcount(self) -> int:
-        """Returns the number of rows produced or affected
-
-        This property returns the number of rows produced by queries
-        such as a SELECT, or affected rows when executing DML statements
-        like INSERT or UPDATE.
-
-        Note that for non-buffered cursors it is impossible to know the
-        number of rows produced before having fetched them all. For those,
-        the number of rows will be -1 right after execution, and
-        incremented when fetching rows.
-
-        Returns an integer.
-        """
-        return self._rowcount
-
-
-class MySQLCursor(CursorBase):
+class MySQLCursor(MySQLCursorAbstract):
     """Default cursor for interacting with MySQL
 
     This cursor will execute statements and handle the result. It will
@@ -448,16 +251,8 @@ class MySQLCursor(CursorBase):
     """
 
     def __init__(self, connection: Optional[MySQLConnection] = None) -> None:
-        CursorBase.__init__(self)
-        self._connection: Optional[MySQLConnection] = None
-        self._nextrow: Tuple[Optional[RowType], Optional[EofPacketType]] = (
-            None,
-            None,
-        )
-        self._binary: bool = False
-
-        if connection is not None:
-            self._set_connection(connection)
+        """Initialize"""
+        super().__init__(connection)
 
     def __iter__(self) -> Iterator[RowType]:
         """
@@ -465,14 +260,6 @@ class MySQLCursor(CursorBase):
         and returns the next row.
         """
         return iter(self.fetchone, None)
-
-    def _set_connection(self, connection: MySQLConnection) -> None:
-        """Set the connection"""
-        try:
-            self._connection = weakref.proxy(connection)
-            self._connection.is_connected()
-        except (AttributeError, TypeError):
-            raise InterfaceError(errno=2048) from None
 
     def _reset_result(self) -> None:
         """Reset the cursor to default"""
@@ -1279,7 +1066,9 @@ class MySQLCursorRaw(MySQLCursor):
     Skips conversion from MySQL datatypes to Python types when fetching rows.
     """
 
-    _raw: bool = True
+    def __init__(self, connection: Optional[MySQLConnection] = None) -> None:
+        super().__init__(connection)
+        self._raw: bool = True
 
     def fetchone(self) -> Optional[RowType]:
         """Return next row of a query result set.
@@ -1288,7 +1077,7 @@ class MySQLCursorRaw(MySQLCursor):
             tuple or None: A row from query result set.
         """
         self._check_executed()
-        return self._fetch_row(raw=True)
+        return self._fetch_row(raw=self._raw)
 
     def fetchall(self) -> List[RowType]:
         """Return all rows of a query result set.
@@ -1299,7 +1088,7 @@ class MySQLCursorRaw(MySQLCursor):
         self._check_executed()
         if not self._have_unread_result():
             return []
-        (rows, eof) = self._connection.get_rows(raw=True)
+        (rows, eof) = self._connection.get_rows(raw=self._raw)
         if self._nextrow[0]:
             rows.insert(0, self._nextrow[0])
         self._handle_eof(eof)
@@ -1316,7 +1105,9 @@ class MySQLCursorBufferedRaw(MySQLCursorBuffered):
     fetching rows and fetches rows within execute().
     """
 
-    _raw: bool = True
+    def __init__(self, connection: Optional[MySQLConnection] = None) -> None:
+        super().__init__(connection)
+        self._raw: bool = True
 
     def _handle_resultset(self) -> None:
         (self._rows, eof) = self._connection.get_rows(raw=self._raw)
@@ -1826,7 +1617,9 @@ class MySQLCursorPreparedRaw(MySQLCursorPrepared):
     This class is a blend of features from MySQLCursorRaw and MySQLCursorPrepared
     """
 
-    _raw: bool = True
+    def __init__(self, connection: Optional[MySQLConnection] = None) -> None:
+        super().__init__(connection)
+        self._raw: bool = True
 
     def fetchone(self) -> Optional[RowType]:
         """Return next row of a query result set.

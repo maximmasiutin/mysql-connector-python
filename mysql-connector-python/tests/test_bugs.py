@@ -47,12 +47,12 @@ import pickle
 import platform
 import sys
 import tempfile
-import time
+from time import sleep
 import traceback
 import unittest
 
 from collections import namedtuple
-from datetime import date, datetime, timedelta
+from datetime import date, datetime, timedelta, timezone, time
 from decimal import Decimal
 from threading import Thread
 
@@ -663,7 +663,7 @@ class Bug809033(tests.MySQLConnectorTests):
         def kill(connection_id):
             """Kill connection using separate connection"""
             killer = connection.MySQLConnection(**tests.get_mysql_config())
-            time.sleep(1)
+            sleep(1)
             killer.cmd_query("KILL {0}".format(connection_id))
             killer.close()
 
@@ -4149,7 +4149,7 @@ class BugOra20653441(tests.MySQLConnectorTests):
         def kill(connection_id):
             """Kill query using separate connection"""
             killer_cnx = connection.MySQLConnection(**tests.get_mysql_config())
-            time.sleep(1)
+            sleep(1)
             killer_cnx.cmd_query("KILL QUERY {0}".format(connection_id))
             killer_cnx.close()
 
@@ -4825,7 +4825,7 @@ class BugOra21947091(tests.MySQLConnectorTests):
 
         self.server.start(ssl_ca="", ssl_cert="", ssl_key="", ssl=0)
         self.server.wait_up()
-        time.sleep(1)
+        sleep(1)
 
     def _enable_ssl(self):
         self.server.stop()
@@ -4833,7 +4833,7 @@ class BugOra21947091(tests.MySQLConnectorTests):
 
         self.server.start(ssl=1)
         self.server.wait_up()
-        time.sleep(1)
+        sleep(1)
 
     def _verify_ssl(self, cnx, ssl_available=True):
         cur = cnx.cursor()
@@ -8490,3 +8490,149 @@ class BugOra36476195_async(tests.MySQLConnectorAioTestCase):
             )
             await cur.execute(f"SELECT * FROM {self.table_name}")
             self.assertEqual(self.expected_result_batch_insert, await cur.fetchall())
+
+
+class BugOra36289767_async(tests.MySQLConnectorAioTestCase):
+    """BUG#36289767: MySQLCursorBufferedRaw do not skip conversion
+
+    When parameters raw with buffered as True are passed through the cursor, the
+    results returned by the fetch statements doesnot skip type conversion. Due to
+    this issue python type converted data is returned instead of bytestrings or
+    bytes. This issue is observed in both synchronous cursor types.
+
+    This patch fixes the issue by testing if the data returned is of bytes type
+    when raw parameter is passed as True, this patch also improves data integrity
+    throughout the cursor subtypes.
+    """
+
+    table_name = "BugOra36289767"
+
+    # Expected results if raw param is passed as True through any cursor
+    fetchone_exp_raw = (
+        b"21474836",
+        b"120",
+        b"32333",
+        b"8388605",
+        b"92413262543",
+        b"123.32",
+        b"13.0",
+        b"9339.8388607",
+        b"abcd",
+        b"MySQL \xf0\x9f\x90\xac",
+        b"this is a BLOB data",
+        b"TINYBLOB",
+        b"medium BLOB data",
+        b"this is a long BLOB data . . .",
+        b"This is a simple TEXT input",
+        b"This is a TINYTEXT",
+        b"This is a MEDIUMTEXT input",
+        b"This is a very LONGTEXT data . . .",
+        b"\r",
+        b"1234",
+        b"1213",
+        b"1999-06-16",
+        b"36:13:14",
+        b"2019-02-04 10:36:20",
+        b"2023-03-06 09:36:20",
+        b"2024",
+        b"\x00\x00\x00\x00\x01\x01\x00\x00\x003333335@\x9a\x99\x99\x99\x99\x19A@",
+    )
+
+    def setUp(self) -> None:
+        values = (
+            "%s, %s, %s, %s, %s, %s, %s, %s, %s, %s",
+            "%s, %s, %s, %s, %s, %s, %s, %s, B'1101', %s",
+            "%s, %s, %s, %s, %s, %s, POINT(21.2, 34.2)",
+        )
+        params = """
+            My_Int, My_Tinyint, My_Smallint, My_Mediumint, My_Bigint, My_Decimal,
+            My_Float, My_Double, My_Char, My_Varchar, My_Blob, My_Tinyblob, My_Mediumblob,
+            My_Longblob, My_Text, My_Tinytext, My_Mediumtext, My_Longtext, My_Bit,
+            My_Binary, My_Varbinary, My_Date, My_Time, My_Datetime, My_Timestamp,
+            My_Year, My_Geometry
+        """
+        insert_stmt = (
+            f"INSERT INTO {self.table_name} ({params}) VALUES ({', '.join(values)});"
+        )
+        data = [
+            21474836,
+            120,
+            32333,
+            8388605,
+            92413262543,
+            123.32,
+            13.0,
+            9339.8388607,
+            "abcd",
+            "MySQL 🐬",
+            b"this is a BLOB data",
+            b"TINYBLOB",
+            b"medium BLOB data",
+            b"this is a long BLOB data . . .",
+            "This is a simple TEXT input",
+            "This is a TINYTEXT",
+            "This is a MEDIUMTEXT input",
+            "This is a very LONGTEXT data . . .",
+            "1234",
+            b"1213",
+            date(day=16, month=6, year=1999),
+            timedelta(hours=12, minutes=13, seconds=14, days=1),
+            datetime(2019, 2, 4, 10, 36, 20),
+            datetime(2023, 3, 6, 9, 36, 20, tzinfo=timezone.utc),
+            2024,
+        ]
+
+        with mysql.connector.connect(**tests.get_mysql_config()) as cnx:
+            with cnx.cursor() as cur:
+                cur.execute(f"DROP TABLE IF EXISTS {self.table_name}")
+                cur.execute(
+                    f"""
+                    CREATE TABLE {self.table_name} (
+                        My_Int INT,
+                        My_Tinyint TINYINT,
+                        My_Smallint SMALLINT,
+                        My_Mediumint MEDIUMINT,
+                        My_Bigint BIGINT,
+                        My_Decimal DECIMAL(5,2),
+                        My_Float FLOAT(3,1),
+                        My_Double DOUBLE,
+                        My_Char CHAR(5),
+                        My_Varchar VARCHAR(100),
+                        My_Blob BLOB,
+                        My_Tinyblob TINYBLOB,
+                        My_Mediumblob MEDIUMBLOB,
+                        My_Longblob LONGBLOB,
+                        My_Text TEXT,
+                        My_Tinytext TINYTEXT,
+                        My_Mediumtext MEDIUMTEXT,
+                        My_Longtext LONGTEXT,
+                        My_Bit BIT(4),
+                        My_Binary BINARY(4),
+                        My_Varbinary VARBINARY(4),
+                        My_Date DATE,
+                        My_Time TIME,
+                        My_Datetime DATETIME,
+                        My_Timestamp TIMESTAMP,
+                        My_Year YEAR,
+                        My_Geometry GEOMETRY
+                    )"""
+                )
+                cur.execute(insert_stmt, data)
+            cnx.commit()
+
+    def tearDown(self) -> None:
+        with mysql.connector.connect(**tests.get_mysql_config()) as cnx:
+            cnx.cmd_query(f"DROP TABLE IF EXISTS {self.table_name}")
+
+    @foreach_cnx_aio()
+    async def test_buffered_raw_cursor(self) -> None:
+        async with await self.cnx.cursor(buffered=True, raw=True) as cur:
+            await cur.execute(f"SELECT * from {self.table_name}")
+            self.assertEqual((self.fetchone_exp_raw), await cur.fetchone())
+            await cur.execute(f"SELECT * from {self.table_name}")
+            self.assertEqual(
+                [
+                    (self.fetchone_exp_raw),
+                ],
+                await cur.fetchall(),
+            )

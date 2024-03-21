@@ -713,7 +713,7 @@ class MySQLConnection(MySQLConnectionAbstract):
 
         Raises:
             ProgrammingError: When cursor_class is not a subclass of
-                              CursorBase.
+                              MySQLCursor.
             ValueError: When cursor is not available.
         """
         if not self._socket or not self._socket.is_connected():
