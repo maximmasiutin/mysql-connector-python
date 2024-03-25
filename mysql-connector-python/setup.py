@@ -133,12 +133,12 @@ def main() -> None:
         extras_require={
             "dns-srv": ["dnspython==2.6.1"],
             "gssapi": ["gssapi>=1.6.9,<=1.8.2"],
-            "opentelemetry": [
-                "Deprecated>=1.2.6",
-                "typing-extensions>=3.7.4",
-                "zipp>=0.5",
-            ],
             "fido2": ["fido2==1.1.2"],
+            "telemetry": [
+                "opentelemetry-api==1.18.0",
+                "opentelemetry-sdk==1.18.0",
+                "opentelemetry-exporter-otlp-proto-http==1.18.0",
+            ],
         },
     )
 

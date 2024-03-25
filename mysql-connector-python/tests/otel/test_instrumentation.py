@@ -553,7 +553,7 @@ class PythonWithGlobalInstSpanTests(tests.MySQLConnectorTests):
         - check that the CHILD/ROOT span particulars are met based if there is a client
         app span or not.
         """
-        num_query_spans_client_app = 12
+        num_query_spans_client_app = 13
         with self.tracer.start_as_current_span(
             "app"
         ) if with_client_span else nullcontext():

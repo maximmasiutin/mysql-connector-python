@@ -38,16 +38,10 @@ from typing import Any, Dict
 # requirements: opentelemetry-proto and mysql-connector-python
 from google.protobuf.json_format import MessageToDict
 
-try:
-    # try to load otel from the system
-    from opentelemetry.proto.collector.trace.v1.trace_service_pb2 import (
-        ExportTraceServiceRequest,
-    )
-except ImportError:
-    # falling back to the bundled installation
-    from mysql.opentelemetry.proto.collector.trace.v1.trace_service_pb2 import (
-        ExportTraceServiceRequest,
-    )
+# try to load otel from the system
+from opentelemetry.proto.collector.trace.v1.trace_service_pb2 import (
+    ExportTraceServiceRequest,
+)
 
 import mysqlx
 

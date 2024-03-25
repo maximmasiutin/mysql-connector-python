@@ -37,14 +37,7 @@ try:
     from opentelemetry.sdk.trace import TracerProvider  # check sdk
     from opentelemetry.semconv.trace import SpanAttributes  # check semconv
 except ImportError:
-    # falling back to the bundled installation
-    try:
-        from mysql.opentelemetry import trace
-        from mysql.opentelemetry.sdk.trace import TracerProvider
-        from mysql.opentelemetry.semconv.trace import SpanAttributes
-    except ImportError:
-        # bundled installation has missing dependencies
-        OTEL_ENABLED = False
+    OTEL_ENABLED = False
 
 
 OPTION_CNX_SPAN = "_span"

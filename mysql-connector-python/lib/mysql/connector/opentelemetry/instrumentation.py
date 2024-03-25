@@ -61,22 +61,10 @@ try:
     from opentelemetry import trace  # check api
     from opentelemetry.sdk.trace import TracerProvider  # check sdk
     from opentelemetry.semconv.trace import SpanAttributes  # check semconv
-
-    OTEL_SYSTEM_AVAILABLE = True
-except ImportError:
-    try:
-        # falling back to the bundled installation
-        from mysql.opentelemetry import trace
-        from mysql.opentelemetry.semconv.trace import SpanAttributes
-
-        OTEL_SYSTEM_AVAILABLE = False
-    except ImportError as missing_dependencies_err:
-        raise connector.errors.ProgrammingError(
-            "Bundled installation has missing dependencies. "
-            "Please use `pip install mysql-connector-python[opentelemetry]`, "
-            "or for an editable install use `pip install -e '.[opentelemetry]'`, "
-            "to install the dependencies required by the bundled opentelemetry package."
-        ) from missing_dependencies_err
+except ImportError as missing_dependencies_err:
+    raise connector.errors.ProgrammingError(
+        "OpenTelemetry installation not found. " "You must install the API and SDK."
+    ) from missing_dependencies_err
 
 
 from .constants import (

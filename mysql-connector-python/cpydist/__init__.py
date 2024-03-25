@@ -123,31 +123,6 @@ SASL_WIN_LIBS = [
 SASL_WIN_LIBS_AUTH_METHODS = ["saslSCRAM.dll", "saslGSSAPI.dll"]
 
 
-def get_otel_src_package_data():
-    """Get a list including all py.typed and dist-info files corresponding
-    to opentelemetry-python (see [1]) located at
-    `mysql/opentelemetry`.
-
-    Returns:
-        package_data: List[str].
-
-    References:
-    [1]: https://github.com/open-telemetry/opentelemetry-python
-    """
-    path_otel = os.path.join("lib", "mysql", "opentelemetry")
-
-    package_data = []
-    for root, dirs, filenames in os.walk(os.path.join(os.getcwd(), path_otel, "")):
-        offset = root.replace(os.path.join(os.getcwd(), path_otel, ""), "")
-        for _dir in dirs:
-            if _dir.endswith(".dist-info"):
-                package_data.append(os.path.join(offset, _dir, "*"))
-        for filename in filenames:
-            if filename == "py.typed":
-                package_data.append(os.path.join(offset, filename))
-    return package_data
-
-
 class BaseCommand(Command):
     """Base command class for Connector/Python."""
 
@@ -232,10 +207,7 @@ class BaseCommand(Command):
         install.extra_link_args = self.extra_link_args
         install.skip_vendor = self.skip_vendor
 
-        self.distribution.package_data = {
-            "mysql.connector": ["py.typed"],
-            "mysql.opentelemetry": get_otel_src_package_data(),
-        }
+        self.distribution.package_data = {"mysql.connector": ["py.typed"]}
         if not cmd_build_ext.skip_vendor:
             self._copy_vendor_libraries()
 
@@ -561,7 +533,6 @@ class BaseCommand(Command):
                 "vendor/private/sasl2/*",
             ],
             "mysql.connector": ["py.typed"],
-            "mysql.opentelemetry": get_otel_src_package_data(),
         }
 
 

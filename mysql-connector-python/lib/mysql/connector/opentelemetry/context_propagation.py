@@ -35,17 +35,10 @@ from typing import TYPE_CHECKING, Any, Callable
 from .constants import OTEL_ENABLED, TRACEPARENT_HEADER_NAME
 
 if OTEL_ENABLED:
-    from .instrumentation import OTEL_SYSTEM_AVAILABLE
-
-    if OTEL_SYSTEM_AVAILABLE:
-        # pylint: disable=import-error
-        # load otel from the system
-        from opentelemetry import trace
-        from opentelemetry.trace.span import format_span_id, format_trace_id
-    else:
-        # load otel from the bundled installation
-        from mysql.opentelemetry import trace
-        from mysql.opentelemetry.trace.span import format_span_id, format_trace_id
+    # pylint: disable=import-error
+    # load otel from the system
+    from opentelemetry import trace
+    from opentelemetry.trace.span import format_span_id, format_trace_id
 
 
 if TYPE_CHECKING:
