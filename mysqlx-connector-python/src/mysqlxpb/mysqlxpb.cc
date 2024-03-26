@@ -440,14 +440,14 @@ static void AddPyListToMessageRepeatedString(
     google::protobuf::Message& message,
     const google::protobuf::FieldDescriptor& field,
     PyObject* list) {
-  google::protobuf::MutableRepeatedFieldRef<google::protobuf::string> mutable_field =
+  google::protobuf::MutableRepeatedFieldRef<std::string> mutable_field =
       message.GetReflection()->
-      GetMutableRepeatedFieldRef<google::protobuf::string>(&message, &field);
+      GetMutableRepeatedFieldRef<std::string>(&message, &field);
   Py_ssize_t list_size = PyList_Size(list);
 
   if (list_size > 0) {
     for (Py_ssize_t idx = 0; idx < list_size; ++idx) {
-      mutable_field.Add(google::protobuf::string(
+      mutable_field.Add(std::string(
           python_cast<std::string>(PyList_GetItem(list, idx))));
     }
   }

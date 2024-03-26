@@ -52,6 +52,62 @@ except ImportError:
 
 from .utils import ARCH, write_info_bin, write_info_src
 
+# Abseil libraries to link in the later stage
+ABSL_LIBS_EXT = "lib" if os.name == "nt" else "a"
+ABSL_LIBS = (
+    "absl_str_format_internal",
+    "absl_strings",
+    "absl_strings_internal",
+    "absl_string_view",
+    "absl_log_initialize",
+    "absl_log_entry",
+    "absl_log_flags",
+    "absl_log_severity",
+    "absl_log_internal_check_op",
+    "absl_log_internal_conditions",
+    "absl_log_internal_message",
+    "absl_log_internal_nullguard",
+    "absl_log_internal_proto",
+    "absl_log_internal_format",
+    "absl_log_internal_globals",
+    "absl_log_internal_log_sink_set",
+    "absl_log_sink",
+    "absl_raw_logging_internal",
+    "absl_log_globals",
+    "utf8_validity",
+    "absl_cord",
+    "absl_cordz_info",
+    "absl_cordz_handle",
+    "absl_cordz_functions",
+    "absl_cord_internal",
+    "absl_crc_cord_state",
+    "absl_crc32c",
+    "absl_crc_internal",
+    "absl_exponential_biased",
+    "absl_synchronization",
+    "absl_graphcycles_internal",
+    "absl_kernel_timeout_internal",
+    "absl_time",
+    "absl_time_zone",
+    "absl_int128",
+    "absl_examine_stack",
+    "absl_stacktrace",
+    "absl_symbolize",
+    "absl_demangle_internal",
+    "absl_debugging_internal",
+    "absl_malloc_internal",
+    "absl_throw_delegate",
+    "absl_strerror",
+    "absl_raw_hash_set",
+    "absl_hash",
+    "absl_city",
+    "absl_low_level_hash",
+    "absl_base",
+    "absl_spinlock_wait",
+    "absl_status",
+    "absl_statusor",
+    "absl_bad_optional_access",
+)
 # Load version information
 VERSION = [999, 0, 0, "a", 0]
 VERSION_TEXT = "999.0.0"
@@ -243,7 +299,17 @@ class BuildExt(build_ext, BaseCommand):
 
         self.log.info("Copying Protobuf libraries")
 
+        # load protobuf-related static libraries
         libs = glob(os.path.join(self.with_protobuf_lib_dir, "libprotobuf*"))
+
+        # load absl-related static libraries
+        libs += glob(
+            os.path.join(self.with_protobuf_lib_dir, f"*absl_*.{ABSL_LIBS_EXT}")
+        )
+        libs += glob(
+            os.path.join(self.with_protobuf_lib_dir, f"*utf8_*.{ABSL_LIBS_EXT}")
+        )
+
         for lib in libs:
             if os.path.isfile(lib):
                 self.log.info("copying %s -> %s", lib, self._build_protobuf_lib_dir)
@@ -302,29 +368,25 @@ class BuildExt(build_ext, BaseCommand):
         disabled = []  # Extensions to be disabled
         for ext in self.extensions:
             # Add Protobuf include and library dirs
-            if ext.name == "_mysqlxpb":
-                if not self.with_mysqlxpb_cext:
-                    self.log.warning("The '_mysqlxpb' C extension will not be built")
-                    disabled.append(ext)
-                    continue
-                if platform.system() == "Darwin":
-                    symbol_file = tempfile.NamedTemporaryFile()
-                    ext.extra_link_args.extend(
-                        ["-exported_symbols_list", symbol_file.name]
-                    )
-                    with open(symbol_file.name, "w") as fp:
-                        fp.write("_PyInit__mysqlxpb")
-                        fp.write("\n")
-                ext.include_dirs.append(self.with_protobuf_include_dir)
-                ext.library_dirs.append(self._build_protobuf_lib_dir)
-                ext.libraries.append("libprotobuf" if os.name == "nt" else "protobuf")
-                # Add -std=c++11 needed for Protobuf 3.6.1
-                ext.extra_compile_args.append("-std=c++11")
-                self._run_protoc()
-
-            if ext.name != "_mysqlxpb":
+            if not self.with_mysqlxpb_cext:
+                self.log.warning("The '_mysqlxpb' C extension will not be built")
                 disabled.append(ext)
                 continue
+            if platform.system() == "Darwin":
+                symbol_file = tempfile.NamedTemporaryFile()
+                ext.extra_link_args.extend(["-exported_symbols_list", symbol_file.name])
+                with open(symbol_file.name, "w") as fp:
+                    fp.write("_PyInit__mysqlxpb")
+                    fp.write("\n")
+            ext.include_dirs.append(self.with_protobuf_include_dir)
+            ext.library_dirs.append(self._build_protobuf_lib_dir)
+            ext.libraries.append("libprotobuf" if os.name == "nt" else "protobuf")
+            ext.libraries.extend(ABSL_LIBS)
+
+            if os.name != "nt":
+                # Add -std=c++14 needed for Protobuf 4.25.3
+                ext.extra_compile_args.append("-std=c++14")
+            self._run_protoc()
 
             # Suppress unknown pragmas
             if os.name == "posix":

@@ -141,7 +141,7 @@ def main() -> None:
         ext_modules=EXTENSIONS,
         cmdclass=COMMAND_CLASSES,
         python_requires=">=3.8",
-        install_requires=["protobuf>=4.21.1,<=4.21.12"],
+        install_requires=["protobuf==4.25.3"],
         extras_require={
             "dns-srv": ["dnspython==2.6.1"],
             "compression": ["lz4>=2.1.6,<=4.3.2", "zstandard>=0.12.0,<=0.19.0"],
