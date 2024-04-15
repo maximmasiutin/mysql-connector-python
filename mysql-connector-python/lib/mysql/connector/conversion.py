@@ -38,7 +38,13 @@ import time
 from decimal import Decimal
 from typing import Any, Callable, Dict, List, Optional, Set, Tuple, Union
 
-from .constants import MYSQL_VECTOR_TYPE_CODE, CharacterSet, FieldFlag, FieldType
+from .constants import (
+    MYSQL_VECTOR_TYPE_CODE,
+    CharacterSet,
+    FieldFlag,
+    FieldType,
+    SQLMode,
+)
 from .custom_types import HexLiteral
 from .types import (
     DescriptionType,
@@ -141,7 +147,7 @@ class MySQLConverterBase:
     @staticmethod
     def escape(
         value: Any,
-        sql_mode: Optional[str] = None,  # pylint: disable=unused-argument
+        sql_mode: Optional[Union[str, bytes]] = None,  # pylint: disable=unused-argument
     ) -> Any:
         """Escape buffer for sending to MySQL"""
         return value
@@ -179,7 +185,7 @@ class MySQLConverter(MySQLConverterBase):
         ] = {}
 
     @staticmethod
-    def escape(value: Any, sql_mode: Optional[str] = None) -> Any:
+    def escape(value: Any, sql_mode: Optional[Union[str, bytes]] = None) -> Any:
         """
         Escapes special characters as they are expected to by when MySQL
         receives them.
@@ -187,8 +193,11 @@ class MySQLConverter(MySQLConverterBase):
 
         Returns the value if not a string, or the escaped string.
         """
+        if isinstance(sql_mode, bytes):
+            # sql_mode is returned as bytes if use_unicode is set to False during connect()
+            sql_mode = sql_mode.decode()
         if isinstance(value, (bytes, bytearray)):
-            if sql_mode == "NO_BACKSLASH_ESCAPES":
+            if sql_mode is not None and SQLMode.NO_BACKSLASH_ESCAPES in sql_mode:
                 return value.replace(b"'", b"''")
             value = value.replace(b"\\", b"\\\\")
             value = value.replace(b"\n", b"\\n")
@@ -197,7 +206,7 @@ class MySQLConverter(MySQLConverterBase):
             value = value.replace(b"\042", b"\134\042")  # double quotes
             value = value.replace(b"\032", b"\134\032")  # for Win32
         elif isinstance(value, str) and not isinstance(value, HexLiteral):
-            if sql_mode == "NO_BACKSLASH_ESCAPES":
+            if sql_mode is not None and SQLMode.NO_BACKSLASH_ESCAPES in sql_mode:
                 return value.replace("'", "''")
             value = value.replace("\\", "\\\\")
             value = value.replace("\n", "\\n")

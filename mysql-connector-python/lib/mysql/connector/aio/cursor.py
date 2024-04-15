@@ -172,19 +172,20 @@ class MySQLCursor(MySQLCursorAbstract):
         self._connection = None
         return True
 
-    def _process_params_dict(
+    async def _process_params_dict(
         self, params: ParamsDictType
     ) -> Dict[bytes, Union[bytes, Decimal]]:
         """Process query parameters given as dictionary."""
         res: Dict[bytes, Any] = {}
         try:
+            sql_mode = await self._connection.get_sql_mode()
             to_mysql = self._connection.converter.to_mysql
             escape = self._connection.converter.escape
             quote = self._connection.converter.quote
             for key, value in params.items():
                 conv = value
                 conv = to_mysql(conv)
-                conv = escape(conv)
+                conv = escape(conv, sql_mode)
                 if not isinstance(value, Decimal):
                     conv = quote(conv)
                 res[key.encode()] = conv
@@ -194,17 +195,18 @@ class MySQLCursor(MySQLCursorAbstract):
             ) from err
         return res
 
-    def _process_params(
+    async def _process_params(
         self, params: ParamsSequenceType
     ) -> Tuple[Union[bytes, Decimal], ...]:
         """Process query parameters."""
         result = params[:]
         try:
+            sql_mode = await self._connection.get_sql_mode()
             to_mysql = self._connection.converter.to_mysql
             escape = self._connection.converter.escape
             quote = self._connection.converter.quote
             result = [to_mysql(value) for value in result]
-            result = [escape(value) for value in result]
+            result = [escape(value, sql_mode) for value in result]
             result = [
                 quote(value) if not isinstance(params[i], Decimal) else value
                 for i, value in enumerate(result)
@@ -412,7 +414,7 @@ class MySQLCursor(MySQLCursorAbstract):
         if self._executed is None:
             raise InterfaceError(ERR_NO_RESULT_TO_FETCH)
 
-    def _prepare_statement(
+    async def _prepare_statement(
         self,
         operation: StrOrBytes,
         params: Union[Sequence[Any], Dict[str, Any]] = (),
@@ -437,9 +439,11 @@ class MySQLCursor(MySQLCursorAbstract):
 
         if params:
             if isinstance(params, dict):
-                stmt = _bytestr_format_dict(stmt, self._process_params_dict(params))
+                stmt = _bytestr_format_dict(
+                    stmt, await self._process_params_dict(params)
+                )
             elif isinstance(params, (list, tuple)):
-                psub = _ParamSubstitutor(self._process_params(params))
+                psub = _ParamSubstitutor(await self._process_params(params))
                 stmt = RE_PY_PARAM.sub(psub, stmt)
                 if psub.remaining != 0:
                     raise ProgrammingError(
@@ -461,7 +465,7 @@ class MySQLCursor(MySQLCursorAbstract):
             result = await cur.fetchall()
         return result if result else None  # type: ignore[return-value]
 
-    def _batch_insert(
+    async def _batch_insert(
         self, operation: str, seq_params: Sequence[ParamsSequenceOrDictType]
     ) -> Optional[bytes]:
         """Implements multi row insert"""
@@ -496,9 +500,11 @@ class MySQLCursor(MySQLCursorAbstract):
             for params in seq_params:
                 tmp = fmt
                 if isinstance(params, dict):
-                    tmp = _bytestr_format_dict(tmp, self._process_params_dict(params))
+                    tmp = _bytestr_format_dict(
+                        tmp, await self._process_params_dict(params)
+                    )
                 else:
-                    psub = _ParamSubstitutor(self._process_params(params))
+                    psub = _ParamSubstitutor(await self._process_params(params))
                     tmp = RE_PY_PARAM.sub(psub, tmp)
                     if psub.remaining != 0:
                         raise ProgrammingError(
@@ -686,7 +692,7 @@ class MySQLCursor(MySQLCursorAbstract):
         await self._connection.handle_unread_result()
         await self._reset_result()
 
-        stmt = self._prepare_statement(operation, params)
+        stmt = await self._prepare_statement(operation, params)
         self._executed = stmt
 
         try:
@@ -719,7 +725,7 @@ class MySQLCursor(MySQLCursorAbstract):
         await self._connection.handle_unread_result()
         await self._reset_result()
 
-        stmt = self._prepare_statement(operation, params)
+        stmt = await self._prepare_statement(operation, params)
         self._executed = stmt
         self._executed_list = []
 
@@ -752,7 +758,7 @@ class MySQLCursor(MySQLCursorAbstract):
             if not seq_params:
                 self._rowcount = 0
                 return None
-            stmt = self._batch_insert(operation, seq_params)
+            stmt = await self._batch_insert(operation, seq_params)
             if stmt is not None:
                 self._executed = stmt
                 return await self.execute(stmt)

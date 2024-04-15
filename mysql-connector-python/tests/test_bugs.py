@@ -8188,3 +8188,305 @@ class BugOra21390859_async(tests.MySQLConnectorAioTestCase):
                         "Got more results than expected "
                         f"for query {self.bug_21390859.use_case[i]}"
                     )
+
+
+class BugOra36476195(tests.MySQLConnectorTests):
+    """BUG#36476195: Incorrect escaping in pure Python mode if sql_mode includes NO_BACKSLASH_ESCAPES
+
+    When NO_BACKSLASH_ESCAPES is included with similar other options in the sql_mode parameter,
+    the client escapes strings as if NO_BACKSLASH_ESCAPES mode was not active. This issue leads
+    to SQL Injections from parameters in cursor execution methods.
+
+    This patch fixes the issue by adding proper conditional checks during statement conversions
+    to check if NO_BACKSLASH_ESCAPES is included with/without other options in the sql_mode
+    parameter and ensure correct string escaping is being done during conversion.
+    """
+
+    table_name = "BugOra36476195"
+
+    injected_param = "' UNION SELECT SCHEMA_NAME FROM INFORMATION_SCHEMA.SCHEMATA #"
+
+    injected_param_multi = "SELECT %s; select ''%s AS a_str"
+
+    injected_param_batch_insert = (
+        f"INSERT INTO {table_name} (val1, val2, val3) VALUES (%s, %s, %s)"
+    )
+    injected_param_batch_insert_values = [
+        (1000, "def", "ghi"),
+        (1001, "'SELECT SCHEMA_NAME FROM INFORMATION_SCHEMA.SCHEMATA))'\\#'", "jkl"),
+    ]
+
+    # The expected result of the above statement which confirms the prevention of sql injection
+    expected_result = [
+        ("' UNION SELECT SCHEMA_NAME FROM INFORMATION_SCHEMA.SCHEMATA #",)
+    ]
+    expected_result_multi = [expected_result, [("'A STRING",)]]
+    expected_result_batch_insert = [
+        (1000, "def", "ghi"),
+        (1001, "'SELECT SCHEMA_NAME FROM INFORMATION_SCHEMA.SCHEMATA))'\\#'", "jkl"),
+    ]
+
+    def setUp(self):
+        with mysql.connector.connect(**tests.get_mysql_config()) as cnx:
+            with cnx.cursor() as cur:
+                cur.execute(
+                    f"CREATE TABLE {self.table_name} (val1 INT, val2 VARCHAR(100), val3 VARCHAR(100))"
+                )
+
+    def tearDown(self):
+        with mysql.connector.connect(**tests.get_mysql_config()) as cnx:
+            with cnx.cursor() as cur:
+                cur.execute(f"DROP TABLE IF EXISTS {self.table_name}")
+
+    @foreach_cnx()
+    def test_execute_with_default_sql_mode(self):
+        with self.cnx.cursor() as cur:
+            # basic check
+            cur.execute("SELECT %s", (self.injected_param,))
+            self.assertEqual(self.expected_result, cur.fetchall())
+            # bytes passed in param check
+            cur.execute("SELECT %s", (self.injected_param.encode(),))
+            self.assertEqual(self.expected_result, cur.fetchall())
+            # dict passed in param check
+            cur.execute(
+                "SELECT %(injected_param)s", {"injected_param": self.injected_param}
+            )
+            self.assertEqual(self.expected_result, cur.fetchall())
+            # execute multi check
+            for idx, res in enumerate(
+                cur.execute(
+                    self.injected_param_multi,
+                    (self.injected_param, "A STRING"),
+                    multi=True,
+                )
+            ):
+                self.assertEqual(self.expected_result_multi[idx], res.fetchall())
+            # batch insert check
+            cur.executemany(
+                self.injected_param_batch_insert,
+                self.injected_param_batch_insert_values,
+            )
+            cur.execute(f"SELECT * FROM {self.table_name}")
+            self.assertEqual(self.expected_result_batch_insert, cur.fetchall())
+
+    @cnx_config(sql_mode="NO_BACKSLASH_ESCAPES")
+    @foreach_cnx()
+    def test_execute_with_only_no_backslash_escapes_in_sql_mode(self):
+        with self.cnx.cursor() as cur:
+            # basic check
+            cur.execute("SELECT %s", (self.injected_param,))
+            self.assertEqual(self.expected_result, cur.fetchall())
+            # bytes passed in param check
+            cur.execute("SELECT %s", (self.injected_param.encode(),))
+            self.assertEqual(self.expected_result, cur.fetchall())
+            # dict passed in param check
+            cur.execute(
+                "SELECT %(injected_param)s", {"injected_param": self.injected_param}
+            )
+            self.assertEqual(self.expected_result, cur.fetchall())
+            # execute multi check
+            for idx, res in enumerate(
+                cur.execute(
+                    self.injected_param_multi,
+                    (self.injected_param, "A STRING"),
+                    multi=True,
+                )
+            ):
+                self.assertEqual(self.expected_result_multi[idx], res.fetchall())
+            # batch insert check
+            cur.executemany(
+                self.injected_param_batch_insert,
+                self.injected_param_batch_insert_values,
+            )
+            cur.execute(f"SELECT * FROM {self.table_name}")
+            self.assertEqual(self.expected_result_batch_insert, cur.fetchall())
+
+    @cnx_config(sql_mode="STRICT_TRANS_TABLES,NO_BACKSLASH_ESCAPES")
+    @foreach_cnx()
+    def test_execute_with_multiple_options_in_sql_mode(self):
+        with self.cnx.cursor() as cur:
+            # basic check
+            cur.execute("SELECT %s", (self.injected_param,))
+            self.assertEqual(self.expected_result, cur.fetchall())
+            # bytes passed in param check
+            cur.execute("SELECT %s", (self.injected_param.encode(),))
+            self.assertEqual(self.expected_result, cur.fetchall())
+            # dict passed in param check
+            cur.execute(
+                "SELECT %(injected_param)s", {"injected_param": self.injected_param}
+            )
+            self.assertEqual(self.expected_result, cur.fetchall())
+            # execute multi check
+            for idx, res in enumerate(
+                cur.execute(
+                    self.injected_param_multi,
+                    (self.injected_param, "A STRING"),
+                    multi=True,
+                )
+            ):
+                self.assertEqual(self.expected_result_multi[idx], res.fetchall())
+            # batch insert check
+            cur.executemany(
+                self.injected_param_batch_insert,
+                self.injected_param_batch_insert_values,
+            )
+            cur.execute(f"SELECT * FROM {self.table_name}")
+            self.assertEqual(self.expected_result_batch_insert, cur.fetchall())
+
+
+class BugOra36476195_async(tests.MySQLConnectorAioTestCase):
+    """BUG#36476195: Incorrect escaping in pure Python mode if sql_mode includes NO_BACKSLASH_ESCAPES
+
+    For a description see `test_bugs.BugOra36476195`.
+    """
+
+    expected_result_bytes = [
+        (b"' UNION SELECT SCHEMA_NAME FROM INFORMATION_SCHEMA.SCHEMATA #",)
+    ]
+    expected_result_multi_bytes = [expected_result_bytes, [(b"'A STRING",)]]
+    expected_result_batch_insert_bytes = [
+        (1000, b"def", b"ghi"),
+        (1001, b"'SELECT SCHEMA_NAME FROM INFORMATION_SCHEMA.SCHEMATA))'\\#'", b"jkl"),
+    ]
+
+    def setUp(self):
+        self.bug_36476195 = BugOra36476195()
+        self.table_name = self.bug_36476195.table_name
+        self.injected_param = self.bug_36476195.injected_param
+        self.injected_param_multi = self.bug_36476195.injected_param_multi
+        self.injected_param_batch_insert = self.bug_36476195.injected_param_batch_insert
+        self.injected_param_batch_insert_values = (
+            self.bug_36476195.injected_param_batch_insert_values
+        )
+        self.expected_result = self.bug_36476195.expected_result
+        self.expected_result_multi = self.bug_36476195.expected_result_multi
+        self.expected_result_batch_insert = (
+            self.bug_36476195.expected_result_batch_insert
+        )
+        self.bug_36476195.setUp()
+
+    def tearDown(self):
+        self.bug_36476195.tearDown()
+
+    @cnx_config(use_unicode=False)
+    @foreach_cnx_aio()
+    async def test_execute_with_default_sql_mode_unicode_as_false(self):
+        async with await self.cnx.cursor() as cur:
+            # basic check
+            await cur.execute("SELECT %s", (self.injected_param,))
+            self.assertEqual(self.expected_result_bytes, await cur.fetchall())
+            # bytes passed in param check
+            await cur.execute("SELECT %s", (self.injected_param.encode(),))
+            self.assertEqual(self.expected_result_bytes, await cur.fetchall())
+            # dict passed in param check
+            await cur.execute(
+                "SELECT %(injected_param)s", {"injected_param": self.injected_param}
+            )
+            self.assertEqual(self.expected_result_bytes, await cur.fetchall())
+            # execute multi check
+            idx = 0
+            async for res in cur.executemulti(
+                self.injected_param_multi, (self.injected_param, "A STRING")
+            ):
+                self.assertEqual(
+                    self.expected_result_multi_bytes[idx], await res.fetchall()
+                )
+                idx += 1
+            # execute many check
+            await cur.executemany(
+                self.injected_param_batch_insert,
+                self.injected_param_batch_insert_values,
+            )
+            await cur.execute(f"SELECT * FROM {self.table_name}")
+            self.assertEqual(
+                self.expected_result_batch_insert_bytes, await cur.fetchall()
+            )
+
+    @foreach_cnx_aio()
+    async def test_execute_with_default_sql_mode(self):
+        async with await self.cnx.cursor() as cur:
+            # basic check
+            await cur.execute("SELECT %s", (self.injected_param,))
+            self.assertEqual(self.expected_result, await cur.fetchall())
+            # bytes passed in param check
+            await cur.execute("SELECT %s", (self.injected_param.encode(),))
+            self.assertEqual(self.expected_result, await cur.fetchall())
+            # dict passed in param check
+            await cur.execute(
+                "SELECT %(injected_param)s", {"injected_param": self.injected_param}
+            )
+            self.assertEqual(self.expected_result, await cur.fetchall())
+            # execute multi check
+            idx = 0
+            async for res in cur.executemulti(
+                self.injected_param_multi, (self.injected_param, "A STRING")
+            ):
+                self.assertEqual(self.expected_result_multi[idx], await res.fetchall())
+                idx += 1
+            # execute many check
+            await cur.executemany(
+                self.injected_param_batch_insert,
+                self.injected_param_batch_insert_values,
+            )
+            await cur.execute(f"SELECT * FROM {self.table_name}")
+            self.assertEqual(self.expected_result_batch_insert, await cur.fetchall())
+
+    @cnx_config(sql_mode="NO_BACKSLASH_ESCAPES")
+    @foreach_cnx_aio()
+    async def test_execute_with_only_no_backslash_escapes_in_sql_mode(self):
+        async with await self.cnx.cursor() as cur:
+            # basic check
+            await cur.execute("SELECT %s", (self.injected_param,))
+            self.assertEqual(self.expected_result, await cur.fetchall())
+            # bytes passed in param check
+            await cur.execute("SELECT %s", (self.injected_param.encode(),))
+            self.assertEqual(self.expected_result, await cur.fetchall())
+            # dict passed in param check
+            await cur.execute(
+                "SELECT %(injected_param)s", {"injected_param": self.injected_param}
+            )
+            self.assertEqual(self.expected_result, await cur.fetchall())
+            # execute multi check
+            idx = 0
+            async for res in cur.executemulti(
+                self.injected_param_multi, (self.injected_param, "A STRING")
+            ):
+                self.assertEqual(self.expected_result_multi[idx], await res.fetchall())
+                idx += 1
+            # execute many check
+            await cur.executemany(
+                self.injected_param_batch_insert,
+                self.injected_param_batch_insert_values,
+            )
+            await cur.execute(f"SELECT * FROM {self.table_name}")
+            self.assertEqual(self.expected_result_batch_insert, await cur.fetchall())
+
+    @cnx_config(sql_mode="STRICT_TRANS_TABLES,NO_BACKSLASH_ESCAPES")
+    @foreach_cnx_aio()
+    async def test_execute_with_multiple_options_in_sql_mode(self):
+        async with await self.cnx.cursor() as cur:
+            # basic check
+            await cur.execute("SELECT %s", (self.injected_param,))
+            self.assertEqual(self.expected_result, await cur.fetchall())
+            # bytes passed in param check
+            await cur.execute("SELECT %s", (self.injected_param.encode(),))
+            self.assertEqual(self.expected_result, await cur.fetchall())
+            # dict passed in param check
+            await cur.execute(
+                "SELECT %(injected_param)s", {"injected_param": self.injected_param}
+            )
+            self.assertEqual(self.expected_result, await cur.fetchall())
+            # execute multi check
+            idx = 0
+            async for res in cur.executemulti(
+                self.injected_param_multi, (self.injected_param, "A STRING")
+            ):
+                self.assertEqual(self.expected_result_multi[idx], await res.fetchall())
+                idx += 1
+            # execute many check
+            await cur.executemany(
+                self.injected_param_batch_insert,
+                self.injected_param_batch_insert_values,
+            )
+            await cur.execute(f"SELECT * FROM {self.table_name}")
+            self.assertEqual(self.expected_result_batch_insert, await cur.fetchall())

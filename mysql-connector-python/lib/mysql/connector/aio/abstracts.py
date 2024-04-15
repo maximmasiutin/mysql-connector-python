@@ -190,6 +190,7 @@ class MySQLConnectionAbstract(ABC):
         converter_str_fallback: bool = False,
         connection_timeout: int = DEFAULT_CONFIGURATION["connect_timeout"],
         unix_socket: Optional[str] = None,
+        use_unicode: Optional[bool] = True,
         ssl_ca: Optional[str] = None,
         ssl_cert: Optional[str] = None,
         ssl_key: Optional[str] = None,
@@ -254,9 +255,9 @@ class MySQLConnectionAbstract(ABC):
         self.raise_on_warnings: bool = raise_on_warnings
         self._buffered: bool = buffered
         self._raw: bool = raw
+        self._use_unicode: bool = use_unicode
         self._have_next_result: bool = False
         self._unread_result: bool = False
-        self._use_unicode: bool = True
         self._in_transaction: bool = False
         self._oci_config_file: Optional[str] = None
         self._oci_config_profile: Optional[str] = None
