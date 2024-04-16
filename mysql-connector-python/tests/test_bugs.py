@@ -94,6 +94,34 @@ except ImportError:
 ERR_NO_CEXT = "C Extension not available"
 
 
+def setUpModule() -> None:
+    with MySQLConnection(**tests.get_mysql_config()) as cnx:
+        global NATIVE_PASSWORD_INSTALLED
+
+        user = {
+            "user": "_bugs",
+            "host": "%",
+            "auth_plugin": "mysql_native_password",
+            "password": "s3cr3t",
+        }
+        stmt = (
+            "CREATE USER IF NOT EXISTS '{user}'@'{host}' IDENTIFIED "
+            "WITH {auth_plugin} BY '{password}'"
+        ).format(**user)
+        with cnx.cursor() as cur:
+            try:
+                cur.execute("DROP USER IF EXISTS '{user}'@'{host}'".format(**user))
+                cur.execute(stmt)
+                cur.execute("DROP USER IF EXISTS '{user}'@'{host}'".format(**user))
+                NATIVE_PASSWORD_INSTALLED = True
+            except mysql.connector.errors.DatabaseError:
+                try:
+                    cur.execute("INSTALL COMPONENT 'file://mysql_native_password'")
+                    NATIVE_PASSWORD_INSTALLED = True
+                except mysql.connector.errors.DatabaseError:
+                    NATIVE_PASSWORD_INSTALLED = False
+
+
 class Bug437972Tests(tests.MySQLConnectorTests):
     def test_windows_tcp_connection(self):
         """lp:437972 TCP connection to Windows"""
@@ -409,6 +437,9 @@ class Bug507466(tests.MySQLConnectorTests):
         self.cnx.close()
 
 
+@unittest.skipIf(
+    tests.MYSQL_VERSION >= (8, 4, 0), "mysql_native_password is deprecated"
+)
 class Bug519301(tests.MySQLConnectorTests):
     """lp:519301 Temporary connection failures with 2 exceptions"""
 
@@ -2464,29 +2495,6 @@ class BugOra17054848(tests.MySQLConnectorTests):
 class BugOra16217765(tests.MySQLConnectorTests):
     """BUG#16217765: Fix authentication plugin support"""
 
-    users = {
-        "sha256user": {
-            "username": "sha256user",
-            "password": "sha256P@ss",
-            "auth_plugin": "sha256_password",
-        },
-        "nativeuser": {
-            "username": "nativeuser",
-            "password": "nativeP@ss",
-            "auth_plugin": "mysql_native_password",
-        },
-        "sha256user_np": {
-            "username": "sha256user_np",
-            "password": "",
-            "auth_plugin": "sha256_password",
-        },
-        "nativeuser_np": {
-            "username": "nativeuser_np",
-            "password": "",
-            "auth_plugin": "mysql_native_password",
-        },
-    }
-
     def _create_user(self, cnx, user, password, host, database, plugin):
         self._drop_user(cnx, user, host)
         create_user = "CREATE USER '{user}'@'{host}' IDENTIFIED WITH {plugin}"
@@ -2521,6 +2529,36 @@ class BugOra16217765(tests.MySQLConnectorTests):
             pass
 
     def setUp(self):
+        self.users = {
+            "sha256user": {
+                "username": "sha256user",
+                "password": "sha256P@ss",
+                "auth_plugin": "sha256_password",
+            },
+            "sha256user_np": {
+                "username": "sha256user_np",
+                "password": "",
+                "auth_plugin": "sha256_password",
+            },
+        }
+
+        if NATIVE_PASSWORD_INSTALLED:
+            self.users = {
+                **self.users,
+                **{
+                    "nativeuser_np": {
+                        "username": "nativeuser_np",
+                        "password": "",
+                        "auth_plugin": "mysql_native_password",
+                    },
+                    "nativeuser": {
+                        "username": "nativeuser",
+                        "password": "nativeP@ss",
+                        "auth_plugin": "mysql_native_password",
+                    },
+                },
+            }
+
         self.errmsg = "AuthPlugin {0} failed: {1}"
         config = tests.get_mysql_config()
         self.host = config["host"]
@@ -2633,6 +2671,9 @@ class BugOra16217765(tests.MySQLConnectorTests):
         ),
     )
     def test_native(self):
+        if not NATIVE_PASSWORD_INSTALLED:
+            self.skipTest("mysql_native_password isn't loaded")
+
         config = tests.get_mysql_config()
         config["unix_socket"] = None
 
@@ -6609,8 +6650,9 @@ class Bug32162928(tests.MySQLConnectorTests):
         if tests.MYSQL_VERSION < (8, 0, 0):
             self.new_users = self.users[0:4]
         else:
-            self.new_users = self.users
-
+            self.new_users = (
+                self.users if NATIVE_PASSWORD_INSTALLED else self.users[-4:]
+            )
         for new_user in self.new_users:
             cnx.cmd_query("DROP USER IF EXISTS '{user}'@'{host}'".format(**new_user))
 
@@ -6650,13 +6692,17 @@ class Bug32162928(tests.MySQLConnectorTests):
                 (1, 2),
                 (2, 3),
                 (3, 0),
-                (3, 4),
-                (4, 5),
-                (5, 3),
-                (5, 0),
             ]
+            if NATIVE_PASSWORD_INSTALLED:
+                test_cases += [
+                    (3, 4),
+                    (4, 5),
+                    (5, 3),
+                    (5, 0),
+                ]
+
         for user1, user2 in test_cases:
-            conn_args_user1 = self.users[user1].copy()
+            conn_args_user1 = self.new_users[user1].copy()
             try:
                 conn_args_user1.pop("auth_plugin")
             except:
@@ -6668,24 +6714,28 @@ class Bug32162928(tests.MySQLConnectorTests):
             cnx_test = self.cnx.__class__(**conn_args_user1)
             cnx_test.cmd_query("SELECT USER()")
             first_user = cnx_test.get_rows()[0][0][0]
-            self.assertEqual("{user}@{host}".format(**self.users[user1]), first_user)
+            self.assertEqual(
+                "{user}@{host}".format(**self.new_users[user1]), first_user
+            )
 
             cnx_test.cmd_change_user(
-                self.users[user2]["user"],
-                self.users[user2]["password"],
-                self.users[user2]["database"],
+                self.new_users[user2]["user"],
+                self.new_users[user2]["password"],
+                self.new_users[user2]["database"],
             )
             cnx_test.cmd_query("SELECT USER()")
             rows = cnx_test.get_rows()
             current_user = rows[0][0][0]
             self.assertNotEqual(first_user, current_user)
-            self.assertEqual("{user}@{host}".format(**self.users[user2]), current_user)
+            self.assertEqual(
+                "{user}@{host}".format(**self.new_users[user2]), current_user
+            )
             cnx_test.close()
 
     def tearDown(self):
         cnx = MySQLConnection(**self.connect_kwargs)
         # cleanup users
-        for new_user in self.users:
+        for new_user in self.new_users:
             cnx.cmd_query("DROP USER IF EXISTS '{user}'@'{host}'".format(**new_user))
 
 

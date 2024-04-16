@@ -676,9 +676,13 @@ class MySQLxSessionTests(tests.MySQLxTests):
         except mysqlx.errors.OperationalError:
             pass
 
+        native_auth = (
+            "mysql_native_password"
+            if tests.MYSQL_VERSION < (8, 4, 0)
+            else "caching_sha2_password"
+        )
         sess.sql(
-            "CREATE USER 'native'@'%' IDENTIFIED WITH "
-            "mysql_native_password BY 'test'"
+            f"CREATE USER 'native'@'%' IDENTIFIED WITH {native_auth} BY 'test'"
         ).execute()
         sess.sql(
             "CREATE USER 'sha256'@'%' IDENTIFIED WITH sha256_password BY 'sha256'"
@@ -694,8 +698,9 @@ class MySQLxSessionTests(tests.MySQLxTests):
         config["auth"] = "plain"
         mysqlx.get_session(config)
 
-        config["auth"] = "mysql41"
-        mysqlx.get_session(config)
+        if tests.MYSQL_VERSION < (8, 4, 0):
+            config["auth"] = "mysql41"
+            mysqlx.get_session(config)
 
         config["user"] = "sha256"
         config["password"] = "sha256"
@@ -1059,7 +1064,7 @@ class MySQLxSessionTests(tests.MySQLxTests):
         self.session.sql("DROP USER IF EXISTS 'def_schema'@'%'").execute()
         self.session.sql(
             "CREATE USER 'def_schema'@'%' IDENTIFIED WITH "
-            "mysql_native_password BY 'test'"
+            "caching_sha2_password BY 'test'"
         ).execute()
         settings = self.connect_kwargs.copy()
         settings["user"] = "def_schema"
@@ -2592,6 +2597,9 @@ class MySQLxCompressionTests(tests.MySQLxTests):
         self._set_compression_algorithms(default_algorithms)
 
 
+@unittest.skipIf(
+    tests.MYSQL_VERSION >= (8, 4, 0), "mysql_native_password is deprecated"
+)
 class WL14852(tests.MySQLxTests):
     """WL#14852: Align TLS and SSL options checking and behavior"""
 

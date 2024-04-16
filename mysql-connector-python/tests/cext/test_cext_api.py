@@ -38,6 +38,8 @@ import unittest
 
 import tests
 
+import mysql.connector
+
 from mysql.connector.constants import ClientFlag, ServerFlag
 from mysql.connector.version import VERSION
 
@@ -51,6 +53,34 @@ else:
     CEXT_MYSQL_AVAILABLE = True
 
 LOGGER = logging.getLogger(tests.LOGGER_NAME)
+
+
+def setUpModule() -> None:
+    with CMySQLConnection(**tests.get_mysql_config()) as cnx:
+        global NATIVE_PASSWORD_INSTALLED
+
+        user = {
+            "user": "_bugs",
+            "host": "%",
+            "auth_plugin": "mysql_native_password",
+            "password": "s3cr3t",
+        }
+        stmt = (
+            "CREATE USER IF NOT EXISTS '{user}'@'{host}' IDENTIFIED "
+            "WITH {auth_plugin} BY '{password}'"
+        ).format(**user)
+        with cnx.cursor() as cur:
+            try:
+                cur.execute("DROP USER IF EXISTS '{user}'@'{host}'".format(**user))
+                cur.execute(stmt)
+                cur.execute("DROP USER IF EXISTS '{user}'@'{host}'".format(**user))
+                NATIVE_PASSWORD_INSTALLED = True
+            except mysql.connector.errors.DatabaseError:
+                try:
+                    cur.execute("INSTALL COMPONENT 'file://mysql_native_password'")
+                    NATIVE_PASSWORD_INSTALLED = True
+                except mysql.connector.errors.DatabaseError:
+                    NATIVE_PASSWORD_INSTALLED = False
 
 
 def get_variables(cnx, pattern=None, variables=None, global_vars=False):
@@ -545,7 +575,7 @@ class CExtMySQLTests(tests.MySQLConnectorTests):
         if tests.MYSQL_VERSION < (8, 0, 0):
             new_users = users[0:4]
         else:
-            new_users = users
+            new_users = users if NATIVE_PASSWORD_INSTALLED else users[-4:]
 
         for new_user in new_users:
             try:
@@ -605,13 +635,17 @@ class CExtMySQLTests(tests.MySQLConnectorTests):
                 (1, 2),
                 (2, 3),
                 (3, 0),
-                (3, 4),
-                (4, 5),
-                (5, 3),
-                (5, 0),
             ]
+            if NATIVE_PASSWORD_INSTALLED:
+                test_cases += [
+                    (3, 4),
+                    (4, 5),
+                    (5, 3),
+                    (5, 0),
+                ]
+
         for user1, user2 in test_cases:
-            conn_args_user1 = users[user1].copy()
+            conn_args_user1 = new_users[user1].copy()
             try:
                 conn_args_user1.pop("auth_plugin")
             except:
@@ -623,22 +657,22 @@ class CExtMySQLTests(tests.MySQLConnectorTests):
             cnx_test = CMySQLConnection(**conn_args_user1)
             cnx_test.cmd_query("SELECT USER()")
             current_user = cnx_test.get_rows()[0][0][0]
-            self.assertTrue("{user}@".format(**users[user1]) in current_user)
+            self.assertTrue("{user}@".format(**new_users[user1]) in current_user)
 
             cnx_test.cmd_change_user(
-                users[user2]["user"],
-                users[user2]["password"],
-                users[user2]["database"],
+                new_users[user2]["user"],
+                new_users[user2]["password"],
+                new_users[user2]["database"],
             )
             cnx_test.cmd_query("SELECT USER()")
             rows = cnx_test.get_rows()
             current_user = rows[0][0][0]
             self.assertNotEqual(user["user"], current_user)
-            self.assertTrue("{user}@".format(**users[user2]) in current_user)
+            self.assertTrue("{user}@".format(**new_users[user2]) in current_user)
             cnx_test.close()
 
         # cleanup users
-        for new_user in users:
+        for new_user in new_users:
             try:
                 cnx.cmd_query("DROP USER '{user}'@'{host}'".format(**new_user))
             except:
