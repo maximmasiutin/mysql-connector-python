@@ -175,6 +175,9 @@ Requires:      python38
 Requires:      python3-dns >= %{wants_py_dnspython_version}
 %endif
 
+%if 0%{?fedora}
+%global __requires_exclude .*protobuf.*
+%endif
 
 %description -n mysql-connector-python3%{?product_suffix}
 MySQL Connector/Python enables Python programs to access MySQL
