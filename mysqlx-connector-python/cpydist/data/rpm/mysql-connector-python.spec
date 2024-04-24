@@ -117,6 +117,10 @@ BuildRequires: python38-setuptools
 BuildRequires: python38-rpm-macros
 %endif
 
+%if 0%{?fedora}
+%global __requires_exclude .*protobuf.*
+%endif
+
 %description
 MySQL Connector/Python enables Python programs to access MySQL
 databases, using an API that is compliant with the Python DB API
