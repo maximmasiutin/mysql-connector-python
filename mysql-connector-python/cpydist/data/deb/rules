@@ -109,12 +109,3 @@ override_dh_installdocs:
 	dh_installdocs --all CONTRIBUTING.rst
 	dh_installdocs --all mysql-connector-python/docs/INFO_SRC
 	dh_installdocs --all mysql-connector-python/docs/INFO_BIN
-
-# Post install scripts uses "sysconfig", seems for some Deb platforms
-# the Python 3 default install this is provided by "python3-distutils".
-# Debian 9 and Ubuntu 16 lacks "python3-distutils" but has "sysconfig"
-# anyway.
-SUBSTVARS = -Vpython3-distutils:Depends="python3-distutils"
-
-override_dh_gencontrol:
-	dh_gencontrol -- $(SUBSTVARS)

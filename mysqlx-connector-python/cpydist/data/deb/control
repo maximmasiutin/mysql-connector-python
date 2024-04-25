@@ -12,8 +12,7 @@ Package: mysqlx-connector-python-py3
 Architecture: any
 Depends:
  ${python3:Depends},
- ${python3-protobuf:Depends},
- ${python3-distutils:Depends}
+ ${python3-protobuf:Depends}
 Replaces: mysqlx-connector-python-cext-py3 (<< 8.0.22)
 Breaks: mysqlx-connector-python-cext-py3 (<< 8.0.22)
 Recommends: python3-dnspython (>= 1.16.0)
