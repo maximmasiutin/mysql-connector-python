@@ -26,6 +26,7 @@
 # along with this program; if not, write to the Free Software Foundation, Inc.,
 # 51 Franklin St, Fifth Floor, Boston, MA 02110-1301  USA
 
+import warnings
 import tests
 
 from tests import cmp_result, cnx_aio_config, foreach_cnx_aio
@@ -1056,3 +1057,70 @@ class MySQLCursorPreparedNamedTupleTests(
     @foreach_cnx_aio()
     async def test_fetchmany(self):
         await self._test_fetchmany(self.cnx, MySQLCursorPreparedNamedTuple)
+
+
+class MySQLCursorDeprecatedTests(tests.MySQLConnectorAioTestCase):
+
+    @foreach_cnx_aio()
+    async def test_deprecation_cursor_prepared_raw(self):
+        with warnings.catch_warnings(record=True) as warnings_stack:
+            # Cause all warnings to always be triggered.
+            warnings.simplefilter("always", DeprecationWarning)
+            # The warning should be raised as the cursor is instantiated
+            async with await self.cnx.cursor(prepared=True, raw=True) as _:
+                pass
+            self.assertTrue(
+                len(warnings_stack) != 0,
+                msg="No warnings were caught as warnings_stack was empty",
+            )
+            self.assertTrue(issubclass(warnings_stack[-1].category, DeprecationWarning))
+            self.assertTrue("deprecated" in str(warnings_stack[-1].message))
+            warnings.resetwarnings()
+
+    @foreach_cnx_aio()
+    async def test_deprecation_cursor_named_tuple(self):
+        with warnings.catch_warnings(record=True) as warnings_stack:
+            # Cause all warnings to always be triggered.
+            warnings.simplefilter("always", DeprecationWarning)
+            # The warning should be raised as the cursor is instantiated
+            async with await self.cnx.cursor(named_tuple=True) as _:
+                pass
+            self.assertTrue(
+                len(warnings_stack) != 0,
+                msg="No warnings were caught as warnings_stack was empty",
+            )
+            self.assertTrue(issubclass(warnings_stack[-1].category, DeprecationWarning))
+            self.assertTrue("deprecated" in str(warnings_stack[-1].message))
+            warnings.resetwarnings()
+
+    @foreach_cnx_aio()
+    async def test_deprecation_cursor_buffered_named_tuple(self):
+        with warnings.catch_warnings(record=True) as warnings_stack:
+            # Cause all warnings to always be triggered.
+            warnings.simplefilter("always", DeprecationWarning)
+            # The warning should be raised as the cursor is instantiated
+            async with await self.cnx.cursor(buffered=True, named_tuple=True) as _:
+                pass
+            self.assertTrue(
+                len(warnings_stack) != 0,
+                msg="No warnings were caught as warnings_stack was empty",
+            )
+            self.assertTrue(issubclass(warnings_stack[-1].category, DeprecationWarning))
+            self.assertTrue("deprecated" in str(warnings_stack[-1].message))
+            warnings.resetwarnings()
+
+    @foreach_cnx_aio()
+    async def test_deprecation_cursor_prepared_named_tuple(self):
+        with warnings.catch_warnings(record=True) as warnings_stack:
+            # Cause all warnings to always be triggered.
+            warnings.simplefilter("always", DeprecationWarning)
+            # The warning should be raised as the cursor is instantiated
+            async with await self.cnx.cursor(prepared=True, named_tuple=True) as _:
+                pass
+            self.assertTrue(
+                len(warnings_stack) != 0,
+                msg="No warnings were caught as warnings_stack was empty",
+            )
+            self.assertTrue(issubclass(warnings_stack[-1].category, DeprecationWarning))
+            self.assertTrue("deprecated" in str(warnings_stack[-1].message))
+            warnings.resetwarnings()

@@ -50,7 +50,14 @@ from typing import (
 
 from . import version
 from .abstracts import CMySQLPrepStmt, MySQLConnectionAbstract
-from .constants import ClientFlag, FieldFlag, FieldType, ServerFlag, ShutdownType
+from .constants import (
+    ClientFlag,
+    FieldFlag,
+    FieldType,
+    ServerFlag,
+    ShutdownType,
+    raise_warning_against_deprecated_cursor_class,
+)
 from .conversion import MySQLConverter
 from .errors import (
     InterfaceError,
@@ -799,6 +806,9 @@ class CMySQLConnection(MySQLConnectionAbstract):
             24: CMySQLCursorPreparedNamedTuple,
         }
         try:
+            raise_warning_against_deprecated_cursor_class(
+                cursor_name=types[cursor_type].__name__
+            )
             return (types[cursor_type])(self)
         except KeyError:
             args = ("buffered", "raw", "dictionary", "named_tuple", "prepared")

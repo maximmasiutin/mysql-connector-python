@@ -39,6 +39,7 @@ import sys
 import unittest
 
 from collections import namedtuple
+import warnings
 
 import tests
 
@@ -76,7 +77,9 @@ class CExtMySQLCursorTests(tests.CMySQLCursorTests):
     def test___init__(self):
         self.assertRaises(errors.InterfaceError, CMySQLCursor, connection="ham")
         cur = self._get_cursor(self.cnx)
-        self.assertTrue(hex(id(self.cnx)).upper()[2:-1] in repr(cur._connection).upper())
+        self.assertTrue(
+            hex(id(self.cnx)).upper()[2:-1] in repr(cur._connection).upper()
+        )
 
     def test_lastrowid(self):
         cur = self._get_cursor(self.cnx)
@@ -657,7 +660,9 @@ class CExtMySQLCursorBufferedTests(tests.CMySQLCursorTests):
         self.assertRaises(errors.InterfaceError, CMySQLCursorBuffered, connection="ham")
 
         cur = self._get_cursor(self.cnx)
-        self.assertTrue(hex(id(self.cnx)).upper()[2:-1] in repr(cur._connection).upper())
+        self.assertTrue(
+            hex(id(self.cnx)).upper()[2:-1] in repr(cur._connection).upper()
+        )
 
     def test_execute(self):
         self.cnx.get_warnings = True
@@ -1364,3 +1369,66 @@ class CMySQLCursorPreparedRawTests(CMySQLCursorPreparedTests):
         self.assertEqual(len(rows), 4)
         for row in rows:
             self.assertEqual(row[1:], self.exp)
+
+
+class CMySQLCursorDeprecatedTests(tests.CMySQLCursorTests):
+
+    def test_deprecation_cursor_prepared_raw(self):
+        with warnings.catch_warnings(record=True) as warnings_stack:
+            # Cause all warnings to always be triggered.
+            warnings.simplefilter("always", DeprecationWarning)
+            # The warning should be raised as the cursor is instantiated
+            with self.cnx.cursor(prepared=True, raw=True) as _:
+                pass
+            self.assertTrue(
+                len(warnings_stack) != 0,
+                msg="No warnings were caught as warnings_stack was empty",
+            )
+            self.assertTrue(issubclass(warnings_stack[-1].category, DeprecationWarning))
+            self.assertTrue("deprecated" in str(warnings_stack[-1].message))
+            warnings.resetwarnings()
+
+    def test_deprecation_cursor_named_tuple(self):
+        with warnings.catch_warnings(record=True) as warnings_stack:
+            # Cause all warnings to always be triggered.
+            warnings.simplefilter("always", DeprecationWarning)
+            # The warning should be raised as the cursor is instantiated
+            with self.cnx.cursor(named_tuple=True) as _:
+                pass
+            self.assertTrue(
+                len(warnings_stack) != 0,
+                msg="No warnings were caught as warnings_stack was empty",
+            )
+            self.assertTrue(issubclass(warnings_stack[-1].category, DeprecationWarning))
+            self.assertTrue("deprecated" in str(warnings_stack[-1].message))
+            warnings.resetwarnings()
+
+    def test_deprecation_cursor_buffered_named_tuple(self):
+        with warnings.catch_warnings(record=True) as warnings_stack:
+            # Cause all warnings to always be triggered.
+            warnings.simplefilter("always", DeprecationWarning)
+            # The warning should be raised as the cursor is instantiated
+            with self.cnx.cursor(buffered=True, named_tuple=True) as _:
+                pass
+            self.assertTrue(
+                len(warnings_stack) != 0,
+                msg="No warnings were caught as warnings_stack was empty",
+            )
+            self.assertTrue(issubclass(warnings_stack[-1].category, DeprecationWarning))
+            self.assertTrue("deprecated" in str(warnings_stack[-1].message))
+            warnings.resetwarnings()
+
+    def test_deprecation_cursor_prepared_named_tuple(self):
+        with warnings.catch_warnings(record=True) as warnings_stack:
+            # Cause all warnings to always be triggered.
+            warnings.simplefilter("always", DeprecationWarning)
+            # The warning should be raised as the cursor is instantiated
+            with self.cnx.cursor(prepared=True, named_tuple=True) as _:
+                pass
+            self.assertTrue(
+                len(warnings_stack) != 0,
+                msg="No warnings were caught as warnings_stack was empty",
+            )
+            self.assertTrue(issubclass(warnings_stack[-1].category, DeprecationWarning))
+            self.assertTrue("deprecated" in str(warnings_stack[-1].message))
+            warnings.resetwarnings()

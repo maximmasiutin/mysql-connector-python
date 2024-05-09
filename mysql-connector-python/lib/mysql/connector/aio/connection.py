@@ -66,6 +66,7 @@ from ..constants import (
     ServerCmd,
     ServerFlag,
     flag_is_set,
+    raise_warning_against_deprecated_cursor_class,
 )
 from ..errors import (
     DatabaseError,
@@ -758,6 +759,9 @@ class MySQLConnection(MySQLConnectionAbstract):
             24: MySQLCursorPreparedNamedTuple,
         }
         try:
+            raise_warning_against_deprecated_cursor_class(
+                cursor_name=types[cursor_type].__name__
+            )
             return (types[cursor_type])(self)
         except KeyError:
             args = ("buffered", "raw", "dictionary", "named_tuple", "prepared")

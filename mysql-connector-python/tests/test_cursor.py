@@ -47,6 +47,7 @@ import time
 
 from collections import namedtuple
 from decimal import Decimal
+import warnings
 
 import tests
 
@@ -1680,3 +1681,73 @@ class MySQLCursorPreparedRawTests(tests.TestsCursor):
         self.cur.execute(f"SELECT * FROM {self.table_name}")
         exp = self.data[:]
         self.assertEqual(exp, self.cur.fetchall())
+
+
+class MySQLCursorDeprecatedTests(tests.TestsCursor):
+
+    def setUp(self):
+        config = tests.get_mysql_config()
+        self.cnx = connection.MySQLConnection(**config)
+
+    def tearDown(self):
+        self.cnx.close()
+
+    def test_deprecation_cursor_prepared_raw(self):
+        with warnings.catch_warnings(record=True) as warnings_stack:
+            # Cause all warnings to always be triggered.
+            warnings.simplefilter("always", DeprecationWarning)
+            # The warning should be raised as the cursor is instantiated
+            with self.cnx.cursor(prepared=True, raw=True) as _:
+                pass
+            self.assertTrue(
+                len(warnings_stack) != 0,
+                msg="No warnings were caught as warnings_stack was empty",
+            )
+            self.assertTrue(issubclass(warnings_stack[-1].category, DeprecationWarning))
+            self.assertTrue("deprecated" in str(warnings_stack[-1].message))
+            warnings.resetwarnings()
+
+    def test_deprecation_cursor_named_tuple(self):
+        with warnings.catch_warnings(record=True) as warnings_stack:
+            # Cause all warnings to always be triggered.
+            warnings.simplefilter("always", DeprecationWarning)
+            # The warning should be raised as the cursor is instantiated
+            with self.cnx.cursor(named_tuple=True) as _:
+                pass
+            self.assertTrue(
+                len(warnings_stack) != 0,
+                msg="No warnings were caught as warnings_stack was empty",
+            )
+            self.assertTrue(issubclass(warnings_stack[-1].category, DeprecationWarning))
+            self.assertTrue("deprecated" in str(warnings_stack[-1].message))
+            warnings.resetwarnings()
+
+    def test_deprecation_cursor_buffered_named_tuple(self):
+        with warnings.catch_warnings(record=True) as warnings_stack:
+            # Cause all warnings to always be triggered.
+            warnings.simplefilter("always", DeprecationWarning)
+            # The warning should be raised as the cursor is instantiated
+            with self.cnx.cursor(buffered=True, named_tuple=True) as _:
+                pass
+            self.assertTrue(
+                len(warnings_stack) != 0,
+                msg="No warnings were caught as warnings_stack was empty",
+            )
+            self.assertTrue(issubclass(warnings_stack[-1].category, DeprecationWarning))
+            self.assertTrue("deprecated" in str(warnings_stack[-1].message))
+            warnings.resetwarnings()
+
+    def test_deprecation_cursor_prepared_named_tuple(self):
+        with warnings.catch_warnings(record=True) as warnings_stack:
+            # Cause all warnings to always be triggered.
+            warnings.simplefilter("always", DeprecationWarning)
+            # The warning should be raised as the cursor is instantiated
+            with self.cnx.cursor(prepared=True, named_tuple=True) as _:
+                pass
+            self.assertTrue(
+                len(warnings_stack) != 0,
+                msg="No warnings were caught as warnings_stack was empty",
+            )
+            self.assertTrue(issubclass(warnings_stack[-1].category, DeprecationWarning))
+            self.assertTrue("deprecated" in str(warnings_stack[-1].message))
+            warnings.resetwarnings()
