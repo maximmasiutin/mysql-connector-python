@@ -131,7 +131,7 @@ def main() -> None:
         cmdclass=COMMAND_CLASSES,
         python_requires=">=3.8",
         extras_require={
-            "dns-srv": ["dnspython>=1.16.0,<=2.3.0"],
+            "dns-srv": ["dnspython==2.6.1"],
             "gssapi": ["gssapi>=1.6.9,<=1.8.2"],
             "opentelemetry": [
                 "Deprecated>=1.2.6",

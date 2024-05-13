@@ -15,7 +15,7 @@ Depends:
  ${python3-protobuf:Depends}
 Replaces: mysqlx-connector-python-cext-py3 (<< 8.0.22)
 Breaks: mysqlx-connector-python-cext-py3 (<< 8.0.22)
-Recommends: python3-dnspython (>= 1.16.0)
+Suggests: python3-dnspython (= 2.6.1)
 Conflicts: mysqlx-connector-python-commercial-py3
 Description: MySQL database driver written in pure Python 3
  @LICENSE@

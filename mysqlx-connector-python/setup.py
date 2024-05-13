@@ -143,7 +143,7 @@ def main() -> None:
         python_requires=">=3.8",
         install_requires=["protobuf>=4.21.1,<=4.21.12"],
         extras_require={
-            "dns-srv": ["dnspython>=1.16.0,<=2.3.0"],
+            "dns-srv": ["dnspython==2.6.1"],
             "compression": ["lz4>=2.1.6,<=4.3.2", "zstandard>=0.12.0,<=0.19.0"],
         },
     )

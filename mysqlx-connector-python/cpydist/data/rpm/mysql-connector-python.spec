@@ -26,7 +26,7 @@
 # along with this program; if not, write to the Free Software Foundation, Inc.,
 # 51 Franklin St, Fifth Floor, Boston, MA 02110-1301  USA
 
-%global wants_py_dnspython_version 1.16.0
+%global wants_py_dnspython_version 2.6.1
 
 %undefine _package_note_file
 
