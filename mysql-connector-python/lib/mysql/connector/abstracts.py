@@ -1269,6 +1269,13 @@ class MySQLConnectionAbstract(ABC):
 
         self._execute_query(f"SET NAMES '{charset_name}' COLLATE '{collation_name}'")
 
+        try:
+            # Required for C Extension
+            self.set_character_set_name(charset_name)
+        except AttributeError:
+            # Not required for pure Python connection
+            pass
+
         if self.converter:
             self.converter.set_charset(charset_name, character_set=self._character_set)
 

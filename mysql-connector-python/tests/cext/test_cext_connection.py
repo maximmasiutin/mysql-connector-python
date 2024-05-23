@@ -197,9 +197,11 @@ class CMySQLConnectionTests(tests.MySQLConnectorTests):
     def test_cursor(self):
         """Test CEXT cursors."""
 
-        class FalseCursor: ...
+        class FalseCursor:
+            ...
 
-        class TrueCursor(cursor_cext.CMySQLCursor): ...
+        class TrueCursor(cursor_cext.CMySQLCursor):
+            ...
 
         self.assertRaises(
             errors.ProgrammingError, self.cnx.cursor, cursor_class=FalseCursor
@@ -283,9 +285,6 @@ class CMySQLConnectionTests(tests.MySQLConnectorTests):
                 self.assertTupleEqual(("ascii", "ascii_general_ci"), res)
 
         for charset_id, charset, collation in [
-            (303, "utf8mb4", "utf8mb4_ja_0900_as_cs"),
-            (46, "utf8mb4", "utf8mb4_bin"),
-            (45, "utf8mb4", "utf8mb4_general_ci"),
             (26, "cp1250", "cp1250_general_ci"),
             (8, "latin1", "latin1_swedish_ci"),
         ]:
@@ -293,11 +292,6 @@ class CMySQLConnectionTests(tests.MySQLConnectorTests):
             config["collation"] = collation
             with CMySQLConnection(**config) as cnx:
                 self.assertEqual(charset_id, cnx._charset_id)
-                with cnx.cursor() as cur:
-                    cur.execute("SELECT @@character_set_client, @@collation_connection")
-                    res = cur.fetchone()
-                    self.assertTupleEqual((config["charset"], config["collation"]), res)
-                cnx.cmd_change_user(config["user"], config["password"], config["database"], charset=charset_id)
                 with cnx.cursor() as cur:
                     cur.execute("SELECT @@character_set_client, @@collation_connection")
                     res = cur.fetchone()

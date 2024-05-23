@@ -15,7 +15,6 @@ v9.0.0
 - WL#16318: Deprecate Cursors Prepared Raw and Named Tuple
 - WL#16283: Remove OpenTelemetry Bundled Installation
 - BUG#36611371: Update dnspython required versions to allow latest 2.6.1
-- BUG#36570707: Collation set on connect using C-Extension is ignored
 - BUG#36476195: Incorrect escaping in pure Python mode if sql_mode includes NO_BACKSLASH_ESCAPES
 - BUG#36289767: MySQLCursorBufferedRaw does not skip conversion
 
