@@ -137,7 +137,6 @@ class MySQLConnection(MySQLConnectionAbstract):
         self._converter_class: Type[MySQLConverter] = MySQLConverter
 
         self._client_flags: int = ClientFlag.get_default()
-        self._charset_id: int = 45
         self._sql_mode: Optional[str] = None
         self._time_zone: Optional[str] = None
         self._autocommit: bool = False
@@ -1029,7 +1028,7 @@ class MySQLConnection(MySQLConnectionAbstract):
         username: str = "",
         password: str = "",
         database: str = "",
-        charset: int = 45,
+        charset: Optional[int] = None,
         password1: str = "",
         password2: str = "",
         password3: str = "",
@@ -1043,10 +1042,14 @@ class MySQLConnection(MySQLConnectionAbstract):
 
         Returns a dict()
         """
-        if not isinstance(charset, int):
-            raise ValueError("charset must be an integer")
-        if charset < 0:
-            raise ValueError("charset should be either zero or a postive integer")
+        # If charset isn't defined, we use the same charset ID defined previously,
+        # otherwise, we run a verification and update the charset ID.
+        if charset is not None:
+            if not isinstance(charset, int):
+                raise ValueError("charset must be an integer")
+            if charset < 0:
+                raise ValueError("charset should be either zero or a postive integer")
+            self._charset_id = charset
 
         self._mfa_nfactor = 1
         self._user = username
@@ -1076,7 +1079,7 @@ class MySQLConnection(MySQLConnectionAbstract):
             password2=self._password2,
             password3=self._password3,
             database=database,
-            charset=charset,
+            charset=self._charset_id,
             client_flags=self._client_flags,
             auth_plugin=self._auth_plugin,
             auth_plugin_class=self._auth_plugin_class,
@@ -1091,7 +1094,6 @@ class MySQLConnection(MySQLConnectionAbstract):
         if not (self._client_flags & ClientFlag.CONNECT_WITH_DB) and database:
             self.cmd_init_db(database)
 
-        self._charset_id = charset
         self._post_connection()
 
         # return ok_pkt

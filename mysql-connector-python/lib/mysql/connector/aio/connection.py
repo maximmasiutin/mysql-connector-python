@@ -238,17 +238,8 @@ class MySQLConnection(MySQLConnectionAbstract):
             )
         elif self._charset_name:
             self._charset = charsets.get_by_name(self._charset_name)
-            self._charset_collation = self._charset.collation
         elif self._charset_collation:
             self._charset = charsets.get_by_collation(self._charset_collation)
-            self._charset_name = self._charset.name
-        else:
-            # The default charset from the server handshake should be used instead,
-            # as `charsets.get_by_id(self._server_info.charset)`.
-            # The charset id 45 is used to be aligned with the current implementation.
-            self._charset = charsets.get_by_id(45)
-            self._charset_name = self._charset.name
-            self._charset_collation = self._charset.collation
 
         if not self._handshake["capabilities"] & ClientFlag.SSL:
             if self._auth_plugin == "mysql_clear_password" and not self.is_secure:
@@ -1296,10 +1287,10 @@ class MySQLConnection(MySQLConnectionAbstract):
 
     async def cmd_change_user(
         self,
-        user: str = "",
+        username: str = "",
         password: str = "",
         database: str = "",
-        charset: int = 45,
+        charset: Optional[int] = None,
         password1: str = "",
         password2: str = "",
         password3: str = "",
@@ -1311,13 +1302,17 @@ class MySQLConnection(MySQLConnectionAbstract):
         This method allows to change the current logged in user information.
         The result is a dictionary with OK packet information.
         """
-        if not isinstance(charset, int):
-            raise ValueError("charset must be an integer")
-        if charset < 0:
-            raise ValueError("charset should be either zero or a postive integer")
+        # If charset isn't defined, we use the same charset ID defined previously,
+        # otherwise, we run a verification and update the charset ID.
+        if charset is not None:
+            if not isinstance(charset, int):
+                raise ValueError("charset must be an integer")
+            if charset < 0:
+                raise ValueError("charset should be either zero or a postive integer")
+            self._charset = charsets.get_by_id(charset)
 
         self._mfa_nfactor = 1
-        self._user = user
+        self._user = username
         self._password = password
         self._password1 = password1
         self._password2 = password2
@@ -1341,7 +1336,7 @@ class MySQLConnection(MySQLConnectionAbstract):
             username=self._user,
             password=self._password,
             database=self._database,
-            charset=charset,
+            charset=self._charset.charset_id,
             client_flags=self._client_flags,
             ssl_enabled=self._ssl_active,
             auth_plugin=self._auth_plugin,
@@ -1355,9 +1350,6 @@ class MySQLConnection(MySQLConnectionAbstract):
 
         if not (self._client_flags & ClientFlag.CONNECT_WITH_DB) and database:
             await self.cmd_init_db(database)
-
-        self._charset = charsets.get_by_id(charset)
-        self._charset_name = self._charset.name
 
         # return ok_pkt
         return self._handle_ok(ok_packet)

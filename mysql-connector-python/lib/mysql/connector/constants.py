@@ -45,6 +45,8 @@ MYSQL_VECTOR_TYPE_CODE = "f"
 """Expected `typecode` when decoding VECTOR values from
 MySQL (blob) to Python (array.array).
 """
+MYSQL_DEFAULT_CHARSET_ID_57 = 45
+MYSQL_DEFAULT_CHARSET_ID_80 = 255
 
 DEFAULT_CONFIGURATION: Dict[str, Optional[Union[str, bool, int]]] = {
     "database": None,

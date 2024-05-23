@@ -67,7 +67,14 @@ from mysql.connector.aio.cursor import (
     MySQLCursorRaw,
 )
 from mysql.connector.aio.network import MySQLTcpSocket, MySQLUnixSocket
-from mysql.connector.constants import ClientFlag, RefreshOption, ServerCmd, ServerFlag
+from mysql.connector.constants import (
+    MYSQL_DEFAULT_CHARSET_ID_57,
+    MYSQL_DEFAULT_CHARSET_ID_80,
+    ClientFlag,
+    RefreshOption,
+    ServerCmd,
+    ServerFlag,
+)
 from mysql.connector.conversion import MySQLConverter, MySQLConverterBase
 from mysql.connector.errors import (
     DatabaseError,
@@ -697,14 +704,14 @@ class MySQLConnectionAioTests(MySQLConnectorAioTestCase):
         )
         with self.assertRaises(ProgrammingError):
             await self.cnx.cmd_change_user(
-                user="ham",
+                username="ham",
                 password="spam",
                 database="mysql",
             )
 
         with self.assertRaises(ValueError):
             await self.cnx.cmd_change_user(
-                user="ham",
+                username="ham",
                 password="spam",
                 database="mysql",
                 charset=-1,
@@ -1077,13 +1084,11 @@ class MySQLConnectionAioTests(MySQLConnectorAioTestCase):
     async def test_set_converter_class(self):
         """Set the converter class"""
 
-        class TestConverterWrong:
-            ...
+        class TestConverterWrong: ...
 
         self.assertRaises(TypeError, self.cnx.set_converter_class, TestConverterWrong)
 
-        class TestConverter(MySQLConverterBase):
-            ...
+        class TestConverter(MySQLConverterBase): ...
 
         self.cnx.set_converter_class(TestConverter)
         self.assertTrue(isinstance(self.cnx.converter, TestConverter))
@@ -1559,10 +1564,18 @@ class MySQLConnectionAioTests(MySQLConnectorAioTestCase):
 
         # prepare and execute
         await self.cnx.cmd_stmt_prepare(stmt)
-        if tests.MYSQL_VERSION < (8, 0, 22):
-            columns = [("c1", 254, None, None, None, None, 0, 1, 45)]
+        if tests.MYSQL_VERSION < (8, 0, 0):
+            columns = [
+                ("c1", 254, None, None, None, None, 0, 1, MYSQL_DEFAULT_CHARSET_ID_57)
+            ]
+        elif tests.MYSQL_VERSION < (8, 0, 22):
+            columns = [
+                ("c1", 254, None, None, None, None, 0, 1, MYSQL_DEFAULT_CHARSET_ID_80)
+            ]
         else:
-            columns = [("c1", 253, None, None, None, None, 1, 0, 45)]
+            columns = [
+                ("c1", 253, None, None, None, None, 1, 0, MYSQL_DEFAULT_CHARSET_ID_80)
+            ]
         exp = (1, columns, {"status_flag": 0, "warning_count": 0})
         self.assertEqual(exp, await self.cnx.cmd_stmt_execute(*params))
 

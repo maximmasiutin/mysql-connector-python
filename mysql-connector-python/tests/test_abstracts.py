@@ -50,7 +50,6 @@ except ImportError:
 
 
 class ConnectionSubclasses(tests.MySQLConnectorTests):
-
     """Tests for any subclass of MySQLConnectionAbstract"""
 
     def asEq(self, exp, *cases):
@@ -204,7 +203,7 @@ class ConnectionSubclasses(tests.MySQLConnectorTests):
                 self.cnx.autocommit,
                 self.cnx.sql_mode,
                 self.cnx.time_zone,
-                self.cnx._charset_id,
+                self.cnx.charset_id,
             ],
         )
 

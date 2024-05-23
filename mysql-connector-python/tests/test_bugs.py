@@ -47,14 +47,14 @@ import pickle
 import platform
 import sys
 import tempfile
-from time import sleep
 import traceback
 import unittest
 
 from collections import namedtuple
-from datetime import date, datetime, timedelta, timezone, time
+from datetime import date, datetime, time, timedelta, timezone
 from decimal import Decimal
 from threading import Thread
+from time import sleep
 
 import tests
 
@@ -4395,7 +4395,7 @@ class BugOra21476495(tests.MySQLConnectorTests):
         self.cnx = connection.MySQLConnection(**config)
 
     def test_bad_set_charset_number(self):
-        old_val = self.cnx._charset_id
+        old_val = self.cnx.charset_id
         self.assertRaises(mysql.connector.Error, self.cnx.set_charset_collation, 19999)
 
         config = tests.get_mysql_config()
@@ -4406,7 +4406,7 @@ class BugOra21476495(tests.MySQLConnectorTests):
         self.assertEqual(row[1], "utf8mb4")
         cursor.close()
 
-        self.assertEqual(self.cnx._charset_id, old_val)
+        self.assertEqual(self.cnx.charset_id, old_val)
 
 
 class BugOra21477493(tests.MySQLConnectorTests):

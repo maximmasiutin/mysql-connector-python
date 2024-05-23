@@ -71,7 +71,11 @@ from mysql.connector import (
     errors,
     network,
 )
-from mysql.connector.constants import DEFAULT_CONFIGURATION
+from mysql.connector.constants import (
+    DEFAULT_CONFIGURATION,
+    MYSQL_DEFAULT_CHARSET_ID_57,
+    MYSQL_DEFAULT_CHARSET_ID_80,
+)
 from mysql.connector.conversion import MySQLConverter, MySQLConverterBase
 from mysql.connector.errors import InterfaceError, NotSupportedError, ProgrammingError
 from mysql.connector.network import TLS_V1_3_SUPPORTED, MySQLTCPSocket, MySQLUnixSocket
@@ -180,7 +184,6 @@ class MySQLConnectionTests(tests.MySQLConnectorTests):
             "converter": None,
             "_converter_class": MySQLConverter,
             "_client_flags": constants.ClientFlag.get_default(),
-            "_charset_id": 45,
             "_user": "",
             "_password": "",
             "_database": "",
@@ -861,7 +864,7 @@ class MySQLConnectionTests(tests.MySQLConnectorTests):
             "username": "ham",
             "password": "spam",
             "database": "test",
-            "charset": 45,
+            "charset": MYSQL_DEFAULT_CHARSET_ID_57,
             "client_flags": flags,
         }
 
@@ -913,7 +916,7 @@ class MySQLConnectionTests(tests.MySQLConnectorTests):
             "username": "ham",
             "password": "spam",
             "database": "test",
-            "charset": 45,
+            "charset": MYSQL_DEFAULT_CHARSET_ID_57,
             "client_flags": flags,
             "ssl_options": {
                 "ca": os.path.join(tests.SSL_DIR, "tests_CA_cert.pem"),
@@ -1012,7 +1015,7 @@ class MySQLConnectionTests(tests.MySQLConnectorTests):
             "username": "ham",
             "password": "spam",
             "database": "test",
-            "charset": 45,
+            "charset": MYSQL_DEFAULT_CHARSET_ID_57,
             "client_flags": flags,
             "ssl_options": {
                 "ca": os.path.join(tests.SSL_DIR, "tests_CA_cert.pem"),
@@ -1248,27 +1251,27 @@ class MySQLConnectionTests(tests.MySQLConnectorTests):
 
         config["charset"] = "latin1"
         with connection.MySQLConnection(**config) as cnx:
-            self.assertEqual(8, cnx._charset_id)
+            self.assertEqual(8, cnx.charset_id)
             with cnx.cursor() as cur:
                 cur.execute("SELECT @@character_set_client")
                 res = cur.fetchone()
                 self.assertTupleEqual((config["charset"],), res)
 
             cnx.set_charset_collation(charset="ascii", collation="ascii_general_ci")
-            self.assertEqual(11, cnx._charset_id)
+            self.assertEqual(11, cnx.charset_id)
             with cnx.cursor() as cur:
                 cur.execute("SELECT @@character_set_client, @@collation_connection")
                 res = cur.fetchone()
                 self.assertTupleEqual(("ascii", "ascii_general_ci"), res)
 
         for charset_id, charset, collation in [
-            (45, "utf8mb4", "utf8mb4_general_ci"),
+            (MYSQL_DEFAULT_CHARSET_ID_57, "utf8mb4", "utf8mb4_general_ci"),
             (48, "latin1", "latin1_general_ci"),
         ]:
             config["charset"] = charset
             config["collation"] = collation
             with connection.MySQLConnection(**config) as cnx:
-                self.assertEqual(charset_id, cnx._charset_id)
+                self.assertEqual(charset_id, cnx.charset_id)
                 with cnx.cursor() as cur:
                     cur.execute("SELECT @@character_set_client, @@collation_connection")
                     res = cur.fetchone()
@@ -1281,7 +1284,7 @@ class MySQLConnectionTests(tests.MySQLConnectorTests):
         _ = config.pop("charset")
         config["collation"] = "ascii_general_ci"
         with connection.MySQLConnection(**config) as cnx:
-            self.assertEqual(11, cnx._charset_id)
+            self.assertEqual(11, cnx.charset_id)
             with cnx.cursor() as cur:
                 cur.execute("SELECT @@collation_connection")
                 res = cur.fetchone()
@@ -1290,7 +1293,7 @@ class MySQLConnectionTests(tests.MySQLConnectorTests):
         _ = config.pop("collation")
         config["charset"] = "latin1"
         with connection.MySQLConnection(**config) as cnx:
-            self.assertEqual(8, cnx._charset_id)
+            self.assertEqual(8, cnx.charset_id)
             with cnx.cursor() as cur:
                 cur.execute("SELECT @@character_set_client")
                 res = cur.fetchone()
@@ -1328,7 +1331,7 @@ class MySQLConnectionTests(tests.MySQLConnectorTests):
 
     def test__post_connection(self):
         """Executes commands after connection has been established"""
-        self.cnx._charset_id = 45
+        self.cnx._charset_id = MYSQL_DEFAULT_CHARSET_ID_57
         self.cnx._autocommit = True
         self.cnx._time_zone = "-09:00"
         self.cnx._sql_mode = "STRICT_ALL_TABLES"
@@ -1601,14 +1604,14 @@ class MySQLConnectionTests(tests.MySQLConnectorTests):
     def test_set_charset_collation(self):
         """Set the character set and collation"""
         self.cnx.set_charset_collation("latin1")
-        self.assertEqual(8, self.cnx._charset_id)
+        self.assertEqual(8, self.cnx.charset_id)
         self.cnx.set_charset_collation("latin1", "latin1_general_ci")
-        self.assertEqual(48, self.cnx._charset_id)
+        self.assertEqual(48, self.cnx.charset_id)
         self.cnx.set_charset_collation("latin1", None)
-        self.assertEqual(8, self.cnx._charset_id)
+        self.assertEqual(8, self.cnx.charset_id)
 
         self.cnx.set_charset_collation(collation="greek_bin")
-        self.assertEqual(70, self.cnx._charset_id)
+        self.assertEqual(70, self.cnx.charset_id)
 
         for charset in {None, "", 0}:
             # expecting default charset
@@ -1622,7 +1625,7 @@ class MySQLConnectionTests(tests.MySQLConnectorTests):
 
         utf8_charset = "utf8mb3" if tests.MYSQL_VERSION[:2] >= (8, 0) else "utf8"
         self.cnx.set_charset_collation(utf8_charset)
-        self.assertEqual(33, self.cnx._charset_id)
+        self.assertEqual(33, self.cnx.charset_id)
 
         self.assertRaises(errors.ProgrammingError, self.cnx.set_charset_collation, 666)
         self.assertRaises(
@@ -1986,10 +1989,18 @@ class MySQLConnectionTests(tests.MySQLConnectorTests):
 
         # prepare and execute
         self.cnx.cmd_stmt_prepare(stmt)
-        if tests.MYSQL_VERSION < (8, 0, 22):
-            columns = [("c1", 254, None, None, None, None, 0, 1, 45)]
+        if tests.MYSQL_VERSION < (8, 0, 0):
+            columns = [
+                ("c1", 254, None, None, None, None, 0, 1, MYSQL_DEFAULT_CHARSET_ID_57)
+            ]
+        elif tests.MYSQL_VERSION < (8, 0, 22):
+            columns = [
+                ("c1", 254, None, None, None, None, 0, 1, MYSQL_DEFAULT_CHARSET_ID_80)
+            ]
         else:
-            columns = [("c1", 253, None, None, None, None, 1, 0, 45)]
+            columns = [
+                ("c1", 253, None, None, None, None, 1, 0, MYSQL_DEFAULT_CHARSET_ID_80)
+            ]
         exp = (1, columns, {"status_flag": 0, "warning_count": 0})
         self.assertEqual(exp, self.cnx.cmd_stmt_execute(*params))
 

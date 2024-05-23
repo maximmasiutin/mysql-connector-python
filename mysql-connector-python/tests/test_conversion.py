@@ -45,6 +45,7 @@ from decimal import Decimal
 import tests
 
 from mysql.connector import MySQLConnection, constants, conversion
+from mysql.connector.constants import MYSQL_DEFAULT_CHARSET_ID_57
 from mysql.connector.errors import InterfaceError, ProgrammingError
 
 try:
@@ -580,7 +581,7 @@ class MySQLConverterTests(tests.MySQLConnectorTests):
             5,
             6,
             constants.FieldFlag.SET,
-            45,
+            MYSQL_DEFAULT_CHARSET_ID_57,
         )
         res = self.cnv._string_to_python(data, desc)
 

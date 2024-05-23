@@ -72,6 +72,8 @@ except ImportError:
 from .constants import (
     CONN_ATTRS_DN,
     DEFAULT_CONFIGURATION,
+    MYSQL_DEFAULT_CHARSET_ID_57,
+    MYSQL_DEFAULT_CHARSET_ID_80,
     OPENSSL_CS_NAMES,
     TLS_CIPHER_SUITES,
     TLS_VERSIONS,
@@ -174,13 +176,20 @@ class MySQLConnectionAbstract(ABC):
 
     def __init__(self) -> None:
         """Initialize"""
-        # opentelemetry related
-        self._tracer: Any = None
-        self._span: Any = None
-        self.otel_context_propagation: bool = True
+        # private (shouldn't be manipulated directly internally)
+        self.__charset_id: Optional[int] = None
+        """It shouldn't be manipulated directly, even internally. If you need
+        to manipulate the charset ID, use the property `_charset_id` (read & write)
+        instead. Similarly, `_charset_id` shouldn't be manipulated externally,
+        in this case, use property `charset_id` (read-only).
+        """
+
+        # protected (can be manipulated directly internally)
+        self._tracer: Any = None  # opentelemetry related
+        self._span: Any = None  # opentelemetry related
+        self.otel_context_propagation: bool = True  # opentelemetry related
 
         self._client_flags: int = ClientFlag.get_default()
-        self._charset_id: int = 45
         self._sql_mode: Optional[str] = None
         self._time_zone: Optional[str] = None
         self._autocommit: bool = False
@@ -1178,6 +1187,18 @@ class MySQLConnectionAbstract(ABC):
         self._unread_result = value
 
     @property
+    def collation(self) -> str:
+        """Returns the collation for current connection.
+
+        This property returns the collation name of the current connection.
+        The server is queried when the connection is active. If not connected,
+        the configured collation name is returned.
+
+        Returns a string.
+        """
+        return self._character_set.get_charset_info(self._charset_id)[2]
+
+    @property
     def charset(self) -> str:
         """Returns the character set for current connection.
 
@@ -1188,6 +1209,41 @@ class MySQLConnectionAbstract(ABC):
         Returns a string.
         """
         return self._character_set.get_info(self._charset_id)[0]
+
+    @property
+    def charset_id(self) -> int:
+        """The charset ID utilized during the connection phase.
+
+        If the charset ID hasn't been set, the default charset ID is returned.
+        """
+        return self._charset_id
+
+    @property
+    def _charset_id(self) -> int:
+        """The charset ID utilized during the connection phase.
+
+        If the charset ID hasn't been set, the default charset ID is returned.
+        """
+        if self.__charset_id is None:
+            if self._server_version is None:
+                # We mustn't set the private since we still don't know
+                # the server version. We temporarily return the default
+                # charset for undefined scenarios - eventually, the server
+                # info will be available and the private variable will be set.
+                return MYSQL_DEFAULT_CHARSET_ID_57
+
+            self.__charset_id = (
+                MYSQL_DEFAULT_CHARSET_ID_57
+                if self._server_version < (8, 0)
+                else MYSQL_DEFAULT_CHARSET_ID_80
+            )
+
+        return self.__charset_id
+
+    @_charset_id.setter
+    def _charset_id(self, value: int) -> None:
+        """Sets the charset ID utilized during the connection phase."""
+        self.__charset_id = value
 
     @property
     def python_charset(self) -> str:
@@ -1269,27 +1325,8 @@ class MySQLConnectionAbstract(ABC):
 
         self._execute_query(f"SET NAMES '{charset_name}' COLLATE '{collation_name}'")
 
-        try:
-            # Required for C Extension
-            self.set_character_set_name(charset_name)
-        except AttributeError:
-            # Not required for pure Python connection
-            pass
-
         if self.converter:
             self.converter.set_charset(charset_name, character_set=self._character_set)
-
-    @property
-    def collation(self) -> str:
-        """Returns the collation for current connection.
-
-        This property returns the collation name of the current connection.
-        The server is queried when the connection is active. If not connected,
-        the configured collation name is returned.
-
-        Returns a string.
-        """
-        return self._character_set.get_charset_info(self._charset_id)[2]
 
     @property
     @abstractmethod
@@ -1311,7 +1348,7 @@ class MySQLConnectionAbstract(ABC):
         established. Some setting like autocommit, character set, and SQL mode
         are set using this method.
         """
-        self.set_charset_collation(self._charset_id)
+        self.set_charset_collation(charset=self._charset_id)
         self.autocommit = self._autocommit
         if self._time_zone:
             self.time_zone = self._time_zone

@@ -40,6 +40,8 @@ from mysql.connector.connection import MySQLConnection
 from mysql.connector.connection_cext import CMySQLConnection
 from mysql.connector.constants import (
     DEFAULT_CONFIGURATION,
+    MYSQL_DEFAULT_CHARSET_ID_57,
+    MYSQL_DEFAULT_CHARSET_ID_80,
     ClientFlag,
     RefreshOption,
     flag_is_set,
@@ -107,7 +109,11 @@ class CMySQLConnectionTests(tests.MySQLConnectorTests):
         query = "SHOW STATUS LIKE 'Aborted_c%'"
         info = self.cnx.cmd_query(query)
 
-        charset = 45 if tests.MYSQL_VERSION < (8, 0, 0) else 255
+        charset = (
+            MYSQL_DEFAULT_CHARSET_ID_57
+            if tests.MYSQL_VERSION < (8, 0, 0)
+            else MYSQL_DEFAULT_CHARSET_ID_80
+        )
         exp = {
             "eof": {"status_flag": 32, "warning_count": 0},
             "columns": [
@@ -197,11 +203,9 @@ class CMySQLConnectionTests(tests.MySQLConnectorTests):
     def test_cursor(self):
         """Test CEXT cursors."""
 
-        class FalseCursor:
-            ...
+        class FalseCursor: ...
 
-        class TrueCursor(cursor_cext.CMySQLCursor):
-            ...
+        class TrueCursor(cursor_cext.CMySQLCursor): ...
 
         self.assertRaises(
             errors.ProgrammingError, self.cnx.cursor, cursor_class=FalseCursor
@@ -271,27 +275,42 @@ class CMySQLConnectionTests(tests.MySQLConnectorTests):
 
         config["charset"] = "latin1"
         with CMySQLConnection(**config) as cnx:
-            self.assertEqual(8, cnx._charset_id)
+            self.assertEqual(8, cnx.charset_id)
             with cnx.cursor() as cur:
                 cur.execute("SELECT @@character_set_client")
                 res = cur.fetchone()
                 self.assertTupleEqual((config["charset"],), res)
 
             cnx.set_charset_collation(charset="ascii", collation="ascii_general_ci")
-            self.assertEqual(11, cnx._charset_id)
+            self.assertEqual(11, cnx.charset_id)
             with cnx.cursor() as cur:
                 cur.execute("SELECT @@character_set_client, @@collation_connection")
                 res = cur.fetchone()
                 self.assertTupleEqual(("ascii", "ascii_general_ci"), res)
 
         for charset_id, charset, collation in [
+            (303, "utf8mb4", "utf8mb4_ja_0900_as_cs"),
+            (46, "utf8mb4", "utf8mb4_bin"),
+            (MYSQL_DEFAULT_CHARSET_ID_57, "utf8mb4", "utf8mb4_general_ci"),
             (26, "cp1250", "cp1250_general_ci"),
             (8, "latin1", "latin1_swedish_ci"),
         ]:
             config["charset"] = charset
             config["collation"] = collation
+
             with CMySQLConnection(**config) as cnx:
-                self.assertEqual(charset_id, cnx._charset_id)
+                self.assertEqual(charset_id, cnx.charset_id)
+                with cnx.cursor() as cur:
+                    cur.execute("SELECT @@character_set_client, @@collation_connection")
+                    res = cur.fetchone()
+                    self.assertTupleEqual((config["charset"], config["collation"]), res)
+
+                cnx.cmd_change_user(
+                    config["user"],
+                    config["password"],
+                    config["database"],
+                    charset=charset_id,
+                )
                 with cnx.cursor() as cur:
                     cur.execute("SELECT @@character_set_client, @@collation_connection")
                     res = cur.fetchone()
@@ -303,7 +322,7 @@ class CMySQLConnectionTests(tests.MySQLConnectorTests):
         _ = config.pop("charset")
         config["collation"] = "ascii_general_ci"
         with CMySQLConnection(**config) as cnx:
-            self.assertEqual(11, cnx._charset_id)
+            self.assertEqual(11, cnx.charset_id)
             with cnx.cursor() as cur:
                 cur.execute("SELECT @@collation_connection")
                 res = cur.fetchone()
@@ -312,7 +331,7 @@ class CMySQLConnectionTests(tests.MySQLConnectorTests):
         _ = config.pop("collation")
         config["charset"] = "latin1"
         with CMySQLConnection(**config) as cnx:
-            self.assertEqual(8, cnx._charset_id)
+            self.assertEqual(8, cnx.charset_id)
             with cnx.cursor() as cur:
                 cur.execute("SELECT @@character_set_client")
                 res = cur.fetchone()
