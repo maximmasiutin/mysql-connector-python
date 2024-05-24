@@ -367,9 +367,8 @@ class CExtMySQLTests(tests.MySQLConnectorTests):
         self.assertEqual(3, len(version))
         self.assertTrue(all([isinstance(v, int) for v in version]))
 
-        self.assertTrue(3 < version[0] < 9)
-        self.assertTrue(0 <= version[1] < 20)
-        self.assertTrue(0 <= version[2] < 99)
+        with CMySQLConnection(**self.config) as cnx:
+            self.assertEqual(cnx._server_version, version)
 
     def test_thread_id(self):
         cmy = MySQL()
