@@ -1171,6 +1171,7 @@ class MySQLConnection(MySQLConnectionAbstract):
         ):
             raise ValueError("Invalid command REFRESH option")
 
+        res = None
         if options & RefreshOption.GRANT:
             res = await self.cmd_query("FLUSH PRIVILEGES")
         if options & RefreshOption.LOG:

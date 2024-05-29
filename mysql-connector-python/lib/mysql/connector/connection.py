@@ -417,6 +417,7 @@ class MySQLConnection(MySQLConnectionAbstract):
     def close(self) -> None:
         """Disconnect from the MySQL server"""
         if self._span and self._span.is_recording():
+            # pylint: disable=possibly-used-before-assignment
             record_exception_event(self._span, sys.exc_info()[1])
 
         if not self._socket:
@@ -935,6 +936,7 @@ class MySQLConnection(MySQLConnectionAbstract):
         ):
             raise ValueError("Invalid command REFRESH option")
 
+        res = None
         if options & RefreshOption.GRANT:
             res = self.cmd_query("FLUSH PRIVILEGES")
         if options & RefreshOption.LOG:

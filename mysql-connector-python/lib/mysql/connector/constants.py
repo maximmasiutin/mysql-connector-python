@@ -104,7 +104,7 @@ DEFAULT_CONFIGURATION: Dict[str, Optional[Union[str, bool, int]]] = {
 
 CNX_POOL_ARGS: Tuple[str, str, str] = ("pool_name", "pool_size", "pool_reset_session")
 
-CONN_ATTRS_DN: Tuple[str] = (
+CONN_ATTRS_DN: Tuple[str, ...] = (
     "_pid",
     "_platform",
     "_source_host",
@@ -118,7 +118,7 @@ CONN_ATTRS_DN: Tuple[str] = (
 )
 
 # List of deprecated cursor class names
-DEPRECATED_CURSOR_CLASS_NAMES: Tuple[str] = (
+DEPRECATED_CURSOR_CLASS_NAMES: Tuple[str, ...] = (
     "MySQLCursorPreparedRaw",
     "MySQLCursorNamedTuple",
     "MySQLCursorBufferedNamedTuple",

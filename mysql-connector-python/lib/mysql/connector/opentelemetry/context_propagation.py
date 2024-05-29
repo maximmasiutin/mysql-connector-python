@@ -64,6 +64,7 @@ def build_traceparent_header(span: Any) -> str:
     References:
         [1]: https://www.w3.org/TR/trace-context/#traceparent-header
     """
+    # pylint: disable=possibly-used-before-assignment
     ctx = span.get_span_context()
 
     version = "00"  # version 0 of the W3C specification
@@ -91,6 +92,7 @@ def with_context_propagation(method: Callable) -> Callable:
 
     def wrapper(cnx: "MySQLConnectionAbstract", *args: Any, **kwargs: Any) -> Any:
         """Context propagation decorator."""
+        # pylint: disable=possibly-used-before-assignment
         if not OTEL_ENABLED or not cnx.otel_context_propagation:
             return method(cnx, *args, **kwargs)
 

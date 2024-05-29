@@ -47,6 +47,7 @@ from typing import (
     Sequence,
     Tuple,
     Union,
+    cast,
 )
 
 # pylint: disable=import-error,no-name-in-module
@@ -130,6 +131,7 @@ class CMySQLCursor(MySQLCursorAbstract):
         self._affected_rows: int = -1
         self._raw_as_string: bool = False
         self._buffered: bool = False
+        self._connection: CMySQLConnection = cast("CMySQLConnection", self._connection)
 
     def reset(self, free: bool = True) -> None:
         """Reset the cursor

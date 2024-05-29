@@ -47,7 +47,6 @@ skip_glob = [
     'mysqlx-connector-python/lib/mysqlx/locales/eng',
     'mysqlx-connector-python/lib/mysqlx/protobuf',
     'venv/*',
-    'mysql-connector-python/lib/mysql/opentelemetry',
 ]
 
 [tool.black]

@@ -63,7 +63,7 @@ try:
     from opentelemetry.semconv.trace import SpanAttributes  # check semconv
 except ImportError as missing_dependencies_err:
     raise connector.errors.ProgrammingError(
-        "OpenTelemetry installation not found. " "You must install the API and SDK."
+        "OpenTelemetry installation not found. You must install the API and SDK."
     ) from missing_dependencies_err
 
 
@@ -425,7 +425,7 @@ class TracedMySQLConnection(BaseMySQLTracer):
 
     @property
     @with_cnx_query_span
-    def database(self, *args: Any, **kwargs: Any) -> str:
+    def database(self) -> str:
         """Instrument method."""
         return self._wrapped.database
 
@@ -481,19 +481,19 @@ class TracedMySQLConnection(BaseMySQLTracer):
 
     @property
     @with_cnx_query_span
-    def time_zone(self, *args: Any, **kwargs: Any) -> str:
+    def time_zone(self) -> str:
         """Instrument method."""
         return self._wrapped.time_zone
 
     @property
     @with_cnx_query_span
-    def sql_mode(self, *args: Any, **kwargs: Any) -> str:
+    def sql_mode(self) -> str:
         """Instrument method."""
         return self._wrapped.sql_mode
 
     @property
     @with_cnx_query_span
-    def autocommit(self, *args: Any, **kwargs: Any) -> bool:
+    def autocommit(self) -> bool:
         """Instrument method."""
         return self._wrapped.autocommit
 

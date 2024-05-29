@@ -677,6 +677,9 @@ class MySQLProtocol:
         elif field[1] == FieldType.LONGLONG:
             format_ = "<q"
             length = 8
+        else:
+            # length is undefined
+            raise ValueError("Unknown integer type")
 
         if field[7] & FieldFlag.UNSIGNED:
             format_ = format_.upper()

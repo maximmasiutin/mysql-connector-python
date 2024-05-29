@@ -50,6 +50,7 @@ from typing import (
     Sequence,
     Tuple,
     Union,
+    cast,
 )
 
 from .abstracts import NAMED_TUPLE_CACHE, MySQLCursorAbstract
@@ -253,6 +254,7 @@ class MySQLCursor(MySQLCursorAbstract):
     def __init__(self, connection: Optional[MySQLConnection] = None) -> None:
         """Initialize"""
         super().__init__(connection)
+        self._connection: MySQLConnection = cast("MySQLConnection", self._connection)
 
     def __iter__(self) -> Iterator[RowType]:
         """

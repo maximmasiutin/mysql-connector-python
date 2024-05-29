@@ -1449,6 +1449,7 @@ class MySQLConnectionAbstract(ABC):
         span = None
 
         if self._tracer:
+            # pylint: disable=possibly-used-before-assignment
             span = self._tracer.start_span(
                 name=CONNECTION_SPAN_NAME, kind=trace.SpanKind.CLIENT
             )
