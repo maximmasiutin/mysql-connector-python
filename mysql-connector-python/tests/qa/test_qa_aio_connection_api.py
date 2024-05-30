@@ -172,10 +172,6 @@ class TestCharsetAndCollation(tests.MySQLConnectorAioTestCase):
                     (charset, config["collation"]), (cnx.charset, cnx.collation)
                 )
 
-    @unittest.skipIf(
-        True,
-        "Fixme: `cmd_change_user` isn't working - It's a bug!",
-    )
     @tests.foreach_cnx_aio()
     async def test_cmd_change_user(self):
         """Switch user and provide a different charset_id."""
@@ -198,6 +194,16 @@ class TestCharsetAndCollation(tests.MySQLConnectorAioTestCase):
         exp_collation_after = charset_data[exp_charset_id_after][1]
 
         # It should be the default
+        self.assertEqual(exp_charset_id_before, self.cnx.charset_id)
+        self.assertEqual(exp_charset_before, self.cnx.charset)
+        self.assertEqual(exp_collation_before, self.cnx.collation)
+
+        # do switch without setting charset and check that it matches 'exp_charset_id_before'
+        await self.cnx.cmd_change_user(
+            username=config["user"],
+            password=config["password"],
+            database=config["database"],
+        )
         self.assertEqual(exp_charset_id_before, self.cnx.charset_id)
         self.assertEqual(exp_charset_before, self.cnx.charset)
         self.assertEqual(exp_collation_before, self.cnx.collation)

@@ -254,7 +254,6 @@ class MySQLConnection(MySQLConnectionAbstract):
         password: Optional[str] = None,
         database: Optional[str] = None,
         client_flags: int = 0,
-        charset: int = 45,
         ssl_options: Optional[Dict[str, Optional[Union[str, bool, List[str]]]]] = None,
         conn_attrs: Optional[Dict[str, str]] = None,
     ) -> bool:
@@ -290,7 +289,7 @@ class MySQLConnection(MySQLConnectionAbstract):
                 self._socket,
                 self.server_host,
                 ssl_options,
-                charset=charset,
+                charset=self._charset_id,
                 client_flags=client_flags,
             )
             self._ssl_active = True
@@ -303,7 +302,7 @@ class MySQLConnection(MySQLConnectionAbstract):
             password2=self._password2,
             password3=self._password3,
             database=database,
-            charset=charset,
+            charset=self._charset_id,
             client_flags=client_flags,
             auth_plugin=self._auth_plugin,
             auth_plugin_class=self._auth_plugin_class,
@@ -366,7 +365,6 @@ class MySQLConnection(MySQLConnectionAbstract):
                 self._password,
                 self._database,
                 self._client_flags,
-                self._charset_id,
                 self._ssl,
                 self._conn_attrs,
             )
@@ -1061,7 +1059,7 @@ class MySQLConnection(MySQLConnectionAbstract):
         self._password3 = password3
 
         if self._password1 and password != self._password1:
-            password = self._password1
+            self._password = self._password1
 
         self.handle_unread_result()
 
@@ -1077,7 +1075,7 @@ class MySQLConnection(MySQLConnectionAbstract):
             sock=self._socket,
             handshake=self._handshake,
             username=self._user,
-            password1=password,
+            password1=self._password,
             password2=self._password2,
             password3=self._password3,
             database=database,

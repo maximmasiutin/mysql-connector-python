@@ -113,7 +113,8 @@ def adapt_datetime_with_timezone_support(value: datetime) -> StrOrBytes:
             )
             default_timezone = timezone.get_default_timezone()
             value = timezone.make_aware(value, default_timezone)
-        value = value.astimezone(timezone.utc).replace(  # pylint: disable=no-member
+        # pylint: disable=no-member
+        value = value.astimezone(timezone.utc).replace(  # type: ignore[attr-defined]
             tzinfo=None
         )
     if HAVE_CEXT:

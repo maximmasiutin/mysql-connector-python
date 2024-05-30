@@ -2030,7 +2030,7 @@ class MySQLConnectionAbstract(ABC):
         username: str = "",
         password: str = "",
         database: str = "",
-        charset: int = 45,
+        charset: Optional[int] = None,
         password1: str = "",
         password2: str = "",
         password3: str = "",
@@ -2041,7 +2041,8 @@ class MySQLConnectionAbstract(ABC):
 
         It also causes the specified database to become the default (current)
         database. It is also possible to change the character set using the
-        charset argument.
+        charset argument. The character set passed during initial connection
+        is reused if no value of charset is passed via this method.
 
         Args:
             username: New account's username.

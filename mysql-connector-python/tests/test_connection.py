@@ -864,7 +864,6 @@ class MySQLConnectionTests(tests.MySQLConnectorTests):
             "username": "ham",
             "password": "spam",
             "database": "test",
-            "charset": MYSQL_DEFAULT_CHARSET_ID_57,
             "client_flags": flags,
         }
 
@@ -916,7 +915,6 @@ class MySQLConnectionTests(tests.MySQLConnectorTests):
             "username": "ham",
             "password": "spam",
             "database": "test",
-            "charset": MYSQL_DEFAULT_CHARSET_ID_57,
             "client_flags": flags,
             "ssl_options": {
                 "ca": os.path.join(tests.SSL_DIR, "tests_CA_cert.pem"),
@@ -924,10 +922,14 @@ class MySQLConnectionTests(tests.MySQLConnectorTests):
                 "key": os.path.join(tests.SSL_DIR, "tests_client_key.pem"),
             },
         }
-
         self.cnx._handshake["auth_plugin"] = "caching_sha2_password"
         self.cnx._handshake["auth_data"] = b"h4i6oP!OLng9&PD@WrYH"
         self.cnx._socket.switch_to_ssl = lambda ssl_context, host: None
+        charset: int = (
+            MYSQL_DEFAULT_CHARSET_ID_57
+            if self.cnx._server_version < (8, 0)
+            else MYSQL_DEFAULT_CHARSET_ID_80
+        )
 
         # Test perform_full_authentication
         # Exchange:
@@ -949,7 +951,7 @@ class MySQLConnectionTests(tests.MySQLConnectorTests):
         packets = self.cnx._socket.sock._client_sends
         self.assertEqual(3, len(packets))
         ssl_pkt = self.cnx._protocol.make_auth_ssl(
-            charset=kwargs["charset"], client_flags=kwargs["client_flags"]
+            charset=charset, client_flags=kwargs["client_flags"]
         )
         # Check the SSL request packet
         self.assertEqual(packets[0][4:], ssl_pkt)
@@ -958,7 +960,7 @@ class MySQLConnectionTests(tests.MySQLConnectorTests):
             kwargs["username"],
             kwargs["password"],
             database=kwargs["database"],
-            charset=kwargs["charset"],
+            charset=charset,
             client_flags=kwargs["client_flags"],
             ssl_enabled=True,
         )
@@ -989,7 +991,7 @@ class MySQLConnectionTests(tests.MySQLConnectorTests):
         packets = self.cnx._socket.sock._client_sends
         self.assertEqual(2, len(packets))
         ssl_pkt = self.cnx._protocol.make_auth_ssl(
-            charset=kwargs["charset"], client_flags=kwargs["client_flags"]
+            charset=charset, client_flags=kwargs["client_flags"]
         )
         # Check the SSL request packet
         self.assertEqual(packets[0][4:], ssl_pkt)
@@ -998,7 +1000,7 @@ class MySQLConnectionTests(tests.MySQLConnectorTests):
             kwargs["username"],
             kwargs["password"],
             database=kwargs["database"],
-            charset=kwargs["charset"],
+            charset=charset,
             client_flags=kwargs["client_flags"],
             ssl_enabled=True,
         )
@@ -1015,7 +1017,6 @@ class MySQLConnectionTests(tests.MySQLConnectorTests):
             "username": "ham",
             "password": "spam",
             "database": "test",
-            "charset": MYSQL_DEFAULT_CHARSET_ID_57,
             "client_flags": flags,
             "ssl_options": {
                 "ca": os.path.join(tests.SSL_DIR, "tests_CA_cert.pem"),
@@ -1023,7 +1024,11 @@ class MySQLConnectionTests(tests.MySQLConnectorTests):
                 "key": os.path.join(tests.SSL_DIR, "tests_client_key.pem"),
             },
         }
-
+        charset: int = (
+            MYSQL_DEFAULT_CHARSET_ID_57
+            if self.cnx._server_version < (8, 0)
+            else MYSQL_DEFAULT_CHARSET_ID_80
+        )
         self.cnx._handshake["auth_data"] = b"h4i6oP!OLng9&PD@WrYH"
 
         # We check if do_auth send the autherization for SSL and the
@@ -1033,16 +1038,17 @@ class MySQLConnectionTests(tests.MySQLConnectorTests):
             kwargs["username"],
             kwargs["password"],
             database=kwargs["database"],
-            charset=kwargs["charset"],
+            charset=charset,
             client_flags=kwargs["client_flags"],
             ssl_enabled=True,
         )
         exp = [
             self.cnx._protocol.make_auth_ssl(
-                charset=kwargs["charset"], client_flags=kwargs["client_flags"]
+                charset=charset, client_flags=kwargs["client_flags"]
             ),
             auth_pkt,
         ]
+
         self.cnx._socket.switch_to_ssl = lambda ssl_context, host: None
         self.cnx._socket.sock.reset()
         self.cnx._socket.sock.add_packets(

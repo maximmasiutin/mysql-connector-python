@@ -1183,81 +1183,6 @@ class MySQLMultiFactorAuthenticationTests(MySQLConnectorAioTestCase):
         if self.skip_reason is not None:
             self.skipTest(self.skip_reason)
 
-    #     # @classmethod
-    #     # def setUpClass(cls):
-    #     async def asyncSetUp(self):
-    #         config = tests.get_mysql_config()
-    #         self.base_config = {
-    #             "host": config["host"],
-    #             "port": config["port"],
-    #             "auth_plugin": "mysql_clear_password",
-    #         }
-    #         plugin_ext = "dll" if os.name == "nt" else "so"
-    #         with mysql.connector.connection.MySQLConnection(**config) as cnx:
-    #             try:
-    #                 cnx.cmd_query("UNINSTALL PLUGIN cleartext_plugin_server")
-    #             except ProgrammingError:
-    #                 pass
-    #             try:
-    #                 cnx.cmd_query(
-    #                     f"""
-    #                     INSTALL PLUGIN cleartext_plugin_server
-    #                     SONAME 'auth_test_plugin.{plugin_ext}'
-    #                     """
-    #                 )
-    #             except DatabaseError:
-    #                 self.skip_reason = "Plugin cleartext_plugin_server not available"
-    #                 self.skipTest(self.skip_reason)
-    #             cnx.cmd_query(f"DROP USER IF EXISTS '{self.user_1f}'")
-    #             cnx.cmd_query(f"DROP USER IF EXISTS '{self.user_2f}'")
-    #             cnx.cmd_query(f"DROP USER IF EXISTS '{self.user_3f}'")
-    #             cnx.cmd_query(
-    #                 f"""
-    #                 CREATE USER '{self.user_1f}'
-    #                 IDENTIFIED WITH cleartext_plugin_server BY '{self.password1}'
-    #                 """
-    #             )
-    #             try:
-    #                 cnx.cmd_query(
-    #                     f"""
-    #                     CREATE USER '{self.user_2f}'
-    #                     IDENTIFIED WITH cleartext_plugin_server BY '{self.password1}'
-    #                     AND
-    #                     IDENTIFIED WITH cleartext_plugin_server BY '{self.password2}'
-    #                     """
-    #                 )
-    #                 cnx.cmd_query(
-    #                     f"""
-    #                     CREATE USER '{self.user_3f}'
-    #                     IDENTIFIED WITH cleartext_plugin_server BY '{self.password1}'
-    #                     AND
-    #                     IDENTIFIED WITH cleartext_plugin_server BY '{self.password2}'
-    #                     AND
-    #                     IDENTIFIED WITH cleartext_plugin_server BY '{self.password3}'
-    #                     """
-    #                 )
-    #             except ProgrammingError:
-    #                 self.skip_reason = "Multi Factor Authentication not supported"
-    #                 self.skipTest(self.skip_reason)
-    #                 return
-
-    #     # @classmethod
-    #     # def tearDownClass(cls):
-    #     async def asyncTearDown(self):
-    #         config = tests.get_mysql_config()
-    #         with mysql.connector.connection.MySQLConnection(**config) as cnx:
-    #             cnx.cmd_query(f"DROP USER IF EXISTS '{self.user_1f}'")
-    #             cnx.cmd_query(f"DROP USER IF EXISTS '{self.user_2f}'")
-    #             cnx.cmd_query(f"DROP USER IF EXISTS '{self.user_3f}'")
-    #             try:
-    #                 cnx.cmd_query("UNINSTALL PLUGIN cleartext_plugin_server")
-    #             except ProgrammingError:
-    #                 pass
-
-    # async def asyncSetUp(self):
-    #     if self.skip_reason is not None:
-    #         self.skipTest(self.skip_reason)
-
     async def _test_connection(self, cls, permutations, user):
         """Helper method for testing connection with MFA."""
         LOGGER.debug("Running %d permutations...", len(permutations))
@@ -1324,11 +1249,9 @@ class MySQLMultiFactorAuthenticationTests(MySQLConnectorAioTestCase):
                     res = await cnx.get_rows()
                     self.assertIsNotNone(res[0][0][0])
                 else:
-                    self.assertRaises(
-                        (DatabaseError, OperationalError, ProgrammingError),
-                        cnx.cmd_change_user,
-                        **kwargs,
-                    )
+                    with self.assertRaises(ProgrammingError):
+                        cnx = cls(**config)
+                        await cnx.cmd_change_user(**kwargs)
 
     @foreach_cnx_aio()
     async def test_user_1f(self):
@@ -1337,6 +1260,7 @@ class MySQLMultiFactorAuthenticationTests(MySQLConnectorAioTestCase):
         for perm in itertools.product([True, False, None], repeat=4):
             permutations.append((perm, perm[1] or (perm[0] and perm[1] is None)))
         await self._test_connection(self.cnx.__class__, permutations, self.user_1f)
+        await self._test_change_user(self.cnx.__class__, permutations, self.user_1f)
 
     @foreach_cnx_aio()
     async def test_user_2f(self):
@@ -1350,9 +1274,7 @@ class MySQLMultiFactorAuthenticationTests(MySQLConnectorAioTestCase):
                 )
             )
         await self._test_connection(self.cnx.__class__, permutations, self.user_2f)
-        # The cmd_change_user() tests are temporarily disabled due to server
-        # BUG#33110621
-        # self._test_change_user(self.cnx.__class__, permutations, self.user_2f)
+        await self._test_change_user(self.cnx.__class__, permutations, self.user_2f)
 
     @foreach_cnx_aio()
     async def test_user_3f(self):
@@ -1368,9 +1290,7 @@ class MySQLMultiFactorAuthenticationTests(MySQLConnectorAioTestCase):
                 )
             )
         await self._test_connection(self.cnx.__class__, permutations, self.user_3f)
-        # The cmd_change_user() tests are temporarily disabled due to server
-        # BUG#33110621
-        # self._test_change_user(self.cnx.__class__, permutations, self.user_2f)
+        await self._test_change_user(self.cnx.__class__, permutations, self.user_3f)
 
 
 @unittest.skipIf(
@@ -1386,8 +1306,7 @@ class MySQLWebAuthnAuthPluginTests(tests.MySQLConnectorTests):
     async def test_invalid_webauthn_callback(self):
         """Test invalid 'webauthn_callback' option."""
 
-        def my_callback():
-            ...
+        def my_callback(): ...
 
         test_cases = (
             "abc",  # No callable named 'abc'

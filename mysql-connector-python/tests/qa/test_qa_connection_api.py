@@ -190,6 +190,16 @@ class TestCharsetAndCollation(tests.MySQLConnectorTests):
         self.assertEqual(exp_charset_before, self.cnx.charset)
         self.assertEqual(exp_collation_before, self.cnx.collation)
 
+        # do switch without setting charset and check that it matches 'exp_charset_id_before'
+        self.cnx.cmd_change_user(
+            username=config["user"],
+            password=config["password"],
+            database=config["database"],
+        )
+        self.assertEqual(exp_charset_id_before, self.cnx.charset_id)
+        self.assertEqual(exp_charset_before, self.cnx.charset)
+        self.assertEqual(exp_collation_before, self.cnx.collation)
+
         # do switch and check that it matches `exp_charset_id_after`
         self.cnx.cmd_change_user(
             username=config["user"],

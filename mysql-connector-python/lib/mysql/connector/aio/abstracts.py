@@ -1557,6 +1557,51 @@ class MySQLConnectionAbstract(ABC):
         with OK packet information.
         """
 
+    @abstractmethod
+    async def cmd_change_user(
+        self,
+        username: str = "",
+        password: str = "",
+        database: str = "",
+        charset: Optional[int] = None,
+        password1: str = "",
+        password2: str = "",
+        password3: str = "",
+        oci_config_file: str = "",
+        oci_config_profile: str = "",
+    ) -> Optional[OkPacketType]:
+        """Changes the current logged in user.
+
+        It also causes the specified database to become the default (current)
+        database. It is also possible to change the character set using the
+        charset argument. The character set passed during initial connection
+        is reused if no value of charset is passed via this method.
+
+        Args:
+            username: New account's username.
+            password: New account's password.
+            database: Database to become the default (current) database.
+            charset: Client charset (see [1]), only the lower 8-bits.
+            password1: New account's password factor 1 - it's used instead
+                       of `password` if set (higher precedence).
+            password2: New account's password factor 2.
+            password3: New account's password factor 3.
+            oci_config_file: OCI configuration file location (path-like string).
+            oci_config_profile: OCI configuration profile location (path-like string).
+
+        Returns:
+            ok_packet: Dictionary containing the OK packet information.
+
+        Examples:
+            ```
+            >>> cnx.cmd_change_user(username='', password='', database='', charset=33)
+            ```
+
+        References:
+            [1]: https://dev.mysql.com/doc/dev/mysql-server/latest/\
+                page_protocol_basic_character_set.html#a_protocol_character_set
+        """
+
 
 class MySQLCursorAbstract(ABC):
     """Defines the MySQL cursor interface."""

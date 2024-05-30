@@ -1320,7 +1320,7 @@ class MySQLConnection(MySQLConnectionAbstract):
         self._password3 = password3
 
         if self._password1 and password != self._password1:
-            password = self._password1
+            self._password = self._password1
 
         await self.handle_unread_result()
 
@@ -1332,10 +1332,13 @@ class MySQLConnection(MySQLConnectionAbstract):
 
         self._oci_config_profile = oci_config_profile
 
-        packet = self._protocol.make_auth(
+        ok_packet: bytes = await self._authenticator.authenticate(
+            sock=self._socket,
             handshake=self._handshake,
             username=self._user,
-            password=self._password,
+            password1=self._password,
+            password2=self._password2,
+            password3=self._password3,
             database=self._database,
             charset=self._charset.charset_id,
             client_flags=self._client_flags,
@@ -1343,11 +1346,10 @@ class MySQLConnection(MySQLConnectionAbstract):
             auth_plugin=self._auth_plugin,
             conn_attrs=self._connection_attrs,
             auth_plugin_class=self._auth_plugin_class,
+            oci_config_file=self._oci_config_file,
+            oci_config_profile=self._oci_config_profile,
+            is_change_user_request=True,
         )
-        logger.debug("Protocol::HandshakeResponse packet: %s", packet)
-        await self._socket.write(packet[0])
-
-        ok_packet = self._handle_ok(await self._socket.read())
 
         if not (self._client_flags & ClientFlag.CONNECT_WITH_DB) and database:
             await self.cmd_init_db(database)

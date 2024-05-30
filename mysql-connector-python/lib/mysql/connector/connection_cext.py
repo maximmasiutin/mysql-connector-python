@@ -907,7 +907,7 @@ class CMySQLConnection(MySQLConnectionAbstract):
         username: str = "",
         password: str = "",
         database: str = "",
-        charset: int = 45,
+        charset: Optional[int] = None,
         password1: str = "",
         password2: str = "",
         password3: str = "",
@@ -932,7 +932,14 @@ class CMySQLConnection(MySQLConnectionAbstract):
                 msg=err.msg, errno=err.errno, sqlstate=err.sqlstate
             ) from err
 
-        self._charset_id = charset
+        # If charset isn't defined, we use the same charset ID defined previously,
+        # otherwise, we run a verification and update the charset ID.
+        if charset is not None:
+            if not isinstance(charset, int):
+                raise ValueError("charset must be an integer")
+            if charset < 0:
+                raise ValueError("charset should be either zero or a postive integer")
+            self._charset_id = charset
         self._user = username  # updating user accordingly
         self._post_connection()
 
