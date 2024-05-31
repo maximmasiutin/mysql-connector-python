@@ -63,7 +63,7 @@
 %{?extra_link_args: %global extra_link_args %{extra_link_args}}
 
 # set version if not defined through 'rpmbuild'
-%{!?version: %global version 8.4.0}
+%{!?version: %global version 9.0.0}
 
 
 # if true set byte_code_only to --byte_code_only
@@ -238,6 +238,9 @@ sed -i -e '/protobuf/d' %{buildroot}%{python3_sitearch}/mysqlx_connector_python-
 %{python3_sitearch}/_mysqlxpb.cpython*.so
 
 %changelog
+* Fri May 31 2024 Oscar Pacheco <oscar.p.pacheco@oracle.com> - 9.0.0-1
+- Updated for 9.0.0
+
 * Wed Feb 28 2024 Oscar Pacheco <oscar.p.pacheco@oracle.com> - 8.4.0-1
 - Updated for 8.4.0
 
