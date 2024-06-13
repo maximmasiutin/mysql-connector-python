@@ -15,7 +15,7 @@ an API that is compliant with the `Python Database API Specification v2.0
 
 It also contains an implementation of the `XDevAPI <https://dev.mysql.com/doc/x-devapi-userguide/en>`_
 - An Application Programming Interface for working with the `MySQL Document Store
-<https://dev.mysql.com/doc/refman/8.0/en/document-store.html>`_.
+<https://dev.mysql.com/doc/refman/en/document-store.html>`_.
 
 Features
 --------
@@ -47,7 +47,7 @@ The *classic API* can be installed via pip as follows:
 
     $ pip install mysqlx-connector-python
 
-Please refer to the `installation tutorial <https://dev.mysql.com/doc/dev/connector-python/8.0/installation.html>`_
+Please refer to the `installation tutorial <https://dev.mysql.com/doc/dev/connector-python/installation.html>`_
 for installation alternatives of the XDevAPI.
 
 ++++++++++++++++++++

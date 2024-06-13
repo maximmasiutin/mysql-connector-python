@@ -23,7 +23,7 @@ Contributing to this project is easy. You just need to follow these steps.
 
 - Make sure you have a user account at `bugs.mysql.com <https://bugs.mysql.com>`_. You will need to reference this user account when you submit your Oracle Contributor Agreement (a.k.a. OCA).
 - Sign the Oracle Contributor Agreement. You can find instructions for doing that at the `OCA Page <https://oca.opensource.oracle.com/>`_.
-- Develop your pull request. Make sure you are aware of the `requirements <https://dev.mysql.com/doc/dev/connector-python/8.0/requirements.html>`_ for the project.
+- Develop your pull request. Make sure you are aware of the `requirements <https://dev.mysql.com/doc/dev/connector-python/requirements.html>`_ for the project.
 - Validate your pull request by including tests that sufficiently cover the functionality you are adding.
 - Verify that the entire test suite passes with your code applied.
 - Submit your pull request. While you can submit the pull request via `GitHub <https://github.com/mysql/mysql-connector-python/pulls>`_, you can also submit it directly via `bugs.mysql.com <https://bugs.mysql.com>`_.
@@ -35,7 +35,7 @@ Setting Up a Development Environment
 
 The following tips provide all the technical directions you should follow when writing code and before actually submitting your contribution.
 
-1) Make sure you have the necessary `prerequisites <https://dev.mysql.com/doc/dev/connector-python/8.0/installation.html#prerequisites>`_ for building the project and `Pylint <https://www.pylint.org/>`_ for static code analysis
+1) Make sure you have the necessary `prerequisites <https://dev.mysql.com/doc/dev/connector-python/installation.html#prerequisites>`_ for building the project and `Pylint <https://www.pylint.org/>`_ for static code analysis
 
 2) Clone MySQL Connector/Python
 

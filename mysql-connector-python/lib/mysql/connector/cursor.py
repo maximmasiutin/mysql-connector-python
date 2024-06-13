@@ -132,7 +132,7 @@ def is_eol_comment(stmt: bytes) -> bool:
         Whether or not the statement is an end-of-line comment.
 
     References:
-        [1]: https://dev.mysql.com/doc/refman/8.0/en/comments.html
+        [1]: https://dev.mysql.com/doc/refman/en/comments.html
     """
     is_double_dash_comment = (
         len(stmt) >= 3
