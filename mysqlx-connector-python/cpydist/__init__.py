@@ -82,6 +82,7 @@ ABSL_LIBS = (
     "absl_cord_internal",
     "absl_crc_cord_state",
     "absl_crc32c",
+    "absl_crc_cpu_detect",
     "absl_crc_internal",
     "absl_exponential_biased",
     "absl_synchronization",
