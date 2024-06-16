@@ -283,7 +283,6 @@ class BaseCommand(Command):
                 ("Kerberos", f"authentication_kerberos_client.{plugin_ext}"),
                 ("OCI IAM", f"authentication_oci_client.{plugin_ext}"),
                 ("WebAuthn", f"authentication_webauthn_client.{plugin_ext}"),
-                ("MySQL Native", f"mysql_native_password.{plugin_ext}"),
             ]
 
             for plugin_name, plugin_file in plugin_list:
