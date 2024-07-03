@@ -8,6 +8,11 @@ Copyright (c) 2009, 2024, Oracle and/or its affiliates.
 Full release notes:
  http://dev.mysql.com/doc/relnotes/connector-python/en/
 
+v9.1.0
+======
+
+- WL#16444: Drop build support for DEB packages
+
 v9.0.0
 ======
 
