@@ -681,7 +681,7 @@ def setup_stats_db(cnx):
     """Setup the database for storing statistics"""
     cur = cnx.cursor()
 
-    supported_python = ("3.8", "3.9", "3.10", "3.11", "3.12")
+    supported_python = ("3.8", "3.9", "3.10", "3.11", "3.12", "3.13")
     supported_mysql = ("5.7", "8.0", "8.4", "9.0")
 
     columns = []

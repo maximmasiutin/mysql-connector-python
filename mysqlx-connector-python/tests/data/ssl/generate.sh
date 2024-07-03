@@ -34,7 +34,7 @@
 #  shell> sh generate.sh [destination_folder]
 #
 DAYS=3306
-OU="MySQLConnectorPython"
+OU="MySQLXConnectorPython"
 DESTDIR="."
 
 OPENSSL=`which openssl`
@@ -57,24 +57,31 @@ touch $DESTDIR/ca.db.index      # Index of signed certificates
 echo 01 > $DESTDIR/ca.db.serial # Next (sequential) serial number
 
 # Configuration
-cat>$DESTDIR/ca.conf<<'EOF'
+cat>$DESTDIR/v3.ext<<'EOF'
+subjectKeyIdentifier = hash
+authorityKeyIdentifier = keyid,issuer
+basicConstraints = critical, CA:true
+keyUsage = critical, digitalSignature, keyCertSign
+EOF
+
+cat>$DESTDIR/ca.conf<<END
 [ ca ]
 default_ca = ca_default
 
 [ ca_default ]
-dir = REPLACE_LATER
-certs = $dir
-new_certs_dir = $dir/ca.db.certs
-database = $dir/ca.db.index
-serial = $dir/ca.db.serial
-RANDFILE = $dir/ca.db.rand
-certificate = $dir/ca.crt
-private_key = $dir/ca.key
+certs = $DESTDIR
+new_certs_dir = $DESTDIR/ca.db.certs
+database = $DESTDIR/ca.db.index
+serial = $DESTDIR/ca.db.serial
+RANDFILE = $DESTDIR/ca.db.rand
+certificate = $DESTDIR/ca.crt
+private_key = $DESTDIR/ca.key
 default_days = 365
 default_crl_days = 30
 default_md = sha256
 preserve = no
 policy = generic_policy
+
 [ generic_policy ]
 countryName = optional
 stateOrProvinceName = optional
@@ -83,9 +90,7 @@ organizationName = optional
 organizationalUnitName = optional
 commonName = supplied
 emailAddress = optional
-EOF
-
-sed -i "s|REPLACE_LATER|$DESTDIR|" $DESTDIR/ca.conf
+END
 
 echo
 echo "Generating Root Certificate"
@@ -96,11 +101,13 @@ if [ $? -ne 0 ]; then
 fi
 SUBJ="/OU=$OU Root CA/CN=MyConnPy Root CA"
 $OPENSSL req -new -key $DESTDIR/tests_CA_key.pem \
+    -config $DESTDIR/ca.conf \
     -out $DESTDIR/tests_CA_req.csr -subj "$SUBJ"
 if [ $? -ne 0 ]; then
     exit 3
 fi
 $OPENSSL x509 -req -days $DAYS \
+    -extfile $DESTDIR/v3.ext \
     -in $DESTDIR/tests_CA_req.csr \
     -out $DESTDIR/tests_CA_cert.pem \
     -signkey $DESTDIR/tests_CA_key.pem
@@ -145,6 +152,7 @@ if [ $? -ne 0 ]; then
     exit 3
 fi
 $OPENSSL x509 -req -days $DAYS \
+    -extfile $DESTDIR/v3.ext \
     -in $DESTDIR/tests_CA_req_1.csr \
     -out $DESTDIR/tests_CA_cert_1.pem \
     -signkey $DESTDIR/tests_CA_key_1.pem
@@ -180,5 +188,4 @@ echo "Cleaning up"
 echo
 (cd $DESTDIR; rm -rf tests_server_req.pem tests_client_req.pem \
     ca.db.certs ca.db.index* ca.db.serial* ca.conf tests_CA_req.csr \
-    tests_server_req.csr tests_CA_req_1.csr tests_client_req.csr)
-
+    v3.ext tests_server_req.csr tests_CA_req_1.csr tests_client_req.csr)
