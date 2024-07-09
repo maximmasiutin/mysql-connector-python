@@ -8,15 +8,22 @@ MySQL Connector/Python
 .. image:: https://img.shields.io/pypi/l/mysql-connector-python.svg
    :target: https://pypi.org/project/mysql-connector-python/
 
+.. === <mysql> ====
 MySQL Connector/Python enables Python programs to access MySQL databases, using
 an API that is compliant with the `Python Database API Specification v2.0
 (PEP 249) <https://www.python.org/dev/peps/pep-0249/>`_ - We refer to it as the
 `Classic API <https://dev.mysql.com/doc/connector-python/en/connector-python-reference.html>`_.
 
+.. === </mysql> ====
+
+.. === <mysqlx> [repl("It also", "MySQL Connector/Python")] ===
 It also contains an implementation of the `XDevAPI <https://dev.mysql.com/doc/x-devapi-userguide/en>`_
 - An Application Programming Interface for working with the `MySQL Document Store
 <https://dev.mysql.com/doc/refman/en/document-store.html>`_.
 
+.. === </mysqlx> ===
+
+.. === <mysql> [repl("* `XDevAPI <https://dev.mysql.com/doc/x-devapi-userguide/en>`_", "")] ====
 Features
 --------
 
@@ -24,6 +31,8 @@ Features
 * `C-extension <https://dev.mysql.com/doc/connector-python/en/connector-python-cext.html>`_
 * `Telemetry <https://dev.mysql.com/doc/connector-python/en/connector-python-opentelemetry.html>`_
 * `XDevAPI <https://dev.mysql.com/doc/x-devapi-userguide/en>`_
+
+.. === </mysql> ====
 
 
 Installation
@@ -35,13 +44,17 @@ Make sure you have a recent `pip <https://pip.pypa.io/>`_ version installed
 on your system. If your system already has ``pip`` installed, you might need
 to update it. Or you can use the `standalone pip installer <https://pip.pypa.io/en/latest/installation/>`_.
 
+.. === <mysql> [repl("The *classic API* can be installed via pip as follows:", "")] ===
 The *classic API* can be installed via pip as follows:
 
 .. code-block:: bash
 
     $ pip install mysql-connector-python
 
-, similarly, the *XDevAPI* can be installed with:
+.. === </mysql> ====
+
+.. === <mysqlx> [repl("similarly, the *XDevAPI* can be installed with:", "")] ===
+similarly, the *XDevAPI* can be installed with:
 
 .. code-block:: bash
 
@@ -50,6 +63,9 @@ The *classic API* can be installed via pip as follows:
 Please refer to the `installation tutorial <https://dev.mysql.com/doc/dev/connector-python/installation.html>`_
 for installation alternatives of the XDevAPI.
 
+.. === </mysqlx> ===
+
+
 ++++++++++++++++++++
 Installation Options
 ++++++++++++++++++++
@@ -57,11 +73,15 @@ Installation Options
 Connector packages included in MySQL Connector/Python allow you to install
 optional dependencies to unleash certain functionalities.
 
+.. === <mysql> ===
 .. code-block:: bash
 
     # 3rd party packages to unleash the telemetry functionality are installed
     $ pip install mysql-connector-python[telemetry]
 
+.. === </mysql> ===
+
+.. === <mysqlx> [repl("similarly, for the XDevAPI:", "")] ===
 similarly, for the XDevAPI:
 
 .. code-block:: bash
@@ -69,10 +89,13 @@ similarly, for the XDevAPI:
     # 3rd party packages to unleash the compression functionality are installed
     $ pip install mysqlx-connector-python[compression]
 
+.. === </mysqlx> ===
+
 This installation option can be seen as a shortcut to install all the
 dependencies needed by a particular feature. Mind that this is optional
 and you are free to install the required dependencies by yourself.
 
+.. === <mysql> [repl("Options for the Classic connector:", "Available options:")] ===
 Options for the Classic connector:
 
 * dns-srv
@@ -80,12 +103,17 @@ Options for the Classic connector:
 * fido2
 * telemetry
 
+.. === </mysql> ===
+
+.. === <mysqlx> [repl("Options for the XDevAPI connector:", "Available options:")] ===
 Options for the XDevAPI connector:
 
 * dns-srv
 * compression
 
+.. === </mysqlx> ===
 
+.. === <mysql> [repl("Classic", "Sample Code"), repl("-------", "-----------")] ===
 Classic
 -------
 
@@ -113,7 +141,9 @@ Classic
     # Close connection
     cnx.close()
 
+.. === </mysql> ===
 
+.. === <mysqlx> [repl("XDevAPI", "Sample Code"), repl("-------", "-----------")] ===
 XDevAPI
 -------
 
@@ -145,7 +175,9 @@ XDevAPI
     # Close session
     session.close()
 
+.. === </mysqlx> ===
 
+.. === <both> [repl-mysql("- `MySQL Connector/Python X DevAPI Reference <https://dev.mysql.com/doc/dev/connector-python/>`_", ""), repl-mysqlx("- `MySQL Connector/Python Developer Guide <https://dev.mysql.com/doc/connector-python/en/>`_", "")] ===
 Additional Resources
 --------------------
 
@@ -156,6 +188,8 @@ Additional Resources
 - `Slack <https://mysqlcommunity.slack.com>`_ (`Sign-up <https://lefred.be/mysql-community-on-slack/>`_ required if you do not have an Oracle account)
 - `Stack Overflow <https://stackoverflow.com/questions/tagged/mysql-connector-python>`_
 - `Oracle Blogs <https://blogs.oracle.com/search.html?q=connector-python>`_
+
+.. === </both> ===
 
 
 Contributing

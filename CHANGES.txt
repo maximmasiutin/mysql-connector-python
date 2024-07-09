@@ -12,6 +12,7 @@ v9.1.0
 ======
 
 - WL#16444: Drop build support for DEB packages
+- WL#16411: Improve wheel metadata information for Classic and XDevAPI connectors
 
 v9.0.0
 ======
