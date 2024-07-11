@@ -51,7 +51,7 @@ skip_glob = [
 
 [tool.black]
 line-length = 88
-target-version = ['py38']
+target-version = ['py39']
 exclude = '''
 (
   /(
@@ -133,7 +133,7 @@ good-names = ["i", "f", "db", "dt", "ca", "hi", "pw"]
 [tool.mypy]
 # https://mypy.readthedocs.io/en/stable/command_line.html
 # https://mypy.readthedocs.io/en/stable/config_file.html#using-a-pyproject-toml-file
-python_version = 3.8
+python_version = 3.9
 disallow_untyped_defs = true
 show_error_codes = true
 warn_unused_ignores = true

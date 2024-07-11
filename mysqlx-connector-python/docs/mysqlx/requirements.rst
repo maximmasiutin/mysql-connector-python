@@ -2,7 +2,7 @@ Requirements
 ============
 
 * MySQL 8.0.0 or higher, with the X Plugin enabled
-* Python >= 3.8
+* Python >= 3.9
 * Protobuf C++ (version == 4.25.3)
 * Python Protobuf (version == 4.25.3)
 * dnspython (version == 2.6.1) for DNS SRV support

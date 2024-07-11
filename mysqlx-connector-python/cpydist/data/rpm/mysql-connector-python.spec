@@ -30,30 +30,9 @@
 
 %undefine _package_note_file
 
-%if 0%{?suse_version} == 1315
-%global dist            .sles12
-%{!?__python3: %global __python3 /usr/bin/python3}
-%endif
-
-%if 0%{?suse_version} == 1500
-%global dist            .sl15
-%global __python3 /usr/bin/python3.11
-%global python3_sitearch %{_libdir}/python3.11/site-packages
-%endif
-
-# SCL is used on el7 https://www.softwarecollections.org/en/docs/guide/
-%if 0%{?rhel} == 7
-%global _enable_debug_package 0
-%global debug_package         %{nil}
-%global __os_install_post     /usr/lib/rpm/brp-compress %{nil}
-%global scl rh-python38
-%scl_package mysqlx-connector-python
-%global python3_pkgversion %{nil}
-%endif
-
 %if 0%{?rhel} == 8
-%{!?__python3: %global __python3 /usr/bin/python3.8}
-%{!?python3_pkgversion: %global python3_pkgversion 38}
+%{!?__python3: %global __python3 /usr/bin/python3.9}
+%{!?python3_pkgversion: %global python3_pkgversion 39}
 %endif
 
 %{?protobuf_include_dir: %global with_protobuf_include_dir %{protobuf_include_dir}}
@@ -87,38 +66,13 @@ Summary:       Standardized MySQL database driver for Python
 Name:          mysqlx-connector-python%{?product_suffix}
 Version:       %{version}
 Release:       1%{?version_extra:.%{version_extra}}%{?byte_code_only:.1}%{?dist}
-License:       Copyright (c) 2015, 2021, Oracle and/or its affiliates. Under %{?license_type} license as shown in the Description field.
+License:       Copyright (c) 2015, 2024, Oracle and/or its affiliates. Under %{?license_type} license as shown in the Description field.
 URL:           https://dev.mysql.com/downloads/connector/python/
 Source0:       https://cdn.mysql.com/Downloads/Connector-Python/mysql-connector-python%{?product_suffix}-%{version}-src.tar.gz
 
-%if 0%{?fedora}
-BuildRequires: python3-devel
-BuildRequires: python3-setuptools
-%endif
-
-%if 0%{?suse_version} == 1500
-BuildRequires: python311-devel
-BuildRequires: python311-setuptools
-%endif
-
-%if 0%{?rhel} == 7
-BuildRequires: scl-utils
-BuildRequires: scl-utils-build
-BuildRequires: rh-python38-build
-BuildRequires: rh-python38-runtime
-BuildRequires: rh-python38-python-devel
-BuildRequires: rh-python38-python-setuptools
-BuildRequires: rh-python38-python-rpm-macros
-%endif
-
 %if 0%{?rhel} == 8
-BuildRequires: python38-devel
-BuildRequires: python38-setuptools
-BuildRequires: python38-rpm-macros
-%endif
-
-%if 0%{?fedora}
-%global __requires_exclude .*protobuf.*
+BuildRequires: python39-devel
+BuildRequires: python39-setuptools
 %endif
 
 %description
@@ -151,27 +105,8 @@ Obsoletes:     mysqlx-connector-python3-cext < %{version}-%{release}
 Provides:      mysqlx-connector-python3-cext = %{version}-%{release}
 %endif
 
-%if 0%{?fedora}
-Requires:      python3
-%endif
-
-%if 0%{?suse_version} == 1500
-Requires:      python311
-%endif
-
-%if 0%{?rhel} == 7
-Requires:      %{scl}-runtime
-%endif
-
 %if 0%{?rhel} == 8
-Requires:      python38
-%endif
-
-# Some operations requires DNSPYTHON but this is not a strict
-# requirement for the RPM install as currently few RPM platforms has
-# the required version as RPMs. Users need to install using PIP.
-%if 0%{?fedora}
-Requires:      python3-dns >= %{wants_py_dnspython_version}
+Requires:      python39
 %endif
 
 
@@ -238,6 +173,11 @@ sed -i -e '/protobuf/d' %{buildroot}%{python3_sitearch}/mysqlx_connector_python-
 %{python3_sitearch}/_mysqlxpb.cpython*.so
 
 %changelog
+* Mon Aug 5 2024 Souma Kanti Ghosh <souma.kanti.ghosh@oracle.com> - 9.1.0-1
+- Removed rules for Fedora, openSUSE and EL7 platforms
+- Removed Python 3.8 support
+- Updated copyright year from 2021 to 2024
+
 * Fri May 31 2024 Oscar Pacheco <oscar.p.pacheco@oracle.com> - 9.0.0-1
 - Updated for 9.0.0
 
