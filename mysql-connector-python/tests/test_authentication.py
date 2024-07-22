@@ -41,6 +41,8 @@ import subprocess
 import time
 import unittest
 
+from mysql.connector.connection import MySQLConnection
+
 import tests
 
 import mysql.connector
@@ -97,7 +99,6 @@ _PLUGINS_DEPENDENCIES = {
 
 
 class AuthenticationModuleTests(tests.MySQLConnectorTests):
-
     """Tests globals and functions of the authentication module"""
 
     def test_get_auth_plugin(self):
@@ -142,7 +143,6 @@ class AuthenticationModuleTests(tests.MySQLConnectorTests):
 
 
 class MySQLNativePasswordAuthPluginTests(tests.MySQLConnectorTests):
-
     """Tests authentication.MySQLNativePasswordAuthPlugin"""
 
     def setUp(self):
@@ -187,7 +187,6 @@ class MySQLNativePasswordAuthPluginTests(tests.MySQLConnectorTests):
 
 
 class MySQLClearPasswordAuthPluginTests(tests.MySQLConnectorTests):
-
     """Tests authentication.MySQLClearPasswordAuthPlugin"""
 
     def setUp(self):
@@ -210,7 +209,6 @@ class MySQLClearPasswordAuthPluginTests(tests.MySQLConnectorTests):
 
 
 class MySQLSHA256PasswordAuthPluginTests(tests.MySQLConnectorTests):
-
     """Tests authentication.MySQLSHA256PasswordAuthPlugin"""
 
     def setUp(self):
@@ -1347,8 +1345,7 @@ class MySQLWebAuthnAuthPluginTests(tests.MySQLConnectorTests):
     def test_invalid_webauthn_callback(self):
         """Test invalid 'webauthn_callback' option."""
 
-        def my_callback():
-            ...
+        def my_callback(): ...
 
         test_cases = (
             "abc",  # No callable named 'abc'
@@ -1359,3 +1356,185 @@ class MySQLWebAuthnAuthPluginTests(tests.MySQLConnectorTests):
         for case in test_cases:
             config["webauthn_callback"] = case
             self.assertRaises(ProgrammingError, self.cnx.__class__, **config)
+
+
+@unittest.skipIf(
+    tests.MYSQL_VERSION < (9, 1, 0),
+    "Authentication with OpenID Connect is not supported",
+)
+@unittest.skipIf(
+    not tests.SSL_AVAILABLE,
+    "SSL support is unavailable, OpenID authentication strictly needs SSL enabled to work properly.",
+)
+class MySQLOpenIDConnectAuthPluginTests(tests.MySQLConnectorTests):
+    """Test OpenID Connect authentication
+
+    Implemented by WL#16341: OpenID Connect (Oauth2 - JWT) Authentication Support
+    """
+
+    skip_reason = None
+
+    @classmethod
+    def setUpClass(cls):
+        config = tests.get_mysql_config()
+        plugin_ext = "dll" if os.name == "nt" else "so"
+        with mysql.connector.connect(**config) as cnx:
+            # Install the auth plugin `authentication_openid_connect`
+            try:
+                cnx.cmd_query(
+                    f"""
+                    INSTALL PLUGIN authentication_openid_connect
+                    SONAME 'authentication_openid_connect.{plugin_ext}'
+                    """
+                )
+            except DatabaseError:
+                cls.skip_reason = (
+                    "Plugin authentication_openid_connect is not available"
+                )
+                return
+            # Add the JWK to `authentication_openid_connect_configuration` server variable
+            jwk = (
+                r'JSON://{"myissuer":"{\\"kty\\":\\"RSA\\",\\"n\\":\\"rNF2tLljUxA-IZ9sCD'
+                r"XEzeQKAUnJ0BCy3QWGLqTh2I4cLGF_JPHlk5xRHdCV8YOzxpxgGKbj8ClLaxkt3eSWU8oQAvEH7f"
+                r"ATOpPHunZzc0n9ak2oFNJqlqHVadhWNxj1LaJPhniqGrDO9iWutd3-zXLgYksPbjZcXXl01SBArc"
+                r"zM7OJvL2nQ-lmizVsm0MGfGSCRjpewRPLklGqawOOs8qcqW0J5QOpSby4i-YLG_rRGrfqE-f6BMu"
+                r"sX8snSQVx-MlsNO2AS54pi8aC2njEFP3AT_FLxX6gFcfIxbsw_ZwsbDktjj6-UKU0LA0Jvaib2EM"
+                r"kS9UJDuni85pKfUfMD4Votq3U9kFjSPl0ZraPDgCLYy-q_vLN5BhQxAsYiCQUnZYQBKsELw07SYF"
+                r"7I8kwQcKs8V5ryRvCtjjAbVOHzVdwUKxm2HrKyh4yhogtiSwicndAzgfq2aTHIDDWHpOmEgXmfaX"
+                r"shx9vCS5qLZmgOZDGzga2My0dO8sQAYfpP3PF5saZ0MkddSj5kwjCvEeugCdrNHKMimb77BipmJz"
+                r"E8WibQEg5IN1P2VmMDfoF-lYNBmZu41pe-OzAqrBLLMEkMWrhTr8jjLFHhTKYTGvtgu0xF4FQkjF"
+                r'sbopVCUueMAX8fLYuUYV0cuSF3qFLqDWWH0gl4HK-IsCmjAU_ghAaA-Ys\\",\\"e\\":\\"AQAB'
+                r'\\",\\"alg\\":\\"RS256\\",\\"use\\":\\"sig\\",\\"name\\":\\"https://myissuer.com\\"}"}'
+            )
+            cnx.cmd_query(
+                f"SET GLOBAL authentication_openid_connect_configuration = '{jwk}'"
+            )
+            # Create the user configured with OpenID connect
+            cnx.cmd_query("DROP USER IF EXISTS 'openid-test'@'%'")
+            cnx.cmd_query(
+                """CREATE USER 'openid-test'@'%' IDENTIFIED WITH 'authentication_openid_connect' AS
+                '{"identity_provider" : "myissuer", "user" : "mysubj"}'"""
+            )
+            cnx.cmd_query("GRANT ALL ON *.* TO 'openid-test'")
+
+    @classmethod
+    def tearDownClass(cls):
+        config = tests.get_mysql_config()
+        with mysql.connector.connect(**config) as cnx:
+            cnx.cmd_query("DROP USER IF EXISTS 'openid-test'@'%'")
+            try:
+                cnx.cmd_query("UNINSTALL PLUGIN authentication_openid_connect")
+            except ProgrammingError:
+                pass
+
+    def setUp(self):
+        if self.skip_reason is not None:
+            self.skipTest(self.skip_reason)
+
+    def helper_for_token_file_valid_test(self, cnx, expected_user):
+        cnx.cmd_query("SELECT USER()")
+        res = cnx.get_rows()
+        self.assertIsInstance(res, tuple)
+        self.assertTrue(expected_user in res[0][0][0])
+
+    @tests.foreach_cnx()
+    def test_openid_identity_token_file_valid(self):
+        """Checks whether an user is able to authenticate with a path to a valid
+        OpenID Identity Token file passed through `openid_token_file` option via
+        fast authentication, switch authentication and change user request process."""
+
+        config = tests.get_mysql_config()
+        config["user"] = "openid-test"
+        config["auth_plugin"] = "authentication_openid_connect_client"
+        config["openid_token_file"] = "tests/data/openid/test_token_valid"
+        config["unix_socket"] = None
+
+        # fast authentication check
+        cnx_pivot = self.cnx.__class__(**config)
+        self.helper_for_token_file_valid_test(cnx_pivot, config["user"])
+
+        # switch authentication check
+        del config["auth_plugin"]
+        cnx_pivot = self.cnx.__class__(**config)
+        self.helper_for_token_file_valid_test(cnx_pivot, config["user"])
+
+        # change user request check
+        cnx_pivot.cmd_change_user(
+            username="openid-test",
+            openid_token_file="tests/data/openid/test_token_valid",
+        )
+        self.helper_for_token_file_valid_test(cnx_pivot, config["user"])
+
+    @tests.foreach_cnx()
+    def test_openid_identity_token_file_path_invalid(self):
+        """Checks whether an user is able to authenticate with an invalid path
+        to an OpenID Identity Token file passed through `openid_token_file` option."""
+
+        config = tests.get_mysql_config()
+        config["user"] = "openid-test"
+        config["unix_socket"] = None
+
+        # Non-existent file path
+        config["openid_token_file"] = "tests/data/openid/test_token_nonexistent"
+        self.assertRaises(InterfaceError, self.cnx.__class__, **config)
+        # Invalid file path syntax
+        config["openid_token_file"] = r"tests\data\openid/test_token_nonexistent"
+        self.assertRaises(InterfaceError, self.cnx.__class__, **config)
+        # File path missing
+        del config["openid_token_file"]
+        self.assertRaises((DatabaseError, ProgrammingError), self.cnx.__class__, **config)
+
+    @tests.foreach_cnx()
+    def test_openid_identity_token_file_invalid(self):
+        """Checks whether an user is able to authenticate with an OpenID Identity
+        Token file passed through `openid_token_file` option containing invalid
+        token."""
+
+        config = tests.get_mysql_config()
+        config["user"] = "openid-test"
+        config["unix_socket"] = None
+
+        for invalid_type in (
+            "url_unsafe",
+            "missing_sub",
+            "missing_iss",
+            "missing_exp",
+            "invalid_struct",
+            "invalid_sig",
+            "gt_10k",
+            "empty",
+            "expired",
+        ):
+            config["openid_token_file"] = "tests/data/openid/test_token_" + invalid_type
+            # Check for fast auth
+            config["auth_plugin"] = "authentication_openid_connect_client"
+            self.assertRaises((DatabaseError, ProgrammingError, InterfaceError), self.cnx.__class__, **config)
+            # Check for switch auth
+            del config["auth_plugin"]
+            self.assertRaises((DatabaseError, ProgrammingError, InterfaceError), self.cnx.__class__, **config)
+
+    @tests.foreach_cnx()
+    def test_openid_connection_ssl_disabled(self):
+        """Checks whether an user is able to authenticate via OpenID Connect
+        authentication process using an insecure connection."""
+
+        config = tests.get_mysql_config()
+        config["user"] = "openid-test"
+        config["auth_plugin"] = "authentication_openid_connect_client"
+        config["openid_token_file"] = "tests/data/openid/test_token_valid"
+        config["ssl_disabled"] = True
+        config["unix_socket"] = None
+
+        self.assertRaises(InterfaceError, self.cnx.__class__, **config)
+
+    @tests.foreach_cnx()
+    def test_openid_user_invalid(self):
+        """Checks whether an user not configured with OpenID Connect authentication is
+        able to authenticate when auth_plugin is set to `authentication_openid_connect_client`."""
+        config = tests.get_mysql_config()
+        config["auth_plugin"] = "authentication_openid_connect_client"
+        config["openid_token_file"] = "tests/data/openid/test_token_valid"
+        config["unix_socket"] = None
+
+        # Authentication should pass using switch auth process
+        self.helper_for_token_file_valid_test(self.cnx.__class__(**config), config["user"])

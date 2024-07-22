@@ -100,6 +100,7 @@ DEFAULT_CONFIGURATION: Dict[str, Optional[Union[str, bool, int]]] = {
     "webauthn_callback": None,
     "kerberos_auth_mode": None,
     "init_command": None,
+    "openid_token_file": None,
 }
 
 CNX_POOL_ARGS: Tuple[str, str, str] = ("pool_name", "pool_size", "pool_reset_session")
@@ -795,6 +796,7 @@ class ClientFlag(_Flags):
         MULTI_STATEMENTS,
         MULTI_RESULTS,
         CONNECT_ARGS,
+        PLUGIN_AUTH_LENENC_CLIENT_DATA,
     ]
 
     @classmethod

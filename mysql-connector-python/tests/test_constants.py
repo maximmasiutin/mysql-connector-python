@@ -330,6 +330,7 @@ class ClientFlagTests(tests.MySQLConnectorTests):
             constants.ClientFlag.MULTI_STATEMENTS,
             constants.ClientFlag.MULTI_RESULTS,
             constants.ClientFlag.CONNECT_ARGS,
+            constants.ClientFlag.PLUGIN_AUTH_LENENC_CLIENT_DATA,
         ]
         exp = 0
         for option in data:

@@ -848,12 +848,12 @@ MySQL_change_user(MySQL *self, PyObject *args, PyObject *kwds)
 {
     char *user = NULL, *database = NULL;
     char *password = NULL, *password1 = NULL, *password2 = NULL, *password3 = NULL;
-    char *oci_config_file = NULL, *oci_config_profile = NULL;
+    char *oci_config_file = NULL, *oci_config_profile = NULL, *openid_token_file = NULL;
     unsigned int mfa_factor1 = 1, mfa_factor2 = 2, mfa_factor3 = 3;
     int res;
     static char *kwlist[] = {"user", "password", "database", "password1",
                              "password2", "password3", "oci_config_file",
-                             "oci_config_profile", NULL};
+                             "oci_config_profile", "openid_token_file", NULL};
 #if MYSQL_VERSION_ID >= 80001
     bool abool;
 #else
@@ -862,9 +862,9 @@ MySQL_change_user(MySQL *self, PyObject *args, PyObject *kwds)
 
     IS_CONNECTED(self);
 
-    if (!PyArg_ParseTupleAndKeywords(args, kwds, "|zzzzzzzz", kwlist, &user, &password,
+    if (!PyArg_ParseTupleAndKeywords(args, kwds, "|zzzzzzzzz", kwlist, &user, &password,
                                      &database, &password1, &password2, &password3,
-                                     &oci_config_file, &oci_config_profile)) {
+                                     &oci_config_file, &oci_config_profile, &openid_token_file)) {
         return NULL;
     }
 
@@ -923,6 +923,27 @@ MySQL_change_user(MySQL *self, PyObject *args, PyObject *kwds)
                                  oci_config_profile)) {
             raise_with_string(
                 PyUnicode_FromFormat("Invalid oci-config-profile: %s", oci_config_profile), NULL);
+            return NULL;
+        }
+    }
+#endif
+
+#if MYSQL_VERSION_ID >= 90100
+    if (openid_token_file != NULL) {
+        /* load openid client authentication plugin if required */
+        struct st_mysql_client_plugin *openid_connect_plugin = mysql_client_find_plugin(
+            &self->session, "authentication_openid_connect_client", MYSQL_CLIENT_AUTHENTICATION_PLUGIN);
+        if (!openid_connect_plugin) {
+            raise_with_string(
+                PyUnicode_FromString("The OpenID Connect authentication plugin could not be loaded."),
+                NULL);
+            return NULL;
+        }
+        /* set authentication-openid-connect-client-id-token-file in plugin */
+        if (mysql_plugin_options(openid_connect_plugin, "id-token-file",
+                                 openid_token_file)) {
+            raise_with_string(
+                PyUnicode_FromFormat("Invalid id-token-file: %s", openid_token_file), NULL);
             return NULL;
         }
     }
@@ -1109,6 +1130,7 @@ MySQL_connect(MySQL *self, PyObject *args, PyObject *kwds)
 {
     char *host = NULL, *user = NULL, *database = NULL, *unix_socket = NULL;
     char *oci_config_file = NULL, *oci_config_profile = NULL;
+    char *openid_token_file = NULL;
     char *load_data_local_dir = NULL;
     char *ssl_ca = NULL, *ssl_cert = NULL, *ssl_key = NULL, *ssl_cipher_suites = NULL,
          *tls_versions = NULL, *tls_cipher_suites = NULL;
@@ -1162,16 +1184,17 @@ MySQL_connect(MySQL *self, PyObject *args, PyObject *kwds)
                              "oci_config_profile",
                              "webauthn_callback",
                              "use_kerberos_gssapi",
+                             "openid_token_file",
                              NULL};
 
     if (!PyArg_ParseTupleAndKeywords(
-            args, kwds, "|zzzzzzzkzkzzzzzzO!O!O!O!O!izzzOO", kwlist, &host, &user, &password,
+            args, kwds, "|zzzzzzzkzkzzzzzzO!O!O!O!O!izzzOOz", kwlist, &host, &user, &password,
             &password1, &password2, &password3, &database, &port, &unix_socket, &client_flags,
             &ssl_ca, &ssl_cert, &ssl_key, &ssl_cipher_suites, &tls_versions,
             &tls_cipher_suites, &PyBool_Type, &ssl_verify_cert, &PyBool_Type,
             &ssl_verify_identity, &PyBool_Type, &ssl_disabled, &PyBool_Type, &compress,
             &PyDict_Type, &conn_attrs, &local_infile, &load_data_local_dir, &oci_config_file,
-            &oci_config_profile, &webauthn_callback, &use_kerberos_gssapi)) {
+            &oci_config_profile, &webauthn_callback, &use_kerberos_gssapi, &openid_token_file)) {
         return NULL;
     }
 
@@ -1297,10 +1320,15 @@ MySQL_connect(MySQL *self, PyObject *args, PyObject *kwds)
     if (strcmp(PyUnicode_AsUTF8(self->auth_plugin), "") != 0) {
         auth_plugin = PyUnicode_AsUTF8(self->auth_plugin);
         mysql_options(&self->session, MYSQL_DEFAULT_AUTH, auth_plugin);
-        if (strcmp(auth_plugin, "sha256_password") == 0 && !ssl_enabled) {
+        PyObject *err_msg = NULL;
+        if (!ssl_enabled) {
+            if (strcmp(auth_plugin, "sha256_password") == 0) {
+                err_msg = PyUnicode_FromString("sha256_password requires SSL");
+            } else if (strcmp(auth_plugin, "authentication_openid_connect_client") == 0) {
+                err_msg = PyUnicode_FromString("authentication_openid_connect_client requires SSL");
+            }
             PyObject *exc_type = MySQLInterfaceError;
             PyObject *err_no = PyLong_FromLong(2002);
-            PyObject *err_msg = PyUnicode_FromString("sha256_password requires SSL");
             PyObject *err_obj = NULL;
             err_obj = PyObject_CallFunctionObjArgs(exc_type, err_msg, NULL);
             PyObject_SetAttrString(err_obj, "sqlstate", Py_None);
@@ -1430,6 +1458,27 @@ MySQL_connect(MySQL *self, PyObject *args, PyObject *kwds)
                              (const void *)(&webauthn_messages_callback));
 #endif
     }
+
+#if MYSQL_VERSION_ID >= 90100
+    if (openid_token_file != NULL) {
+        /* load openid client authentication plugin if required */
+        struct st_mysql_client_plugin *openid_connect_plugin = mysql_client_find_plugin(
+            &self->session, "authentication_openid_connect_client", MYSQL_CLIENT_AUTHENTICATION_PLUGIN);
+        if (!openid_connect_plugin) {
+            raise_with_string(
+                PyUnicode_FromString("The OpenID Connect authentication plugin could not be loaded."),
+                NULL);
+            return NULL;
+        }
+        /* set authentication-openid-connect-client-id-token-file in plugin */
+        if (mysql_plugin_options(openid_connect_plugin, "id-token-file",
+                                 openid_token_file)) {
+            raise_with_string(
+                PyUnicode_FromFormat("Invalid id-token-file: %s", openid_token_file), NULL);
+            return NULL;
+        }
+    }
+#endif
 
 #ifdef MS_WINDOWS
     if (use_kerberos_gssapi == Py_True) {

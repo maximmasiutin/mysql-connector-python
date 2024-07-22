@@ -242,11 +242,17 @@ class MySQLConnection(MySQLConnectionAbstract):
             self._charset = charsets.get_by_collation(self._charset_collation)
 
         if not self._handshake["capabilities"] & ClientFlag.SSL:
-            if self._auth_plugin == "mysql_clear_password" and not self.is_secure:
-                raise InterfaceError(
-                    "Clear password authentication is not supported over "
-                    "insecure channels"
-                )
+            if not self.is_secure:
+                if self._auth_plugin == "mysql_clear_password":
+                    raise InterfaceError(
+                        "Clear password authentication is not supported over "
+                        "insecure channels"
+                    )
+                if self._auth_plugin == "authentication_openid_connect_client":
+                    raise InterfaceError(
+                        "OpenID Connect authentication is not supported over "
+                        "insecure channels"
+                    )
             if self._ssl_verify_cert:
                 raise InterfaceError(
                     "SSL is required but the server doesn't support it",
@@ -316,6 +322,17 @@ class MySQLConnection(MySQLConnectionAbstract):
             await self._socket.switch_to_ssl(ssl_context)
             self._ssl_active = True
 
+        # Add the custom configurations required by specific auth plugins
+        self._authenticator.update_plugin_config(
+            config={
+                "krb_service_principal": self._krb_service_principal,
+                "oci_config_file": self._oci_config_file,
+                "oci_config_profile": self._oci_config_profile,
+                "webauthn_callback": self._webauthn_callback,
+                "openid_token_file": self._openid_token_file,
+            }
+        )
+
         ok_pkt = await self._authenticator.authenticate(
             sock=self._socket,
             handshake=self._handshake,
@@ -326,13 +343,10 @@ class MySQLConnection(MySQLConnectionAbstract):
             database=self._database,
             charset=self._charset.charset_id,
             client_flags=self._client_flags,
+            ssl_enabled=self._ssl_active,
             auth_plugin=self._auth_plugin,
             auth_plugin_class=self._auth_plugin_class,
             conn_attrs=self._connection_attrs,
-            krb_service_principal=self._krb_service_principal,
-            oci_config_file=self._oci_config_file,
-            oci_config_profile=self._oci_config_profile,
-            webauthn_callback=self._webauthn_callback,
         )
         self._handle_ok(ok_pkt)
 
@@ -1297,6 +1311,7 @@ class MySQLConnection(MySQLConnectionAbstract):
         password3: str = "",
         oci_config_file: str = "",
         oci_config_profile: str = "",
+        openid_token_file: str = "",
     ) -> Optional[OkPacketType]:
         """Change the current logged in user.
 
@@ -1329,8 +1344,18 @@ class MySQLConnection(MySQLConnectionAbstract):
 
         if oci_config_file:
             self._oci_config_file = oci_config_file
-
+        if openid_token_file:
+            self._openid_token_file = openid_token_file
         self._oci_config_profile = oci_config_profile
+
+        # Update the custom configurations needed by specific auth plugins
+        self._authenticator.update_plugin_config(
+            config={
+                "oci_config_file": self._oci_config_file,
+                "oci_config_profile": self._oci_config_profile,
+                "openid_token_file": self._openid_token_file,
+            }
+        )
 
         ok_packet: bytes = await self._authenticator.authenticate(
             sock=self._socket,
@@ -1345,9 +1370,6 @@ class MySQLConnection(MySQLConnectionAbstract):
             ssl_enabled=self._ssl_active,
             auth_plugin=self._auth_plugin,
             conn_attrs=self._connection_attrs,
-            auth_plugin_class=self._auth_plugin_class,
-            oci_config_file=self._oci_config_file,
-            oci_config_profile=self._oci_config_profile,
             is_change_user_request=True,
         )
 

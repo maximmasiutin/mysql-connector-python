@@ -65,8 +65,9 @@ from typing import (
 
 from ..abstracts import (
     DUPLICATED_IN_LIST_ERROR,
-    KRB_SERVICE_PINCIPAL_ERROR,
+    KRB_SERVICE_PRINCIPAL_ERROR,
     MYSQL_PY_TYPES,
+    OPENID_TOKEN_FILE_ERROR,
     TLS_V1_3_SUPPORTED,
     TLS_VER_NO_SUPPORTED,
     TLS_VERSION_ERROR,
@@ -183,6 +184,7 @@ class MySQLConnectionAbstract(ABC):
         raw: bool = False,
         kerberos_auth_mode: Optional[str] = None,
         krb_service_principal: Optional[str] = None,
+        openid_token_file: Optional[str] = None,
         webauthn_callback: Optional[Union[str, Callable[[str], None]]] = None,
         allow_local_infile: bool = DEFAULT_CONFIGURATION["allow_local_infile"],
         allow_local_infile_in_path: Optional[str] = DEFAULT_CONFIGURATION[
@@ -260,6 +262,7 @@ class MySQLConnectionAbstract(ABC):
         self._converter_str_fallback: bool = converter_str_fallback
         self._kerberos_auth_mode: Optional[str] = kerberos_auth_mode
         self._krb_service_principal: Optional[str] = krb_service_principal
+        self._openid_token_file: Optional[str] = openid_token_file
         self._allow_local_infile: bool = allow_local_infile
         self._allow_local_infile_in_path: Optional[str] = allow_local_infile_in_path
         self._get_warnings: bool = get_warnings
@@ -329,11 +332,16 @@ class MySQLConnectionAbstract(ABC):
         if self._unix_socket and os.name == "posix":
             self._ssl_disabled = True
 
-        if self._ssl_disabled and self._auth_plugin == "mysql_clear_password":
-            raise InterfaceError(
-                "Clear password authentication is not supported over insecure "
-                " channels"
-            )
+        if self._ssl_disabled:
+            if self._auth_plugin == "mysql_clear_password":
+                raise InterfaceError(
+                    "Clear password authentication is not supported over insecure "
+                    " channels"
+                )
+            if self._auth_plugin == "authentication_openid_connect_client":
+                raise InterfaceError(
+                    "OpenID Connect authentication is not supported over insecure channels"
+                )
 
         if not isinstance(self._port, int):
             raise InterfaceError("TCP/IP port number should be an integer")
@@ -414,21 +422,36 @@ class MySQLConnectionAbstract(ABC):
         if self._krb_service_principal:
             if not isinstance(self._krb_service_principal, str):
                 raise InterfaceError(
-                    KRB_SERVICE_PINCIPAL_ERROR.format(error="is not a string")
+                    KRB_SERVICE_PRINCIPAL_ERROR.format(error="is not a string")
                 )
             if self._krb_service_principal == "":
                 raise InterfaceError(
-                    KRB_SERVICE_PINCIPAL_ERROR.format(
+                    KRB_SERVICE_PRINCIPAL_ERROR.format(
                         error="can not be an empty string"
                     )
                 )
             if "/" not in self._krb_service_principal:
                 raise InterfaceError(
-                    KRB_SERVICE_PINCIPAL_ERROR.format(error="is incorrectly formatted")
+                    KRB_SERVICE_PRINCIPAL_ERROR.format(error="is incorrectly formatted")
                 )
 
         if self._webauthn_callback:
             self._validate_callable("webauth_callback", self._webauthn_callback, 1)
+
+        if self._openid_token_file:
+            if not isinstance(self._openid_token_file, str):
+                raise InterfaceError(
+                    OPENID_TOKEN_FILE_ERROR.format(error="is not a string")
+                )
+            if self._openid_token_file == "":
+                raise InterfaceError(
+                    OPENID_TOKEN_FILE_ERROR.format(error="cannot be an empty string")
+                )
+            if not os.path.exists(self._openid_token_file):
+                raise InterfaceError(
+                    f"The path '{self._openid_token_file}' provided via 'openid_token_file' "
+                    "does not exist"
+                )
 
     def _validate_tls_ciphersuites(self) -> None:
         """Validates the tls_ciphersuites option."""
@@ -1569,6 +1592,7 @@ class MySQLConnectionAbstract(ABC):
         password3: str = "",
         oci_config_file: str = "",
         oci_config_profile: str = "",
+        openid_token_file: str = "",
     ) -> Optional[OkPacketType]:
         """Changes the current logged in user.
 
@@ -1588,6 +1612,7 @@ class MySQLConnectionAbstract(ABC):
             password3: New account's password factor 3.
             oci_config_file: OCI configuration file location (path-like string).
             oci_config_profile: OCI configuration profile location (path-like string).
+            openid_token_file: OpenID Connect token file location (path-like string).
 
         Returns:
             ok_packet: Dictionary containing the OK packet information.

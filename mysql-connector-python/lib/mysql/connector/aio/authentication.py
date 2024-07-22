@@ -32,8 +32,6 @@ from __future__ import annotations
 
 __all__ = ["MySQLAuthenticator"]
 
-import copy
-
 from typing import TYPE_CHECKING, Any, Dict, Optional
 
 from ..errors import InterfaceError, NotSupportedError, get_exception
@@ -88,6 +86,10 @@ class MySQLAuthenticator:
                   `authenticate()`.
         """
         return self._plugin_config
+
+    def update_plugin_config(self, config: Dict[str, Any]) -> None:
+        """Update the 'plugin_config' instance variable"""
+        self._plugin_config.update(config)
 
     def _switch_auth_strategy(
         self,
@@ -243,12 +245,12 @@ class MySQLAuthenticator:
         database: Optional[str] = None,
         charset: int = DEFAULT_CHARSET_ID,
         client_flags: int = 0,
+        ssl_enabled: bool = False,
         max_allowed_packet: int = DEFAULT_MAX_ALLOWED_PACKET,
         auth_plugin: Optional[str] = None,
         auth_plugin_class: Optional[str] = None,
         conn_attrs: Optional[Dict[str, str]] = None,
         is_change_user_request: bool = False,
-        **plugin_config: Any,
     ) -> bytes:
         """Perform the authentication phase.
 
@@ -264,15 +266,13 @@ class MySQLAuthenticator:
             database: Initial database name for the connection.
             charset: Client charset (see [1]), only the lower 8-bits.
             client_flags: Integer representing client capabilities flags.
+            ssl_enabled: Boolean indicating whether SSL is enabled,
             max_allowed_packet: Maximum packet size.
             auth_plugin: Authorization plugin name.
             auth_plugin_class: Authorization plugin class (has higher precedence
                                than the authorization plugin name).
             conn_attrs: Connection attributes.
             is_change_user_request: Whether is a `change user request` operation or not.
-            plugin_config: Custom configuration to be passed to the auth plugin
-                           when invoked. The parameters defined here will override the
-                           ones defined in the auth plugin itself.
 
         Returns:
             ok_packet: OK packet.
@@ -287,7 +287,7 @@ class MySQLAuthenticator:
         # update credentials, plugin config and plugin class
         self._username = username
         self._passwords = {1: password1, 2: password2, 3: password3}
-        self._plugin_config = copy.deepcopy(plugin_config)
+        self._ssl_enabled = ssl_enabled
         self._auth_plugin_class = auth_plugin_class
 
         # client's handshake response

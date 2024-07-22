@@ -140,11 +140,16 @@ TLS_VER_NO_SUPPORTED = (
     "No supported TLS protocol version found in the 'tls-versions' list '{}'. "
 )
 
-KRB_SERVICE_PINCIPAL_ERROR = (
+KRB_SERVICE_PRINCIPAL_ERROR = (
     'Option "krb_service_principal" {error}, must be a string in the form '
     '"primary/instance@realm" e.g "ldap/ldapauth@MYSQL.COM" where "@realm" '
     "is optional and if it is not given will be assumed to belong to the "
     "default realm, as configured in the krb5.conf file."
+)
+
+OPENID_TOKEN_FILE_ERROR = (
+    'Option "openid_token_file" {error}, it must be a string in the form '
+    '"path/to/openid/token/file".'
 )
 
 MYSQL_PY_TYPES = (
@@ -215,6 +220,7 @@ class MySQLConnectionAbstract(ABC):
         self._oci_config_profile: Optional[str] = None
         self._webauthn_callback: Optional[Union[str, Callable[[str], None]]] = None
         self._krb_service_principal: Optional[str] = None
+        self._openid_token_file: Optional[str] = None
 
         self._use_unicode: bool = True
         self._get_warnings: bool = False
@@ -724,10 +730,15 @@ class MySQLConnectionAbstract(ABC):
         if self._unix_socket and os.name == "posix":
             self._ssl_disabled = True
 
-        if self._ssl_disabled and self._auth_plugin == "mysql_clear_password":
-            raise InterfaceError(
-                "Clear password authentication is not supported over insecure channels"
-            )
+        if self._ssl_disabled:
+            if self._auth_plugin == "mysql_clear_password":
+                raise InterfaceError(
+                    "Clear password authentication is not supported over insecure channels"
+                )
+            if self._auth_plugin == "authentication_openid_connect_client":
+                raise InterfaceError(
+                    "OpenID Connect authentication is not supported over insecure channels"
+                )
 
         if set_ssl_flag:
             if "verify_cert" not in self._ssl:
@@ -822,21 +833,37 @@ class MySQLConnectionAbstract(ABC):
             self._krb_service_principal = config["krb_service_principal"]
             if not isinstance(self._krb_service_principal, str):
                 raise InterfaceError(
-                    KRB_SERVICE_PINCIPAL_ERROR.format(error="is not a string")
+                    KRB_SERVICE_PRINCIPAL_ERROR.format(error="is not a string")
                 )
             if self._krb_service_principal == "":
                 raise InterfaceError(
-                    KRB_SERVICE_PINCIPAL_ERROR.format(
+                    KRB_SERVICE_PRINCIPAL_ERROR.format(
                         error="can not be an empty string"
                     )
                 )
             if "/" not in self._krb_service_principal:
                 raise InterfaceError(
-                    KRB_SERVICE_PINCIPAL_ERROR.format(error="is incorrectly formatted")
+                    KRB_SERVICE_PRINCIPAL_ERROR.format(error="is incorrectly formatted")
                 )
 
         if self._webauthn_callback:
             self._validate_callable("webauth_callback", self._webauthn_callback, 1)
+
+        if config.get("openid_token_file") is not None:
+            self._openid_token_file = config["openid_token_file"]
+            if not isinstance(self._openid_token_file, str):
+                raise InterfaceError(
+                    OPENID_TOKEN_FILE_ERROR.format(error="is not a string")
+                )
+            if self._openid_token_file == "":
+                raise InterfaceError(
+                    OPENID_TOKEN_FILE_ERROR.format(error="cannot be an empty string")
+                )
+            if not os.path.exists(self._openid_token_file):
+                raise InterfaceError(
+                    f"The path '{self._openid_token_file}' provided via 'openid_token_file' "
+                    "does not exist"
+                )
 
     def _add_default_conn_attrs(self) -> None:
         """Adds the default connection attributes."""
@@ -2036,6 +2063,7 @@ class MySQLConnectionAbstract(ABC):
         password3: str = "",
         oci_config_file: str = "",
         oci_config_profile: str = "",
+        openid_token_file: str = "",
     ) -> Optional[Dict[str, Any]]:
         """Changes the current logged in user.
 
@@ -2055,6 +2083,7 @@ class MySQLConnectionAbstract(ABC):
             password3: New account's password factor 3.
             oci_config_file: OCI configuration file location (path-like string).
             oci_config_profile: OCI configuration profile location (path-like string).
+            openid_token_file: OpenID Connect token file location (path-like string).
 
         Returns:
             ok_packet: Dictionary containing the OK packet information.

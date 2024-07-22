@@ -290,6 +290,7 @@ class CMySQLConnection(MySQLConnectionAbstract):
                 if isinstance(self._webauthn_callback, str)
                 else self._webauthn_callback
             ),
+            "openid_token_file": self._openid_token_file,
         }
 
         tls_versions = self._ssl.get("tls_versions")
@@ -913,6 +914,7 @@ class CMySQLConnection(MySQLConnectionAbstract):
         password3: str = "",
         oci_config_file: Optional[str] = None,
         oci_config_profile: Optional[str] = None,
+        openid_token_file: Optional[str] = None,
     ) -> None:
         """Change the current logged in user"""
         try:
@@ -925,6 +927,7 @@ class CMySQLConnection(MySQLConnectionAbstract):
                 password3,
                 oci_config_file,
                 oci_config_profile,
+                openid_token_file,
             )
 
         except MySQLInterfaceError as err:
