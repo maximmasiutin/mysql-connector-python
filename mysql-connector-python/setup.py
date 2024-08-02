@@ -31,6 +31,7 @@
 
 import os
 import pathlib
+import re
 import shutil
 import sys
 
@@ -87,37 +88,51 @@ EXTENSIONS = [
     ),
 ]
 
-LONG_DESCRIPTION = """
-MySQL driver written in Python which does not depend on MySQL C client
-libraries and implements the DB API v2.0 specification (PEP-249).
-"""
-
 
 def main() -> None:
     setup(
         name="mysql-connector-python",
         version=VERSION_TEXT,
-        description="MySQL driver written in Python",
-        long_description=LONG_DESCRIPTION,
+        description=(
+            "A self-contained Python driver for communicating with MySQL "
+            "servers, using an API that is compliant with the Python "
+            "Database API Specification v2.0 (PEP 249)."
+        ),
+        long_description=get_long_description(),
+        long_description_content_type="text/x-rst",
         author="Oracle and/or its affiliates",
         author_email="",
         license="GNU GPLv2 (with FOSS License Exception)",
-        keywords="mysql db",
-        url="http://dev.mysql.com/doc/connector-python/en/index.html",
-        download_url="http://dev.mysql.com/downloads/connector/python/",
+        keywords=[
+            "mysql",
+            "database",
+            "db",
+            "connector",
+            "driver",
+        ],
+        project_urls={
+            "Homepage": "https://dev.mysql.com/doc/connector-python/en/",
+            "Documentation": "https://dev.mysql.com/doc/connector-python/en/",
+            "Downloads": "https://dev.mysql.com/downloads/connector/python/",
+            "Release Notes": "https://dev.mysql.com/doc/relnotes/connector-python/en/",
+            "Source Code": "https://github.com/mysql/mysql-connector-python",
+            "Bug System": "https://bugs.mysql.com/",
+            "Slack": "https://mysqlcommunity.slack.com/messages/connectors",
+            "Forums": "https://forums.mysql.com/list.php?50",
+            "Blog": "https://blogs.oracle.com/mysql/",
+        },
         package_dir={"": "lib"},
         packages=find_packages(where="lib"),
         classifiers=[
             "Development Status :: 5 - Production/Stable",
-            "Environment :: Other Environment",
             "Intended Audience :: Developers",
             "Intended Audience :: Education",
-            "Intended Audience :: Information Technology",
-            "Intended Audience :: System Administrators",
             "License :: OSI Approved :: GNU General Public License (GPL)",
-            "Operating System :: OS Independent",
+            "Operating System :: MacOS :: MacOS X",
+            "Operating System :: Microsoft :: Windows",
+            "Operating System :: POSIX :: Linux",
+            "Operating System :: Unix",
             "Programming Language :: Python :: 3",
-            "Programming Language :: Python :: 3.8",
             "Programming Language :: Python :: 3.9",
             "Programming Language :: Python :: 3.10",
             "Programming Language :: Python :: 3.11",
@@ -125,12 +140,12 @@ def main() -> None:
             "Programming Language :: Python :: 3.13",
             "Topic :: Database",
             "Topic :: Software Development",
-            "Topic :: Software Development :: Libraries :: Application Frameworks",
             "Topic :: Software Development :: Libraries :: Python Modules",
+            "Typing :: Typed",
         ],
         ext_modules=EXTENSIONS,
         cmdclass=COMMAND_CLASSES,
-        python_requires=">=3.8",
+        python_requires=">=3.9",
         extras_require={
             "dns-srv": ["dnspython==2.6.1"],
             "gssapi": ["gssapi>=1.6.9,<=1.8.2"],
@@ -150,6 +165,42 @@ def copy_metadata_files() -> None:
     """
     for filename in METADATA_FILES:
         shutil.copy(pathlib.Path(os.getcwd(), f"../{filename}"), pathlib.Path(f"./"))
+
+
+def get_long_description() -> str:
+    """Extracts a long description from the README.rst file that is suited for this specific package.
+    """
+    with open(pathlib.Path(os.getcwd(), "../README.rst")) as file_handle:
+        # The README.rst text is meant to be shared by both mysql and mysqlx packages, so after getting it we need to
+        # parse it in order to remove the bits of text that are not meaningful for this package (mysql)
+        long_description = file_handle.read()
+    block_matches = re.finditer(
+        pattern=(
+            r'(?P<module_start>\.{2}\s+={2,}\s+(?P<module_tag>\<(?P<module_name>mysql|mysqlx|both)\>)(?P<repls>\s+'
+            r'\[(?:(?:,\s*)?(?:repl(?:-mysql(?:x)?)?)\("(?:[^"]+)",\s*"(?:[^"]*)"\))+\])?\s+={2,})'
+            r'(?P<block_text>.+?(?=\.{2}\s+={2,}))(?P<module_end>\.{2}\s+={2,}\s+\</(?P=module_name)\>\s+={2,})'
+        ),
+        string=long_description,
+        flags=re.DOTALL)
+    for block_match in block_matches:
+        if block_match.group("module_name") == 'mysqlx':
+            long_description = long_description.replace(block_match.group(), "")
+        else:
+            block_text = block_match.group("block_text")
+            if block_match.group("repls"):
+                repl_matches = re.finditer(pattern=r'(?P<repl_name>repl(?:-mysql(?:x)?)?)\("'
+                                                   r'(?P<repl_source>[^"]+)",\s*"(?P<repl_target>[^"]*)"\)+',
+                                           string=block_match.group("repls"))
+                for repl_match in repl_matches:
+                    repl_name = repl_match.group("repl_name")
+                    repl_source = repl_match.group("repl_source")
+                    repl_target = repl_match.group("repl_target")
+                    if repl_target is None:
+                        repl_target = ""
+                    if repl_name == "repl" or repl_name.endswith("mysql"):
+                        block_text = block_text.replace(repl_source, repl_target)
+            long_description = long_description.replace(block_match.group(), block_text)
+    return long_description
 
 
 def remove_metadata_files() -> None:
