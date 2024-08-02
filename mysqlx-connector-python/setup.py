@@ -123,8 +123,8 @@ def main() -> None:
             "docstore",
         ],
         project_urls={
-            "Homepage": "https://dev.mysql.com/doc/connector-python/en/index.html",
-            "Documentation": "https://dev.mysql.com/doc/connector-python/en/index.html",
+            "Homepage": "https://dev.mysql.com/doc/connector-python/en/",
+            "Documentation": "https://dev.mysql.com/doc/connector-python/en/",
             "Downloads": "https://dev.mysql.com/downloads/connector/python/",
             "Release Notes": "https://dev.mysql.com/doc/relnotes/connector-python/en/",
             "Source Code": "https://github.com/mysql/mysql-connector-python",
