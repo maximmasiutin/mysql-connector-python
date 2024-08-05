@@ -148,7 +148,7 @@ def main() -> None:
         python_requires=">=3.9",
         extras_require={
             "dns-srv": ["dnspython==2.6.1"],
-            "gssapi": ["gssapi>=1.6.9,<=1.8.2"],
+            "gssapi": ["gssapi==1.8.3"],
             "fido2": ["fido2==1.1.2"],
             "telemetry": [
                 "opentelemetry-api==1.18.0",

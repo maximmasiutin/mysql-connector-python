@@ -42,7 +42,7 @@ repos:
         additional_dependencies: [
           django,
           django-stubs,
-          gssapi==1.8.1,
+          gssapi==1.8.3,
           dnspython==2.6.1,
           Deprecated>=1.2.6,
           typing-extensions>=3.7.4,
