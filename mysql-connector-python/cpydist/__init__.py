@@ -277,12 +277,39 @@ class BaseCommand(Command):
         bundle_plugin_libs = False
         if self.with_mysql_capi:
             plugin_ext = "dll" if os.name == "nt" else "so"
-            plugin_path = os.path.join(self.with_mysql_capi, "lib", "plugin")
+            expected_plugin_paths = [
+                ("lib", "plugin"),
+                ("lib", "mysql", "plugin"),
+                ("lib64", "mysql", "plugin"),
+            ]
+            plugin_path = ""
+            for path in expected_plugin_paths:
+                plugin_path = os.path.join(self.with_mysql_capi, *path)
+                if os.path.exists(plugin_path):
+                    self.log.info("plugin_path is set as : %s", plugin_path)
+                    break
+                plugin_path = ""
+
+            if not len(plugin_path):
+                searched_paths = ",".join(["/".join(p) for p in expected_plugin_paths])
+                self.log.error(
+                    "None of the expected authentication plugins directories exist : %s",
+                    searched_paths,
+                )
+                raise FileNotFoundError(
+                    f"None of the expected authentication plugins directories exist : {searched_paths}"
+                )
+
             plugin_list = [
                 ("LDAP", f"authentication_ldap_sasl_client.{plugin_ext}"),
                 ("Kerberos", f"authentication_kerberos_client.{plugin_ext}"),
                 ("OCI IAM", f"authentication_oci_client.{plugin_ext}"),
                 ("WebAuthn", f"authentication_webauthn_client.{plugin_ext}"),
+                (
+                    "OpenID Connect",
+                    f"authentication_openid_connect_client.{plugin_ext}",
+                ),
+                ("MySQL Native", f"mysql_native_password.{plugin_ext}"),
             ]
 
             for plugin_name, plugin_file in plugin_list:
@@ -315,7 +342,7 @@ class BaseCommand(Command):
                         os.path.join(openssl_libs_path, "bin")
                     ):
                         openssl_libs_path = os.path.join(openssl_libs_path, "bin")
-                    self.log.info("# openssl_libs_path: %s", openssl_libs_path)
+                    print("# openssl_libs_path: %s", openssl_libs_path)
                 else:
                     openssl_libs_path = os.path.join(self.with_mysql_capi, "bin")
                 libssl, libcrypto = self._get_openssl_libs(openssl_libs_path, "dll")

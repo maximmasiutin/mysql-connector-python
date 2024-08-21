@@ -11,6 +11,7 @@ Full release notes:
 v9.1.0
 ======
 
+- WL#16452: Bundle all installable authentication plugins when building the C-extension
 - WL#16444: Drop build support for DEB packages
 - WL#16442: Upgrade gssapi version to 1.8.3
 - WL#16411: Improve wheel metadata information for Classic and XDevAPI connectors

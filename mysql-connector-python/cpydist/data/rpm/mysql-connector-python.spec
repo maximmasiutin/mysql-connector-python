@@ -45,7 +45,7 @@
 %global with_openssl_opts ""
 
 %if 0%{?openssl_include_dir:1}
-%global with_openssl_opts --with-openssl-include-dir=%{openssl_include_dir} --with-openssl-lib-dir=%{openssl_lib_dir}}
+%global with_openssl_opts --with-openssl-include-dir=%{openssl_include_dir} --with-openssl-lib-dir=%{openssl_lib_dir}
 %endif
 
 # if true set byte_code_only to --byte_code_only
@@ -144,7 +144,6 @@ COMMON_INSTALL_ARGS="\
     --prefix=%{_prefix} \
     --root=%{buildroot} \
     %{with_openssl_opts} \
-    --skip-vendor \
 "
 
 %if 0%{?extra_compile_args:1}
@@ -160,12 +159,6 @@ EXTRA_LINK_ARGS=""
 %endif
 
 rm -rf %{buildroot}
-
-# The LDAP client plugin from the Server is bundled if it exists under
-# 'with_mysql_capi'. For RPM builds we don't want to bundle, instead
-# we want to depend on the MySQL Server "client-plugins" RPM package.
-# Remove the plugin to force the build not to bundle.
-rm -f %{with_mysql_capi}/lib*/{,mysql/}plugin/authentication_ldap_sasl_client.*
 
 cd mysql-connector-python
 %{__python3} setup.py ${COMMON_INSTALL_ARGS} \
