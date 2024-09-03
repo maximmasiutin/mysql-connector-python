@@ -71,8 +71,9 @@ URL:           https://dev.mysql.com/downloads/connector/python/
 Source0:       https://cdn.mysql.com/Downloads/Connector-Python/mysql-connector-python%{?product_suffix}-%{version}-src.tar.gz
 
 %if 0%{?rhel} == 8
-BuildRequires: python39-devel
-BuildRequires: python39-setuptools
+BuildRequires: python%{python3_pkgversion}-devel
+BuildRequires: python%{python3_pkgversion}-setuptools
+BuildRequires: python%{python3_pkgversion}-rpm-macros
 %endif
 
 %description

@@ -76,8 +76,9 @@ Source0:       https://cdn.mysql.com/Downloads/Connector-Python/mysql-connector-
 %{!?with_mysql_capi:BuildRequires: mysql-devel}
 
 %if 0%{?rhel} == 8
-BuildRequires: python39-devel
-BuildRequires: python39-setuptools
+BuildRequires: python%{python3_pkgversion}-devel
+BuildRequires: python%{python3_pkgversion}-setuptools
+BuildRequires: python%{python3_pkgversion}-rpm-macros
 %endif
 
 %description
