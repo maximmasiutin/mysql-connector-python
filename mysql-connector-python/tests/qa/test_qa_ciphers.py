@@ -118,7 +118,9 @@ class CipherTests(tests.MySQLConnectorTests):
             ),
             "3": (
                 None,
-                "ECDHE-RSA-AES256-GCM-SHA384",
+                APPROVED_TLS_CIPHERSUITES["TLSv1.2"][
+                    "TLS_ECDHE_RSA_WITH_AES_256_GCM_SHA384"
+                ],
                 ["TLSv1.2"],
                 ["ECDHE-RSA-AES256-GCM-SHA384"],  # approved
             ),
@@ -157,12 +159,12 @@ class CipherTests(tests.MySQLConnectorTests):
                 ["TLS_ECDHE_RSA_WITH_CHACHA20_POLY1305_SHA256"],  # acceptable
             ),
             "8": (
-                None,
-                APPROVED_TLS_CIPHERSUITES["TLSv1.2"][
+                DeprecationWarning,
+                DEPRECATED_TLS_CIPHERSUITES["TLSv1.2"][
                     "TLS_DHE_RSA_WITH_AES_128_GCM_SHA256"
                 ],
                 ["TLSv1.2"],
-                ["TLS_DHE_RSA_WITH_AES_128_GCM_SHA256"],  # approved
+                ["TLS_DHE_RSA_WITH_AES_128_GCM_SHA256"],  # deprecated
             ),
         },
     }
