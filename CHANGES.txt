@@ -19,6 +19,7 @@ v9.1.0
 - WL#16307: Remove Python 3.8 support
 - WL#16306: Add support for Python 3.13
 - BUG#37013057: mysql-connector-python Parameterized query SQL injection
+- BUG#36577957: Update charset/collation description indicate this is 16 bits
 
 v9.0.0
 ======

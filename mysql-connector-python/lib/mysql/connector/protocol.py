@@ -428,8 +428,8 @@ class MySQLProtocol:
             [
                 utils.int4store(client_flags),
                 utils.int4store(max_allowed_packet),
-                utils.int2store(charset),
-                b"\x00" * 22,
+                utils.int1store(charset),
+                b"\x00" * 23,
             ]
         )
 
