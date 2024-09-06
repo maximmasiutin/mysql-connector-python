@@ -855,7 +855,7 @@ class CMySQLConnection(MySQLConnectionAbstract):
 
     def prepare_for_mysql(
         self, params: ParamsSequenceOrDictType
-    ) -> Union[Sequence[bytes], Dict[str, bytes]]:
+    ) -> Union[Sequence[bytes], Dict[bytes, bytes]]:
         """Prepare parameters for statements
 
         This method is use by cursors to prepared parameters found in the
@@ -863,7 +863,7 @@ class CMySQLConnection(MySQLConnectionAbstract):
 
         Returns dict.
         """
-        result: Union[List[Any], Dict[str, Any]] = []
+        result: Union[List[bytes], Dict[bytes, bytes]] = []
         if isinstance(params, (list, tuple)):
             if self.converter:
                 result = [
@@ -880,14 +880,14 @@ class CMySQLConnection(MySQLConnectionAbstract):
             result = {}
             if self.converter:
                 for key, value in params.items():
-                    result[key] = self.converter.quote(
+                    result[key.encode()] = self.converter.quote(
                         self.converter.escape(
                             self.converter.to_mysql(value), self._sql_mode
                         )
                     )
             else:
                 for key, value in params.items():
-                    result[key] = self._cmysql.convert_to_mysql(value)[0]
+                    result[key.encode()] = self._cmysql.convert_to_mysql(value)[0]
         else:
             raise ProgrammingError(
                 f"Could not process parameters: {type(params).__name__}({params}),"

@@ -78,6 +78,7 @@ from .cursor import (
     RE_SQL_ON_DUPLICATE,
     RE_SQL_PYTHON_CAPTURE_PARAM_NAME,
     RE_SQL_PYTHON_REPLACE_PARAM,
+    _bytestr_format_dict,
     is_eol_comment,
     parse_multi_statement_query,
 )
@@ -343,8 +344,7 @@ class CMySQLCursor(MySQLCursorAbstract):
         if params:
             prepared = self._connection.prepare_for_mysql(params)
             if isinstance(prepared, dict):
-                for key, value in prepared.items():
-                    stmt = stmt.replace(f"%({key})s".encode(), value)
+                stmt = _bytestr_format_dict(stmt, prepared)
             elif isinstance(prepared, (list, tuple)):
                 psub = _ParamSubstitutor(prepared)
                 stmt = RE_PY_PARAM.sub(psub, stmt)
@@ -411,10 +411,7 @@ class CMySQLCursor(MySQLCursorAbstract):
                 tmp = fmt
                 prepared = self._connection.prepare_for_mysql(params)
                 if isinstance(prepared, dict):
-                    for key, value in prepared.items():
-                        tmp = tmp.replace(
-                            f"%({key})s".encode(), value  # type: ignore[arg-type]
-                        )
+                    tmp = _bytestr_format_dict(cast(bytes, tmp), prepared)
                 elif isinstance(prepared, (list, tuple)):
                     psub = _ParamSubstitutor(prepared)
                     tmp = RE_PY_PARAM.sub(psub, tmp)  # type: ignore[call-overload]

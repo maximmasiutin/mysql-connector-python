@@ -8636,3 +8636,152 @@ class BugOra36289767_async(tests.MySQLConnectorAioTestCase):
                 ],
                 await cur.fetchall(),
             )
+
+
+class BugOra37013057(tests.MySQLConnectorTests):
+    """BUG#37013057: mysql-connector-python Parameterized query SQL injection
+
+    Malicious strings can be injected when utilizing
+    dictionary-based query parameterization via the
+    `cursor.execute()` API command and the C-based
+    implementation of the connector.
+
+    This patch fixes the injection issue.
+    """
+
+    table_name = "BugOra37013057"
+
+    cur_flavors = [
+        {},
+        {"prepared": True},
+        {"raw": True},
+        {"buffered": True},
+        {"dictionary": True},
+    ]
+
+    sql_dict = f"INSERT INTO {table_name}(username, password, city) VALUES (%(username)s, %(password)s, %(city)s)"
+    sql_tuple = (
+        f"INSERT INTO {table_name}(username, password, city) VALUES (%s, %s, %s)"
+    )
+
+    cases = [
+        {
+            "values_dict": {
+                "username": "%(password)s",
+                "password": ", sleep(10));--",
+                "city": "Montevideo",
+            },
+            "values_tuple": ("%(password)s", ", sleep(10));--", "Montevideo"),
+        },
+        {
+            "values_dict": {
+                "username": "%(password)s",
+                "password": ", curdate());",
+                "city": "Rio",
+            },
+            "values_tuple": ("%(password)s", ", curdate());", "Rio"),
+        },
+        {
+            "values_dict": {
+                "username": "%(password)s",
+                "password": "%(city)s",
+                "city": ", database());",
+            },
+            "values_tuple": ("%(password)s", "%(city)s", ", database());"),
+        },
+    ]
+
+    def setUp(self):
+        with mysql.connector.connect(**tests.get_mysql_config()) as cnx:
+            with cnx.cursor() as cur:
+                cur.execute(
+                    f"CREATE TABLE {self.table_name}"
+                    "(username varchar(50), password varchar(50), city varchar(50))"
+                )
+
+    def tearDown(self):
+        with mysql.connector.connect(**tests.get_mysql_config()) as cnx:
+            with cnx.cursor() as cur:
+                cur.execute(f"DROP TABLE IF EXISTS {self.table_name}")
+
+    def _prepare_cur_dict_res(self, case):
+        if isinstance(case["values"], dict):
+            return case["values_dict"]
+
+    def _run_execute(self, dict_based=True, cur_config={}):
+        sql = self.sql_dict if dict_based else self.sql_tuple
+        for case in self.cases:
+            if dict_based:
+                values = case["values_dict"]
+            else:
+                values = case["values_tuple"]
+
+            if "dictionary" in cur_config:
+                exp_res = case["values_dict"].copy()
+            elif "raw" in cur_config:
+                exp_res = tuple([x.encode() for x in case["values_tuple"]])
+            else:
+                exp_res = case["values_tuple"]
+
+            with self.cnx.cursor(**cur_config) as cur:
+                cur.execute(sql, values)
+                cur.execute(f"select * from {self.table_name}")
+                res = cur.fetchone()
+                cur.execute(f"TRUNCATE TABLE {self.table_name}")
+            self.assertEqual(res, exp_res)
+
+    @foreach_cnx()
+    def test_execute_dict_based_injection(self):
+        for cur_config in self.cur_flavors:
+            self._run_execute(dict_based=True, cur_config=cur_config)
+
+    @foreach_cnx()
+    def test_execute_tuple_based_injection(self):
+        for cur_config in self.cur_flavors:
+            self._run_execute(dict_based=False, cur_config=cur_config)
+
+
+class BugOra37013057_async(tests.MySQLConnectorAioTestCase):
+    """BUG#37013057: mysql-connector-python Parameterized query SQL injection
+
+    For a description see `test_bugs.BugOra37013057`.
+    """
+
+    def setUp(self) -> None:
+        self.bug_37013057 = BugOra37013057()
+        self.bug_37013057.setUp()
+
+    def tearDown(self) -> None:
+        self.bug_37013057.tearDown()
+
+    async def _run_execute(self, dict_based=True, cur_config={}):
+        sql = self.bug_37013057.sql_dict if dict_based else self.bug_37013057.sql_tuple
+        for case in self.bug_37013057.cases:
+            if dict_based:
+                values = case["values_dict"]
+            else:
+                values = case["values_tuple"]
+
+            if "dictionary" in cur_config:
+                exp_res = case["values_dict"].copy()
+            elif "raw" in cur_config:
+                exp_res = tuple([x.encode() for x in case["values_tuple"]])
+            else:
+                exp_res = case["values_tuple"]
+
+            async with await self.cnx.cursor(**cur_config) as cur:
+                await cur.execute(sql, values)
+                await cur.execute(f"select * from {self.bug_37013057.table_name}")
+                res = await cur.fetchone()
+                await cur.execute(f"TRUNCATE TABLE {self.bug_37013057.table_name}")
+            self.assertEqual(res, exp_res)
+
+    @foreach_cnx_aio()
+    async def test_execute_dict_based_injection(self):
+        for cur_config in self.bug_37013057.cur_flavors:
+            await self._run_execute(dict_based=True, cur_config=cur_config)
+
+    @foreach_cnx_aio()
+    async def test_execute_tuple_based_injection(self):
+        for cur_config in self.bug_37013057.cur_flavors:
+            await self._run_execute(dict_based=False, cur_config=cur_config)
