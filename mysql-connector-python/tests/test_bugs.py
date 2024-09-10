@@ -8785,3 +8785,30 @@ class BugOra37013057_async(tests.MySQLConnectorAioTestCase):
     async def test_execute_tuple_based_injection(self):
         for cur_config in self.bug_37013057.cur_flavors:
             await self._run_execute(dict_based=False, cur_config=cur_config)
+
+class BugOra36765200(tests.MySQLConnectorTests):
+    """BUG#367652000: python mysql connector 8.3.0 raise %-.100s:%u when input a wrong host
+
+    Unformatted error message is being shown to the client if an unreachable host is passed
+    via the connection arguments while connecting with a MySQL server using pure-python
+    implementation of Connector/Python.
+
+    This patch fixes this issue by changing the error log message structure.
+    """
+
+    def test_incorrect_host_err_msg(self):
+        config = tests.get_mysql_config()
+        config["host"] = "foo.bar"
+        config["unix_socket"] = None
+        cnx = MySQLConnection
+
+        self.assertRaises(errors.InterfaceError, cnx, **config)
+        try:
+            with cnx(**config) as _:
+                pass
+        except errors.InterfaceError as err:
+            self.assertNotIn(
+                "%-.100s:%u",
+                str(err),
+                "Error message cannot contain unstructured bind address"
+            )

@@ -71,7 +71,7 @@ def _strioerror(err: IOError) -> str:
 
     This function reformats the IOError error message.
     """
-    return str(err) if not err.errno else f"{err.errno} {err.strerror}"
+    return str(err) if not err.errno else f"Errno {err.errno}: {err.strerror}"
 
 
 class NetworkBroker(ABC):
@@ -746,7 +746,8 @@ class MySQLTCPSocket(MySQLSocket):
                 addrinfo = addrinfos[0]
         except IOError as err:
             raise InterfaceError(
-                errno=2003, values=(self.address, _strioerror(err))
+                errno=2003,
+                values=(self.server_host, self.server_port, _strioerror(err)),
             ) from err
 
         (self._family, socktype, proto, _, sockaddr) = addrinfo
