@@ -53,7 +53,8 @@ METADATA_FILES = (
     "README.rst",
     "LICENSE.txt",
     "CHANGES.txt",
-    "CONTRIBUTING.rst",
+    "CONTRIBUTING.md",
+    "SECURITY.md",
 )
 
 VERSION_TEXT = "999.0.0"

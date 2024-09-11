@@ -208,8 +208,12 @@ class DistSolaris(bdist, BaseCommand):
                 os.path.join(data_path, "README.rst"),
             ),
             (
-                os.path.join(cwd, "CONTRIBUTING.rst"),
-                os.path.join(data_path, "CONTRIBUTING.rst"),
+                os.path.join(cwd, "CONTRIBUTING.md"),
+                os.path.join(data_path, "CONTRIBUTING.md"),
+            ),
+            (
+                os.path.join(cwd, "SECURITY.md"),
+                os.path.join(data_path, "SECURITY.md"),
             ),
         ]
 

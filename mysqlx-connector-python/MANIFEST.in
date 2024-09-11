@@ -1,7 +1,8 @@
 include README.txt
 include README.rst
 include LICENSE.txt
-include CONTRIBUTING.rst
+include CONTRIBUTING.md
+include SECURITY.md
 include CHANGES.txt
 include setup.py
 include unittests.py

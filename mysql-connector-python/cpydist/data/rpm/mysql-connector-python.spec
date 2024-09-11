@@ -169,7 +169,7 @@ cd mysql-connector-python
 %{?scl:EOF}
 
 %files -n mysql-connector-python3%{?product_suffix}
-%doc LICENSE.txt CHANGES.txt README.txt README.rst CONTRIBUTING.rst mysql-connector-python/docs/INFO_SRC mysql-connector-python/docs/INFO_BIN
+%doc LICENSE.txt CHANGES.txt README.txt README.rst CONTRIBUTING.md SECURITY.md mysql-connector-python/docs/INFO_SRC mysql-connector-python/docs/INFO_BIN
 %{python3_sitearch}/mysql
 %{python3_sitearch}/mysql_connector_python-*.egg-info
 %{python3_sitearch}/_mysql_connector.cpython*.so

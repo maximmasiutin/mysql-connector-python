@@ -200,7 +200,8 @@ class DistBinary(Command):
             ("README.txt", "README.txt"),
             ("LICENSE.txt", "LICENSE.txt"),
             ("README.rst", "README.rst"),
-            ("CONTRIBUTING.rst", "CONTRIBUTING.rst"),
+            ("CONTRIBUTING.md", "CONTRIBUTING.md"),
+            ("SECURITY.md", "SECURITY.md"),
             ("docs/INFO_SRC", "INFO_SRC"),
             ("docs/INFO_BIN", "INFO_BIN"),
         ]

@@ -168,7 +168,7 @@ cd mysqlx-connector-python
 sed -i -e '/protobuf/d' %{buildroot}%{python3_sitearch}/mysqlx_connector_python-*.egg-info/requires.txt
 
 %files -n mysqlx-connector-python3%{?product_suffix}
-%doc LICENSE.txt CHANGES.txt README.txt README.rst CONTRIBUTING.rst mysqlx-connector-python/docs/INFO_SRC mysqlx-connector-python/docs/INFO_BIN
+%doc LICENSE.txt CHANGES.txt README.txt README.rst CONTRIBUTING.md SECURITY.md mysqlx-connector-python/docs/INFO_SRC mysqlx-connector-python/docs/INFO_BIN
 %{python3_sitearch}/mysqlx
 %{python3_sitearch}/mysqlx_connector_python-*.egg-info
 %{python3_sitearch}/_mysqlxpb.cpython*.so
