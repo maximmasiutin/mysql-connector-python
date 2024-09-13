@@ -29,6 +29,7 @@
 %global wants_py_dnspython_version 2.6.1
 
 %undefine _package_note_file
+%define _build_id_links none
 
 %if 0%{?rhel} == 8
 %{!?__python3: %global __python3 /usr/bin/python3.9}
