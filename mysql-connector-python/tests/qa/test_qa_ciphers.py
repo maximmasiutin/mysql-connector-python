@@ -31,6 +31,7 @@
 import asyncio
 import os
 import platform
+import ssl
 import unittest
 
 from contextlib import nullcontext
@@ -41,7 +42,7 @@ import tests
 import mysql.connector
 import mysql.connector.aio
 
-from mysql.connector.errors import NotSupportedError
+from mysql.connector.errors import InterfaceError, NotSupportedError
 from mysql.connector.tls_ciphers import (
     APPROVED_TLS_CIPHERSUITES,
     DEPRECATED_TLS_CIPHERSUITES,
@@ -82,7 +83,22 @@ def setUpModule() -> None:
     "No SSL support.",
 )
 class CipherTests(tests.MySQLConnectorTests):
-    """Testing cipher and cipher-suite lists for synchronous/asynchronous connection."""
+    """Testing cipher and cipher-suite lists for synchronous/asynchronous connection.
+
+    These tests verify the following about tls versions and ciphers:
+
+        Ciphers
+        -------
+        * Mandatory and approved ciphers are allowed.
+        * Deprecated ciphers are allowed, however a warning is raised.
+        * Unacceptable ciphers are forbidden; an error is raised.
+
+        TLS Versions
+        ------------
+        * Approved TLS versions are allowed.
+        * Deprecated TLS versions are allowed, however a warning is raised.
+        * Unacceptable TLS versions are forbidden; an error is raised.
+    """
 
     # when more than one approved TLS version is defined,
     # the latest available version is enforced.
@@ -368,3 +384,185 @@ class CipherTests(tests.MySQLConnectorTests):
     @tests.foreach_cnx()
     def test_tls_ciphersuites_8(self):
         self._test_tls_ciphersuites(test_case_id="8")
+
+
+@unittest.skipIf(
+    tests.MYSQL_EXTERNAL_SERVER,
+    "Test not available for external MySQL servers",
+)
+@unittest.skipIf(
+    not tests.SSL_AVAILABLE,
+    "No SSL support.",
+)
+@unittest.skipIf(
+    tests.MYSQL_VERSION < (9, 0, 0),
+    "MySQL Server should be 9.0 or newer.",
+)
+class CiphersAndTlsTests(tests.MySQLConnectorTests):
+    """Testing cipher and cipher-suite lists for synchronous/asynchronous connection.
+
+    These tests verify Connector/Python does support the TLS versions v1.2 and v1.3
+    when specifying valid ciphers.
+
+    When only caring about a specific TLS version, users can use the connection option
+    `tls_versions`. The ciphers to be used will be determined by the MySQL Server
+    during TLS negotiation.
+
+    On the other hand, when caring about specific ciphers, you should specify the
+    connection option `tls_ciphersuites`. Additionally, we recommend to also specify
+    the option `tls_versions`. If this latter option is skipped, Connector/Python will
+    use the latest supported TLS version. This might lead to cipher discrepancies;
+    assuming you provided TLSv1.2-related ciphers but didn't specify the TLS version,
+    these ciphers will be ignored as TLSv1.3 will be used, and the actual cipher in
+    use will be determined by the MySQL Server.
+
+    NOTE: the pure-python implementation does not support cipher selection
+    for TLSv1.3. The ultimate cipher to be used will be determined by the MySQL Server
+    during TLS negotiation. This limitation is because TLSv1.3 ciphers cannot be
+    disabled with `SSLContext.set_ciphers(...)`.
+    See https://docs.python.org/3/library/ssl.html#ssl.SSLContext.set_ciphers.
+    """
+
+    conf_ssl = {
+        "ssl_ca": os.path.abspath(os.path.join(tests.SSL_DIR, "tests_CA_cert.pem")),
+        "ssl_cert": os.path.abspath(
+            os.path.join(tests.SSL_DIR, "tests_client_cert.pem")
+        ),
+        "ssl_key": os.path.abspath(os.path.join(tests.SSL_DIR, "tests_client_key.pem")),
+    }
+
+    # SHOW STATUS LIKE 'ssl_cipher_list';
+    ssl_v13_ciphers_server = (
+        "TLS_AES_128_GCM_SHA256:TLS_AES_256_GCM_SHA384:TLS_CHACHA20_POLY1305_SHA256:"
+        "TLS_AES_128_CCM_SHA256"
+    )
+    ssl_v12_ciphers_server = (
+        "ECDHE-RSA-AES128-GCM-SHA256:"
+        "ECDHE-RSA-AES256-GCM-SHA384:"
+        "ECDHE-RSA-CHACHA20-POLY1305:"
+        "DHE-RSA-AES128-GCM-SHA256:DHE-RSA-AES256-GCM-SHA384:DHE-RSA-AES256-CCM:"
+        "DHE-RSA-AES128-CCM:DHE-RSA-CHACHA20-POLY1305"
+    )
+
+    def setUp(self) -> None:
+        # tls_cases[i] is a 2-tuple: (expected error/warning if any, cipher to be used)
+        self.tls_v12_cases = [
+            (None, [cipher]) for cipher in self.ssl_v12_ciphers_server.split(":")
+        ]
+        self.tls_v13_cases = [
+            (None, [cipher]) for cipher in self.ssl_v13_ciphers_server.split(":")
+        ]
+
+    async def _check_async_tls_ciphersuites(
+        self, settings, exp_ssl_version: Optional[str]
+    ) -> Tuple[Optional[str], Optional[str]]:
+        ssl_version, ssl_cipher = None, None
+        async with await mysql.connector.aio.connect(**settings) as cnx:
+            async with await cnx.cursor() as cur:
+                if exp_ssl_version:
+                    await cur.execute("SHOW STATUS LIKE 'Ssl_version'")
+                    res = await cur.fetchone()
+                    ssl_version = res[-1]
+
+                await cur.execute("SHOW STATUS LIKE 'Ssl_cipher'")
+                res = await cur.fetchone()
+                ssl_cipher = res[-1]
+
+        return ssl_version, ssl_cipher
+
+    def _check_sync_tls_ciphersuites(
+        self, settings, exp_ssl_version: Optional[str]
+    ) -> Tuple[Optional[str], Optional[str]]:
+        ssl_version, ssl_cipher = None, None
+        with mysql.connector.connect(**settings) as cnx:
+            with cnx.cursor() as cur:
+                if exp_ssl_version:
+                    cur.execute("SHOW STATUS LIKE 'Ssl_version'")
+                    res = cur.fetchone()
+                    ssl_version = res[-1]
+
+                cur.execute("SHOW STATUS LIKE 'Ssl_cipher'")
+                res = cur.fetchone()
+                ssl_cipher = res[-1]
+
+        return ssl_version, ssl_cipher
+
+    def _test_tls_ciphersuites(
+        self, tls_versions: Optional[list[str]], test_case: tuple, verify: bool = False
+    ):
+        exp_event, tls_ciphersuites = test_case
+
+        conf = {**tests.get_mysql_config(), **self.conf_ssl}
+        conf["use_pure"] = isinstance(self.cnx, mysql.connector.MySQLConnection)
+        conf["unix_socket"] = None
+        conf["tls_ciphersuites"] = tls_ciphersuites
+
+        if tls_versions is not None:
+            conf["tls_versions"] = tls_versions
+
+        event_handler = (
+            self.assertWarns if exp_event == DeprecationWarning else self.assertRaises
+        )
+
+        exp_ssl_version = tls_versions[0] if tls_versions else "TLSv1.3"
+        with nullcontext() if exp_event is None else event_handler(exp_event):
+            ssl_version, ssl_cipher = self._check_sync_tls_ciphersuites(
+                conf, exp_ssl_version
+            )
+            self.assertEqual(ssl_version, exp_ssl_version)
+            if verify:
+                self.assertEqual(ssl_cipher, tls_ciphersuites[0])
+
+        # C-ext implementation isn't supported yet for aio.
+        if (CEXT_SUPPORT_FOR_AIO and not conf["use_pure"]) or conf["use_pure"]:
+            with nullcontext() if exp_event is None else event_handler(exp_event):
+                ssl_version, ssl_cipher = asyncio.run(
+                    self._check_async_tls_ciphersuites(conf, exp_ssl_version)
+                )
+                self.assertEqual(ssl_version, exp_ssl_version)
+                if verify:
+                    self.assertEqual(ssl_cipher, tls_ciphersuites[0])
+
+    @tests.foreach_cnx(mysql.connector.MySQLConnection)
+    def test_tls_v12_ciphers(self):
+        # verify=True means the test checks the selected cipher matches
+        # with the one returned by the server.
+        for test_case in self.tls_v12_cases:
+            self._test_tls_ciphersuites(
+                tls_versions=["TLSv1.2"], test_case=test_case, verify=True
+            )
+
+    @tests.foreach_cnx(mysql.connector.MySQLConnection)
+    def test_tls_v13_ciphers(self):
+        # verify=True means the test checks the selected cipher matches
+        # with the one returned by the server.
+        for test_case in self.tls_v13_cases:
+            # verification should be False since cipher selection
+            # for TLSv1.3 isn't supported.
+            self._test_tls_ciphersuites(
+                tls_versions=["TLSv1.3"], test_case=test_case, verify=False
+            )
+            self._test_tls_ciphersuites(
+                tls_versions=None, test_case=test_case, verify=False
+            )
+
+    @tests.foreach_cnx(mysql.connector.CMySQLConnection)
+    def test_tls_v12_ciphers_cext(self):
+        # verify=True means the test checks the selected cipher matches
+        # with the one returned by the server.
+        for test_case in self.tls_v12_cases:
+            self._test_tls_ciphersuites(
+                tls_versions=["TLSv1.2"], test_case=test_case, verify=True
+            )
+
+    @tests.foreach_cnx(mysql.connector.CMySQLConnection)
+    def test_tls_v13_ciphers_cext(self):
+        # verify=True means the test checks the selected cipher matches
+        # with the one returned by the server.
+        for test_case in self.tls_v13_cases:
+            self._test_tls_ciphersuites(
+                tls_versions=["TLSv1.3"], test_case=test_case, verify=True
+            )
+            self._test_tls_ciphersuites(
+                tls_versions=None, test_case=test_case, verify=True
+            )

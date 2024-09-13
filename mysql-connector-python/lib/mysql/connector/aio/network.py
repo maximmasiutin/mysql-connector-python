@@ -562,6 +562,8 @@ class MySQLSocket(ABC):
         tls_cipher_suites: Optional[List[str]] = [],
     ) -> ssl.SSLContext:
         """Build a SSLContext."""
+        tls_version: Optional[str] = None
+
         if not self._reader:
             raise InterfaceError(errno=2048)
 
@@ -607,7 +609,9 @@ class MySQLSocket(ABC):
                 except (IOError, ssl.SSLError) as err:
                     raise InterfaceError(f"Invalid Certificate/Key: {err}") from err
 
-            if tls_cipher_suites:
+            # TLSv1.3 ciphers cannot be disabled with `SSLContext.set_ciphers(...)`,
+            # see https://docs.python.org/3/library/ssl.html#ssl.SSLContext.set_ciphers.
+            if tls_cipher_suites and tls_version == "TLSv1.2":
                 context.set_ciphers(":".join(tls_cipher_suites))
 
             return context

@@ -298,9 +298,9 @@ class CMySQLConnection(MySQLConnectionAbstract):
             tls_versions.sort(reverse=True)  # type: ignore[union-attr]
             tls_versions = ",".join(tls_versions)
         if self._ssl.get("tls_ciphersuites") is not None:
-            ssl_ciphersuites = self._ssl.get("tls_ciphersuites")[  # type: ignore[index]
-                0
-            ]
+            ssl_ciphersuites = (
+                self._ssl.get("tls_ciphersuites")[0] or None  # type: ignore[index]
+            )  # if it's the empty string, then use `None` instead
             tls_ciphersuites = self._ssl.get("tls_ciphersuites")[  # type: ignore[index]
                 1
             ]

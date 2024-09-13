@@ -18,6 +18,7 @@ v9.1.0
 - WL#16341: OpenID Connect (Oauth2 - JWT) Authentication Support
 - WL#16307: Remove Python 3.8 support
 - WL#16306: Add support for Python 3.13
+- BUG#37055435: Connection fails during the TLS negotiation when specifying TLSv1.3 ciphers
 - BUG#37013057: mysql-connector-python Parameterized query SQL injection
 - BUG#36765200: python mysql connector 8.3.0 raise %-.100s:%u when input a wrong host
 - BUG#36577957: Update charset/collation description indicate this is 16 bits
