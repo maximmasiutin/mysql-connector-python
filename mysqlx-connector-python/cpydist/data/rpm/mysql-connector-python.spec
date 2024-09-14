@@ -162,7 +162,7 @@ rm -rf %{buildroot}
 cd mysqlx-connector-python
 %{__python3} setup.py ${COMMON_INSTALL_ARGS} \
     --extra-compile-args="${EXTRA_COMPILE_ARGS}" \
-    --extra-link-args="${EXTRA_LINK_ARGS}"
+    --extra-link-args="${EXTRA_LINK_ARGS}" %{?byte_code_only}
 %{?scl:EOF}
 
 sed -i -e '/protobuf/d' %{buildroot}%{python3_sitearch}/mysqlx_connector_python-*.egg-info/requires.txt
