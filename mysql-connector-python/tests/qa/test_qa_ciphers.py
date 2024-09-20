@@ -523,7 +523,7 @@ class CiphersAndTlsTests(tests.MySQLConnectorTests):
                 if verify:
                     self.assertEqual(ssl_cipher, tls_ciphersuites[0])
 
-    @tests.foreach_cnx(mysql.connector.MySQLConnection)
+    @tests.foreach_cnx()
     def test_tls_v12_ciphers(self):
         # verify=True means the test checks the selected cipher matches
         # with the one returned by the server.
@@ -532,37 +532,20 @@ class CiphersAndTlsTests(tests.MySQLConnectorTests):
                 tls_versions=["TLSv1.2"], test_case=test_case, verify=True
             )
 
-    @tests.foreach_cnx(mysql.connector.MySQLConnection)
+    @tests.foreach_cnx()
     def test_tls_v13_ciphers(self):
         # verify=True means the test checks the selected cipher matches
         # with the one returned by the server.
+        verify = True
+        if isinstance(self.cnx, mysql.connector.MySQLConnection):
+            verify = False
+
         for test_case in self.tls_v13_cases:
             # verification should be False since cipher selection
             # for TLSv1.3 isn't supported.
             self._test_tls_ciphersuites(
-                tls_versions=["TLSv1.3"], test_case=test_case, verify=False
+                tls_versions=["TLSv1.3"], test_case=test_case, verify=verify
             )
             self._test_tls_ciphersuites(
-                tls_versions=None, test_case=test_case, verify=False
-            )
-
-    @tests.foreach_cnx(mysql.connector.CMySQLConnection)
-    def test_tls_v12_ciphers_cext(self):
-        # verify=True means the test checks the selected cipher matches
-        # with the one returned by the server.
-        for test_case in self.tls_v12_cases:
-            self._test_tls_ciphersuites(
-                tls_versions=["TLSv1.2"], test_case=test_case, verify=True
-            )
-
-    @tests.foreach_cnx(mysql.connector.CMySQLConnection)
-    def test_tls_v13_ciphers_cext(self):
-        # verify=True means the test checks the selected cipher matches
-        # with the one returned by the server.
-        for test_case in self.tls_v13_cases:
-            self._test_tls_ciphersuites(
-                tls_versions=["TLSv1.3"], test_case=test_case, verify=True
-            )
-            self._test_tls_ciphersuites(
-                tls_versions=None, test_case=test_case, verify=True
+                tls_versions=None, test_case=test_case, verify=verify
             )
