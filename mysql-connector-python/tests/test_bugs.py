@@ -3527,9 +3527,7 @@ class BugOra19168737(tests.MySQLConnectorTests):
             )
         }
         exp.update(config)
-
         self.assertEqual(exp, new_config)
-
 
 class BugOra21530100(tests.MySQLConnectorTests):
     """BUG#21530100: CONNECT FAILS WHEN USING MULTIPLE OPTION_GROUPS WITH
@@ -8911,3 +8909,53 @@ class BugOra36765200(tests.MySQLConnectorTests):
                 str(err),
                 "Error message cannot contain unstructured bind address",
             )
+
+class BugOra37145655(tests.MySQLConnectorTests):
+    """BUG#37145655: MySQL Connector/Python Configuration Files RCE"""
+
+    def test_read_optionfiles(self):
+        option_file_dir = os.path.join("tests", "data", "option_files")
+        opt_file = os.path.join(option_file_dir, "bug_37145655.cnf")
+        exp = {
+            "user": "root",
+            "password": "mypass",
+            "database": "cpydata",
+            "port": 10000,
+            "failover": [
+                {
+                    "host": "127.0.1.2",
+                    "port": 3306,
+                    "user": "root",
+                    "priority": 80,
+                },
+                {
+                    "host": "127.0.1.5",
+                    "port": 2450,
+                    "user": "root_123",
+                    "priority": 10,
+                },
+            ],
+        }
+        self.assertEqual(
+            exp, read_option_files(option_files=opt_file, option_groups=["correct_config"])
+        )
+        exp.pop("failover")
+        exp["unix_socket"] = "unix_socket_path_for_bug37145655"
+        self.assertEqual(
+            exp, read_option_files(option_files=opt_file, option_groups=["correct_config_with_unix_socket"])
+        )
+        self.assertEqual(
+            exp, read_option_files(option_files=opt_file, option_groups=["correct_config_with_socket"])
+        )
+        del exp["unix_socket"]
+        exp["port"] = "int(10000)"
+        exp["allow_local_infile"] = "__import__('os').system('whoami')"
+        self.assertEqual(
+            exp, read_option_files(option_files=opt_file, option_groups=["incorrect_config"])
+        )
+        with self.assertRaises((errors.InterfaceError, TypeError),) as _:
+            with mysql.connector.connect(
+                read_default_file=opt_file,
+                option_groups=["incorrect_config"],
+            ) as _:
+                pass
