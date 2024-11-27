@@ -123,7 +123,10 @@ class _ParamSubstitutor:
 class CMySQLCursor(MySQLCursorAbstract):
     """Default cursor for interacting with MySQL using C Extension"""
 
-    def __init__(self, connection: CMySQLConnection) -> None:
+    def __init__(
+        self,
+        connection: CMySQLConnection,
+    ) -> None:
         """Initialize"""
         super().__init__(connection)
 
@@ -170,6 +173,42 @@ class CMySQLCursor(MySQLCursorAbstract):
             self._stmt_map_results = False
 
         self.reset(free=free)
+
+    @property
+    def read_timeout(self) -> Optional[float]:
+        raise ProgrammingError(
+            """
+            The use of read_timeout after the connection has been established is unsupported
+            in the C-Extension
+            """
+        )
+
+    @read_timeout.setter
+    def read_timeout(self, timeout: int) -> None:
+        raise ProgrammingError(
+            """
+            Changes in read_timeout after the connection has been established is unsupported
+            in the C-Extension
+            """
+        )
+
+    @property
+    def write_timeout(self) -> Optional[float]:
+        raise ProgrammingError(
+            """
+            The use of write_timeout after the connection has been established is unsupported
+            in the C-Extension
+            """
+        )
+
+    @write_timeout.setter
+    def write_timeout(self, timeout: int) -> None:
+        raise ProgrammingError(
+            """
+            Changes in write_timeout after the connection has been established is unsupported
+            in the C-Extension
+            """
+        )
 
     def _check_executed(self) -> None:
         """Check if the statement has been executed.
@@ -781,7 +820,10 @@ class CMySQLCursor(MySQLCursorAbstract):
 class CMySQLCursorBuffered(CMySQLCursor):
     """Cursor using C Extension buffering results"""
 
-    def __init__(self, connection: CMySQLConnection):
+    def __init__(
+        self,
+        connection: CMySQLConnection,
+    ):
         """Initialize"""
         super().__init__(connection)
 
@@ -872,7 +914,10 @@ class CMySQLCursorBuffered(CMySQLCursor):
 class CMySQLCursorRaw(CMySQLCursor):
     """Cursor using C Extension return raw results"""
 
-    def __init__(self, connection: CMySQLConnection) -> None:
+    def __init__(
+        self,
+        connection: CMySQLConnection,
+    ) -> None:
         super().__init__(connection)
         self._raw = True
 
@@ -880,7 +925,10 @@ class CMySQLCursorRaw(CMySQLCursor):
 class CMySQLCursorBufferedRaw(CMySQLCursorBuffered):
     """Cursor using C Extension buffering raw results"""
 
-    def __init__(self, connection: CMySQLConnection):
+    def __init__(
+        self,
+        connection: CMySQLConnection,
+    ):
         super().__init__(connection)
         self._raw = True
 
@@ -1020,7 +1068,10 @@ class CMySQLCursorBufferedNamedTuple(CMySQLCursorBuffered):
 class CMySQLCursorPrepared(CMySQLCursor):
     """Cursor using MySQL Prepared Statements"""
 
-    def __init__(self, connection: CMySQLConnection):
+    def __init__(
+        self,
+        connection: CMySQLConnection,
+    ):
         super().__init__(connection)
         self._rows: Optional[List[RowType]] = None
         self._rowcount: int = 0
@@ -1303,6 +1354,9 @@ class CMySQLCursorPreparedNamedTuple(CMySQLCursorNamedTuple, CMySQLCursorPrepare
 class CMySQLCursorPreparedRaw(CMySQLCursorPrepared):
     """This class is a blend of features from CMySQLCursorRaw and CMySQLCursorPrepared"""
 
-    def __init__(self, connection: CMySQLConnection):
+    def __init__(
+        self,
+        connection: CMySQLConnection,
+    ):
         super().__init__(connection)
         self._raw = True

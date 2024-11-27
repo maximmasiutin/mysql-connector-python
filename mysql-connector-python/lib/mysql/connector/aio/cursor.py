@@ -225,14 +225,20 @@ class MySQLCursor(MySQLCursorAbstract):
 
         if self._nextrow == (None, None):
             (row, eof) = await self._connection.get_row(
-                binary=self._binary, columns=self.description, raw=raw
+                binary=self._binary,
+                columns=self.description,
+                raw=raw,
+                read_timeout=self._read_timeout,
             )
         else:
             (row, eof) = self._nextrow
 
         if row:
             self._nextrow = await self._connection.get_row(
-                binary=self._binary, columns=self.description, raw=raw
+                binary=self._binary,
+                columns=self.description,
+                raw=raw,
+                read_timeout=self._read_timeout,
             )
             eof = self._nextrow[1]
             if eof is not None:
@@ -410,7 +416,11 @@ class MySQLCursor(MySQLCursorAbstract):
     async def _fetch_warnings(self) -> Optional[List[WarningType]]:
         """Fetch warnings doing a SHOW WARNINGS."""
         result = []
-        async with await self._connection.cursor(raw=False) as cur:
+        async with await self._connection.cursor(
+            raw=False,
+            read_timeout=self._read_timeout,
+            write_timeout=self._write_timeout,
+        ) as cur:
             await cur.execute("SHOW WARNINGS")
             result = await cur.fetchall()
         return result if result else None  # type: ignore[return-value]
@@ -558,7 +568,11 @@ class MySQLCursor(MySQLCursorAbstract):
             # We disable consuming results temporary to make sure we
             # getting all results
             can_consume_results = self._connection.can_consume_results
-            async for result in self._connection.cmd_query_iter(call):
+            async for result in self._connection.cmd_query_iter(
+                call,
+                read_timeout=self._read_timeout,
+                write_timeout=self._write_timeout,
+            ):
                 self._connection.can_consume_results = False
                 if isinstance(self, (MySQLCursorDict, MySQLCursorBufferedDict)):
                     cursor_class = MySQLCursorBufferedDict
@@ -634,7 +648,11 @@ class MySQLCursor(MySQLCursorAbstract):
         )
 
         await self._handle_result(
-            await self._connection.cmd_query(self._stmt_partition["mappable_stmt"])
+            await self._connection.cmd_query(
+                self._stmt_partition["mappable_stmt"],
+                read_timeout=self._read_timeout,
+                write_timeout=self._write_timeout,
+            )
         )
 
         return None
@@ -720,7 +738,7 @@ class MySQLCursor(MySQLCursorAbstract):
         if not self._connection.unread_result:
             return []
 
-        rows, eof = await self._connection.get_rows()
+        rows, eof = await self._connection.get_rows(read_timeout=self._read_timeout)
         if self._nextrow[0]:
             rows.insert(0, self._nextrow[0])
 
@@ -759,7 +777,7 @@ class MySQLCursor(MySQLCursorAbstract):
             await self._reset_result(preserve_last_executed_stmt=True)
             await self._handle_result(
                 await self._connection._handle_result(
-                    await self._connection._socket.read()
+                    await self._connection._socket.read(read_timeout=self._read_timeout)
                 )
             )
 
@@ -797,7 +815,9 @@ class MySQLCursor(MySQLCursorAbstract):
                 self._executed = self._stmt_partition["single_stmts"].popleft()
                 await self._handle_result(
                     await self._connection.cmd_query(
-                        self._stmt_partition["mappable_stmt"]
+                        self._stmt_partition["mappable_stmt"],
+                        read_timeout=self._read_timeout,
+                        write_timeout=self._write_timeout,
                     )
                 )
                 return True
@@ -809,8 +829,13 @@ class MySQLCursor(MySQLCursorAbstract):
 class MySQLCursorBuffered(MySQLCursor):
     """Cursor which fetches rows within execute()."""
 
-    def __init__(self, connection: MySQLConnectionAbstract) -> None:
-        super().__init__(connection)
+    def __init__(
+        self,
+        connection: MySQLConnectionAbstract,
+        read_timeout: Optional[int] = None,
+        write_timeout: Optional[int] = None,
+    ) -> None:
+        super().__init__(connection, read_timeout, write_timeout)
         self._rows: Optional[List[RowType]] = None
         self._next_row: int = 0
 
@@ -821,7 +846,9 @@ class MySQLCursorBuffered(MySQLCursor):
         column information in _handle_result(). For non-buffering cursors, this method
         is usually doing nothing.
         """
-        self._rows, eof = await self._connection.get_rows(raw=self._raw)
+        self._rows, eof = await self._connection.get_rows(
+            raw=self._raw, read_timeout=self._read_timeout
+        )
         self._rowcount = len(self._rows)
         await self._handle_eof(eof)
         self._next_row = 0
@@ -873,8 +900,13 @@ class MySQLCursorBuffered(MySQLCursor):
 class MySQLCursorRaw(MySQLCursor):
     """Skip conversion from MySQL datatypes to Python types when fetching rows."""
 
-    def __init__(self, connection: MySQLConnectionAbstract) -> None:
-        super().__init__(connection)
+    def __init__(
+        self,
+        connection: MySQLConnectionAbstract,
+        read_timeout: Optional[int] = None,
+        write_timeout: Optional[int] = None,
+    ) -> None:
+        super().__init__(connection, read_timeout, write_timeout)
         self._raw: bool = True
 
     async def fetchone(self) -> Optional[RowType]:
@@ -895,7 +927,9 @@ class MySQLCursorRaw(MySQLCursor):
         self._check_executed()
         if not self._have_unread_result():
             return []
-        rows, eof = await self._connection.get_rows(raw=True)
+        rows, eof = await self._connection.get_rows(
+            raw=True, read_timeout=self._read_timeout
+        )
         if self._nextrow[0]:
             rows.insert(0, self._nextrow[0])
         await self._handle_eof(eof)
@@ -912,8 +946,13 @@ class MySQLCursorBufferedRaw(MySQLCursorBuffered):
     fetching rows and fetches rows within execute().
     """
 
-    def __init__(self, connection: MySQLConnectionAbstract) -> None:
-        super().__init__(connection)
+    def __init__(
+        self,
+        connection: MySQLConnectionAbstract,
+        read_timeout: Optional[int] = None,
+        write_timeout: Optional[int] = None,
+    ) -> None:
+        super().__init__(connection, read_timeout, write_timeout)
         self._raw: bool = True
 
     @property
@@ -1091,8 +1130,13 @@ class MySQLCursorBufferedNamedTuple(MySQLCursorNamedTuple, MySQLCursorBuffered):
 class MySQLCursorPrepared(MySQLCursor):
     """Cursor using MySQL Prepared Statements"""
 
-    def __init__(self, connection: MySQLConnectionAbstract):
-        super().__init__(connection)
+    def __init__(
+        self,
+        connection: MySQLConnectionAbstract,
+        read_timeout: Optional[int] = None,
+        write_timeout: Optional[int] = None,
+    ):
+        super().__init__(connection, read_timeout, write_timeout)
         self._rows: Optional[List[RowType]] = None
         self._next_row: int = 0
         self._prepared: Optional[Dict[str, Union[int, List[DescriptionType]]]] = None
@@ -1104,7 +1148,11 @@ class MySQLCursorPrepared(MySQLCursor):
     async def reset(self, free: bool = True) -> None:
         if self._prepared:
             try:
-                await self._connection.cmd_stmt_close(self._prepared["statement_id"])
+                await self._connection.cmd_stmt_close(
+                    self._prepared["statement_id"],
+                    read_timeout=self._read_timeout,
+                    write_timeout=self._write_timeout,
+                )
             except Error:
                 # We tried to deallocate, but it's OK when we fail.
                 pass
@@ -1238,7 +1286,11 @@ class MySQLCursorPrepared(MySQLCursor):
 
         if operation is not self._executed:
             if self._prepared:
-                await self._connection.cmd_stmt_close(self._prepared["statement_id"])
+                await self._connection.cmd_stmt_close(
+                    self._prepared["statement_id"],
+                    read_timeout=self._read_timeout,
+                    write_timeout=self._write_timeout,
+                )
             self._executed = operation
 
             try:
@@ -1251,12 +1303,20 @@ class MySQLCursorPrepared(MySQLCursor):
                 operation = re.sub(RE_SQL_FIND_PARAM, b"?", operation)
 
             try:
-                self._prepared = await self._connection.cmd_stmt_prepare(operation)
+                self._prepared = await self._connection.cmd_stmt_prepare(
+                    operation,
+                    read_timeout=self._read_timeout,
+                    write_timeout=self._write_timeout,
+                )
             except Error:
                 self._executed = None
                 raise
 
-        await self._connection.cmd_stmt_reset(self._prepared["statement_id"])
+        await self._connection.cmd_stmt_reset(
+            self._prepared["statement_id"],
+            read_timeout=self._read_timeout,
+            write_timeout=self._write_timeout,
+        )
 
         if self._prepared["parameters"] and not params:
             return
@@ -1281,6 +1341,8 @@ class MySQLCursorPrepared(MySQLCursor):
             self._prepared["statement_id"],
             data=params,
             parameters=self._prepared["parameters"],
+            read_timeout=self._read_timeout,
+            write_timeout=self._write_timeout,
         )
         await self._handle_result(res)
 
@@ -1327,7 +1389,11 @@ class MySQLCursorPrepared(MySQLCursor):
         """
         self._check_executed()
         if self._cursor_exists:
-            await self._connection.cmd_stmt_fetch(self._prepared["statement_id"])
+            await self._connection.cmd_stmt_fetch(
+                self._prepared["statement_id"],
+                read_timeout=self._read_timeout,
+                write_timeout=self._write_timeout,
+            )
         return await self._fetch_row() or None
 
     async def fetchmany(self, size: Optional[int] = None) -> List[RowType]:
@@ -1363,10 +1429,15 @@ class MySQLCursorPrepared(MySQLCursor):
         while self._have_unread_result():
             if self._cursor_exists:
                 await self._connection.cmd_stmt_fetch(
-                    self._prepared["statement_id"], MAX_RESULTS
+                    self._prepared["statement_id"],
+                    MAX_RESULTS,
+                    read_timeout=self._read_timeout,
+                    write_timeout=self._write_timeout,
                 )
             tmp, eof = await self._connection.get_rows(
-                binary=self._binary, columns=self.description
+                binary=self._binary,
+                columns=self.description,
+                read_timeout=self._read_timeout,
             )
             rows.extend(tmp)
             await self._handle_eof(eof)
@@ -1440,8 +1511,13 @@ class MySQLCursorPreparedRaw(MySQLCursorPrepared):
     This class is a blend of features from MySQLCursorRaw and MySQLCursorPrepared
     """
 
-    def __init__(self, connection: MySQLConnectionAbstract):
-        super().__init__(connection)
+    def __init__(
+        self,
+        connection: MySQLConnectionAbstract,
+        read_timeout: Optional[int] = None,
+        write_timeout: Optional[int] = None,
+    ):
+        super().__init__(connection, read_timeout, write_timeout)
         self._raw: bool = True
 
     async def fetchone(self) -> Optional[RowType]:
@@ -1452,7 +1528,11 @@ class MySQLCursorPreparedRaw(MySQLCursorPrepared):
         """
         self._check_executed()
         if self._cursor_exists:
-            await self._connection.cmd_stmt_fetch(self._prepared["statement_id"])
+            await self._connection.cmd_stmt_fetch(
+                self._prepared["statement_id"],
+                read_timeout=self._read_timeout,
+                write_timeout=self._write_timeout,
+            )
         return await self._fetch_row(raw=self._raw) or None
 
     async def fetchmany(self, size: Optional[int] = None) -> List[RowType]:
@@ -1488,10 +1568,16 @@ class MySQLCursorPreparedRaw(MySQLCursorPrepared):
         while self._have_unread_result():
             if self._cursor_exists:
                 await self._connection.cmd_stmt_fetch(
-                    self._prepared["statement_id"], MAX_RESULTS
+                    self._prepared["statement_id"],
+                    MAX_RESULTS,
+                    read_timeout=self._read_timeout,
+                    write_timeout=self._write_timeout,
                 )
             tmp, eof = await self._connection.get_rows(
-                raw=self._raw, binary=self._binary, columns=self.description
+                raw=self._raw,
+                binary=self._binary,
+                columns=self.description,
+                read_timeout=self._read_timeout,
             )
             rows.extend(tmp)
             await self._handle_eof(eof)

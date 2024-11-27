@@ -1378,7 +1378,7 @@ class MySQLConnectionTests(tests.MySQLConnectorTests):
             self.fail("Failed connecting to '{}': {}".format(config["host"], str(err)))
 
         config["host"] = tests.fake_hostname()
-        self.assertRaises(errors.InterfaceError, cnx.connect, **config)
+        self.assertRaises((errors.InterfaceError, errors.ConnectionTimeoutError), cnx.connect, **config)
 
     @unittest.skipUnless(os.name == "posix", "Platform does not support unix sockets")
     @unittest.skipUnless(tests.SSL_AVAILABLE, "Python has no SSL support")

@@ -1339,8 +1339,12 @@ class MySQLConnectionAioTests(MySQLConnectorAioTestCase):
             pass
 
         class TrueCursor(MySQLCursor):
-            def __init__(self, cnx=None):
-                super().__init__(connection=cnx)
+            def __init__(self, cnx=None, read_timeout=None, write_timeout=None):
+                super().__init__(
+                    connection=cnx,
+                    read_timeout=read_timeout,
+                    write_timeout=write_timeout
+                )
 
         with self.assertRaises(ProgrammingError):
             await self.cnx.cursor(cursor_class=FalseCursor)

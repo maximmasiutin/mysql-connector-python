@@ -195,6 +195,8 @@ class MySQLConnectionAbstract(ABC):
         converter_class: Optional[MySQLConverter] = None,
         converter_str_fallback: bool = False,
         connection_timeout: int = DEFAULT_CONFIGURATION["connect_timeout"],
+        read_timeout: Optional[int] = DEFAULT_CONFIGURATION["read_timeout"],
+        write_timeout: Optional[int] = DEFAULT_CONFIGURATION["write_timeout"],
         unix_socket: Optional[str] = None,
         use_unicode: Optional[bool] = True,
         ssl_ca: Optional[str] = None,
@@ -225,6 +227,8 @@ class MySQLConnectionAbstract(ABC):
         self._password3: str = password3
         self._unix_socket: str = unix_socket
         self._connection_timeout: int = connection_timeout
+        self._read_timeout: Optional[int] = read_timeout
+        self._write_timeout: Optional[int] = write_timeout
         self._connection_attrs: Dict[str, str] = conn_attrs
         self._compress: bool = compress
         self._consume_results: bool = consume_results
@@ -454,6 +458,12 @@ class MySQLConnectionAbstract(ABC):
                     f"The path '{self._openid_token_file}' provided via 'openid_token_file' "
                     "does not exist"
                 )
+        if self._read_timeout is not None:
+            if not isinstance(self._read_timeout, int) or self._read_timeout < 0:
+                raise InterfaceError("Option read_timeout must be a positive integer")
+        if self._write_timeout is not None:
+            if not isinstance(self._write_timeout, int) or self._write_timeout < 0:
+                raise InterfaceError("Option write_timeout must be a positive integer")
 
     def _validate_tls_ciphersuites(self) -> None:
         """Validates the tls_ciphersuites option."""
@@ -704,6 +714,96 @@ class MySQLConnectionAbstract(ABC):
             "The use of async properties are not supported by Python. "
             "Use `await set_database(name)` to set the database instead"
         )
+
+    @property
+    def read_timeout(self) -> Optional[int]:
+        """
+        Gets the connection context's timeout in seconds for each attempt
+        to read any data from the server.
+
+        `read_timeout` is number of seconds upto which the connector should wait
+        for the server to reply back before raising an ReadTimeoutError. We can set
+        this option to None, which would signal the connector to wait indefinitely
+        till the read operation is completed or stopped abruptly.
+        """
+        return self._read_timeout
+
+    @read_timeout.setter
+    def read_timeout(self, timeout: Optional[int]) -> None:
+        """
+        Sets or updates the connection context's timeout in seconds for each attempt
+        to read any data from the server.
+
+        `read_timeout` is number of seconds upto which the connector should wait
+        for the server to reply back before raising an ReadTimeoutError. We can set
+        this option to None, which would signal the connector to wait indefinitely
+        till the read operation is completed or stopped abruptly.
+
+        Args:
+            timeout: Accepts a non-negative integer which is the timeout to be set
+                     in seconds or None.
+        Raises:
+            InterfaceError: If a positive integer or None is not passed via the
+                            timeout parameter.
+        Examples:
+            The following will set the read_timeout of the current session to
+            5 seconds:
+            ```
+            >>> cnx = await mysql.connector.aio.connect(user='scott')
+            >>> cnx.read_timeout = 5
+            ```
+        """
+        if timeout is not None:
+            if not isinstance(timeout, int) or timeout < 0:
+                raise InterfaceError(
+                    "Option read_timeout must be a positive integer or None"
+                )
+        self._read_timeout = timeout
+
+    @property
+    def write_timeout(self) -> Optional[int]:
+        """
+        Gets the connection context's timeout in seconds for each attempt
+        to send data to the server.
+
+        `write_timeout` is number of seconds upto which the connector should spend to
+        write to the server before raising an WriteTimeoutError. We can set this option
+        to None, which would signal the connector to wait indefinitely till the write
+        operation is completed or stopped abruptly.
+        """
+        return self._write_timeout
+
+    @write_timeout.setter
+    def write_timeout(self, timeout: Optional[int]) -> None:
+        """
+        Sets or updates the connection context's timeout in seconds for each attempt
+        to send data to the server.
+
+        `write_timeout` is number of seconds upto which the connector should spend to
+        write to the server before raising an WriteTimeoutError. We can set this option
+        to None, which would signal the connector to wait indefinitely till the write
+        operation is completed or stopped abruptly.
+
+        Args:
+            timeout: Accepts a non-negative integer which is the timeout to be set in
+                     seconds or None.
+        Raises:
+            InterfaceError: If a positive integer or None is not passed via the
+                            timeout parameter.
+        Examples:
+            The following will set the write_timeout of the current
+            session to 5 seconds:
+            ```
+            >>> cnx = await mysql.connector.connect(user='scott')
+            >>> cnx.write_timeout = 5
+            ```
+        """
+        if timeout is not None:
+            if not isinstance(timeout, int) or timeout < 0:
+                raise InterfaceError(
+                    "Option write_timeout must be a positive integer or None"
+                )
+        self._write_timeout = timeout
 
     async def get_database(self) -> str:
         """Get the current database."""
@@ -1349,6 +1449,8 @@ class MySQLConnectionAbstract(ABC):
         cursor_class: Optional[Type[MySQLCursorAbstract]] = None,
         dictionary: Optional[bool] = None,
         named_tuple: Optional[bool] = None,
+        read_timeout: Optional[int] = None,
+        write_timeout: Optional[int] = None,
     ) -> MySQLCursorAbstract:
         """Instantiate and return a cursor.
 
@@ -1373,6 +1475,7 @@ class MySQLConnectionAbstract(ABC):
         binary: bool = False,
         columns: Optional[List[DescriptionType]] = None,
         raw: Optional[bool] = None,
+        **kwargs: Any,
     ) -> Tuple[Optional[RowType], Optional[EofPacketType]]:
         """Get the next rows returned by the MySQL server.
 
@@ -1389,6 +1492,7 @@ class MySQLConnectionAbstract(ABC):
         columns: Optional[List[DescriptionType]] = None,
         raw: Optional[bool] = None,
         prep_stmt: Any = None,
+        **kwargs: Any,
     ) -> Tuple[List[RowType], Optional[EofPacketType]]:
         """Get all rows returned by the MySQL server.
 
@@ -1428,6 +1532,7 @@ class MySQLConnectionAbstract(ABC):
         raw: bool = False,
         buffered: bool = False,
         raw_as_string: bool = False,
+        **kwargs: Any,
     ) -> ResultType:
         """Send a query to the MySQL server.
 
@@ -1442,7 +1547,9 @@ class MySQLConnectionAbstract(ABC):
         """
 
     async def cmd_query_iter(
-        self, statements: StrOrBytes
+        self,
+        statements: StrOrBytes,
+        **kwargs: Any,
     ) -> Generator[ResultType, None, None]:
         """Send one or more statements to the MySQL server.
 
@@ -1460,7 +1567,9 @@ class MySQLConnectionAbstract(ABC):
         """
 
     @abstractmethod
-    async def cmd_stmt_fetch(self, statement_id: int, rows: int = 1) -> None:
+    async def cmd_stmt_fetch(
+        self, statement_id: int, rows: int = 1, **kwargs: Any
+    ) -> None:
         """Fetch a MySQL statement Result Set.
 
         This method will send the FETCH command to MySQL together with the given
@@ -1469,7 +1578,9 @@ class MySQLConnectionAbstract(ABC):
 
     @abstractmethod
     async def cmd_stmt_prepare(
-        self, statement: bytes
+        self,
+        statement: bytes,
+        **kwargs: Any,
     ) -> Mapping[str, Union[int, List[DescriptionType]]]:
         """Prepare a MySQL statement.
 
@@ -1484,18 +1595,23 @@ class MySQLConnectionAbstract(ABC):
         data: Sequence[BinaryProtocolType] = (),
         parameters: Sequence = (),
         flags: int = 0,
+        **kwargs: Any,
     ) -> Optional[Union[Dict[str, Any], Tuple]]:
         """Execute a prepared MySQL statement."""
 
     @abstractmethod
-    async def cmd_stmt_reset(self, statement_id: int) -> None:
+    async def cmd_stmt_reset(
+        self,
+        statement_id: int,
+        **kwargs: Any,
+    ) -> None:
         """Reset data for prepared statement sent as long data.
 
         The result is a dictionary with OK packet information.
         """
 
     @abstractmethod
-    async def cmd_stmt_close(self, statement_id: int) -> None:
+    async def cmd_stmt_close(self, statement_id: int, **kwargs: Any) -> None:
         """Deallocate a prepared MySQL statement.
 
         This method deallocates the prepared statement using the statement_id.
@@ -1531,7 +1647,11 @@ class MySQLConnectionAbstract(ABC):
         """
 
     async def cmd_stmt_send_long_data(
-        self, statement_id: int, param_id: int, data: BinaryIO
+        self,
+        statement_id: int,
+        param_id: int,
+        data: BinaryIO,
+        **kwargs: Any,
     ) -> int:
         """Send data for a column.
 
@@ -1648,7 +1768,12 @@ class MySQLConnectionAbstract(ABC):
 class MySQLCursorAbstract(ABC):
     """Defines the MySQL cursor interface."""
 
-    def __init__(self, connection: MySQLConnectionAbstract):
+    def __init__(
+        self,
+        connection: MySQLConnectionAbstract,
+        read_timeout: Optional[int] = None,
+        write_timeout: Optional[int] = None,
+    ):
         self._connection: MySQLConnectionAbstract = connection
         self._loop: asyncio.AbstractEventLoop = connection.loop
         self._description: Optional[List[DescriptionType]] = None
@@ -1674,6 +1799,8 @@ class MySQLCursorAbstract(ABC):
         self._stmt_partition: Optional[MySQLScriptPartition] = None
         self._stmt_map_results: bool = False
 
+        self._read_timeout: Optional[int] = read_timeout
+        self._write_timeout: Optional[int] = write_timeout
         self._connection.add_cursor(self)
 
     async def __aenter__(self) -> MySQLCursorAbstract:
@@ -1707,6 +1834,98 @@ class MySQLCursorAbstract(ABC):
         if not row:
             raise StopAsyncIteration
         return row
+
+    @property
+    def read_timeout(self) -> Optional[int]:
+        """
+        Gets the cursor context's timeout in seconds for each attempt
+        to read any data from the server.
+
+        `read_timeout` is number of seconds upto which the connector should wait
+        for the server to reply back before raising an ReadTimeoutError. We can set
+        this option to None, which would signal the connector to wait indefinitely
+        till the read operation is completed or stopped abruptly.
+        """
+        return self._read_timeout
+
+    @read_timeout.setter
+    def read_timeout(self, timeout: Optional[int]) -> None:
+        """
+        Sets or updates the cursor context's timeout in seconds for each attempt
+        to read any data from the server.
+
+        `read_timeout` is number of seconds upto which the connector should wait
+        for the server to reply back before raising an ReadTimeoutError. We can set
+        this option to None, which would signal the connector to wait indefinitely
+        till the read operation is completed or stopped abruptly.
+
+        Args:
+            timeout: Accepts a non-negative integer which is the timeout to be set
+                     in seconds or None.
+        Raises:
+            InterfaceError: If a positive integer or None is not passed via the
+                            timeout parameter.
+        Examples:
+            The following will set the read_timeout of the current session's cursor
+            context to 5 seconds:
+            ```
+            >>> cnx = await mysql.connector.connect(user='scott')
+            >>> cur = await cnx.cursor()
+            >>> cur.read_timeout = 5
+            ```
+        """
+        if timeout is not None:
+            if not isinstance(timeout, int) or timeout < 0:
+                raise InterfaceError(
+                    "Option read_timeout must be a positive integer or None"
+                )
+        self._read_timeout = timeout
+
+    @property
+    def write_timeout(self) -> Optional[int]:
+        """
+        Gets the cursor context's timeout in seconds for each attempt
+        to send data to the server.
+
+        `write_timeout` is number of seconds upto which the connector should spend to
+        write to the server before raising an WriteTimeoutError. We can set this option
+        to None, which would signal the connector to wait indefinitely till the write
+        operation is completed or stopped abruptly.
+        """
+        return self._write_timeout
+
+    @write_timeout.setter
+    def write_timeout(self, timeout: Optional[int]) -> None:
+        """
+        Sets or updates the cursor context's timeout in seconds for each attempt
+        to send data to the server.
+
+        `write_timeout` is number of seconds upto which the connector should spend to
+        write to the server before raising an WriteTimeoutError. We can set this option
+        to None, which would signal the connector to wait indefinitely till the write
+        operation is completed or stopped abruptly.
+
+        Args:
+            timeout: Accepts a non-negative integer which is the timeout to be set in
+                     seconds or None.
+        Raises:
+            InterfaceError: If a positive integer or None is not passed via the
+                            timeout parameter.
+        Examples:
+            The following will set the write_timeout of the current session's cursor
+            context to 5 seconds:
+            ```
+            >>> cnx = await mysql.connector.connect(user='scott')
+            >>> cur = await cnx.cursor()
+            >>> cur.write_timeout = 5
+            ```
+        """
+        if timeout is not None:
+            if not isinstance(timeout, int) or timeout < 0:
+                raise InterfaceError(
+                    "Option write_timeout must be a positive integer or None"
+                )
+        self._write_timeout = timeout
 
     @property
     def description(self) -> Optional[List[DescriptionType]]:
@@ -1942,10 +2161,6 @@ class MySQLCursorAbstract(ABC):
                 async for statement, result_set in cur.fetchsets():
                     # do something with result set
             ```
-
-            Note that if `map_results` is disabled, all statements returned by
-            `fetchsets()` point to `None`. See the documentation of `fetchsets()`
-            to know more about it.
         """
 
     @abstractmethod

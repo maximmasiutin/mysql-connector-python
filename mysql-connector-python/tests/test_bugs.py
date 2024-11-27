@@ -8959,3 +8959,24 @@ class BugOra37145655(tests.MySQLConnectorTests):
                 option_groups=["incorrect_config"],
             ) as _:
                 pass
+class BugOra36922645(tests.MySQLConnectorTests):
+    """BUG#36922645: Option `connection_timeout` is overwritten and works as "query" timeout instead
+
+    The `connection_timeout` option is working as "the time taken to execute a query by Connector/Python
+    inside an established connection" instead of "the time taken to establish a connection".
+
+    This patch fixes this issue by seperating the use of connection_timeout and introducing read/write timeouts
+    as a part of WL#16381.
+    """
+
+    def test_connection_timeout(self):
+        config = tests.get_mysql_config()
+        config["unix_socket"] = None
+        config["use_pure"] = True
+        config["connection_timeout"] = 3
+        try:
+            with mysql.connector.connect(**config) as cnx:
+                # check that connection_timeout is not working as query timeout
+                cnx.cmd_query("SELECT SLEEP(5)")
+        except Exception as err:
+            self.fail(err)

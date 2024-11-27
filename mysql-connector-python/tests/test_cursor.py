@@ -1101,7 +1101,7 @@ class MySQLCursorPreparedTests(tests.TestsCursor):
         cur._description = [("c1", 5, None, None, None, None, 1, 128)]
 
         # Monkey patch the get_row method of the connection for testing
-        def _get_row(binary, columns, raw):  # pylint: disable=W0613
+        def _get_row(binary, columns, raw, **kwargs):  # pylint: disable=W0613
             try:
                 row = self.cnx._test_fetch_row[0]
                 self.cnx._test_fetch_row = self.cnx._test_fetch_row[1:]
@@ -1318,7 +1318,7 @@ class MySQLCursorPreparedTests(tests.TestsCursor):
     def test_fetchall(self):
         cur = self.cnx.cursor(cursor_class=cursor.MySQLCursorPrepared)
 
-        def _get_rows(binary, columns):  # pylint: disable=W0613
+        def _get_rows(binary, columns, **kwargs):  # pylint: disable=W0613
             self.unread_result = False  # pylint: disable=W0201
             return (
                 self.cnx._test_fetch_row,

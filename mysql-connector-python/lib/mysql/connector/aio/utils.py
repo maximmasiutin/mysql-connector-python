@@ -38,6 +38,8 @@ import contextvars
 import functools
 import warnings
 
+from mysql.connector.errors import ReadTimeoutError, WriteTimeoutError
+
 try:
     import ssl
 except ImportError:
@@ -46,6 +48,8 @@ except ImportError:
 from typing import TYPE_CHECKING, Any, Callable, Tuple
 
 if TYPE_CHECKING:
+    from mysql.connector.aio.abstracts import MySQLConnectionAbstract
+
     __all__.append("StreamWriter")
 
 
@@ -168,5 +172,28 @@ def deprecated(reason: str) -> Callable:
             return await func(*args, **kwargs)
 
         return wrapper
+
+    return decorator
+
+
+def handle_read_write_timeout() -> Callable:
+    """
+    Decorator to close the current connection if a read or a write timeout
+    is raised by the method passed via the func parameter.
+    """
+
+    def decorator(cnx_method: Callable) -> Callable:
+        @functools.wraps(cnx_method)
+        async def handle_cnx_method(
+            cnx: "MySQLConnectionAbstract", *args: Any, **kwargs: Any
+        ) -> Any:
+            try:
+                return await cnx_method(cnx, *args, **kwargs)
+            except Exception as err:
+                if isinstance(err, (ReadTimeoutError, WriteTimeoutError)):
+                    await cnx.close()
+                raise err
+
+        return handle_cnx_method
 
     return decorator
