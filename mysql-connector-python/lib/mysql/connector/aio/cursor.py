@@ -50,6 +50,7 @@ from typing import (
     Union,
 )
 
+from .._scripting import split_multi_statement
 from ..constants import ServerFlag
 from ..cursor import (
     MAX_RESULTS,
@@ -62,8 +63,6 @@ from ..cursor import (
     RE_SQL_ON_DUPLICATE,
     RE_SQL_PYTHON_CAPTURE_PARAM_NAME,
     RE_SQL_PYTHON_REPLACE_PARAM,
-    is_eol_comment,
-    parse_multi_statement_query,
 )
 from ..errors import (
     Error,
@@ -85,6 +84,7 @@ from ..types import (
     WarningType,
 )
 from .abstracts import NAMED_TUPLE_CACHE, MySQLConnectionAbstract, MySQLCursorAbstract
+from .utils import deprecated
 
 ERR_NO_RESULT_TO_FETCH = "No result set to fetch from"
 
@@ -217,69 +217,6 @@ class MySQLCursor(MySQLCursorAbstract):
             ) from err
         return tuple(result)
 
-    async def _execute_iter(
-        self, query_iter: AsyncGenerator[ResultType, None]
-    ) -> AsyncGenerator[MySQLCursorAbstract, None]:
-        """Generator returns MySQLCursor objects for multiple statements
-
-        This method is only used when multiple statements are executed
-        by the `cursor.execute(multi_stmt_query, multi=True)` method.
-
-        It matches the given `query_iter` (result of `MySQLConnection.cmd_query_iter()`)
-        and the list of statements that were executed.
-
-        How does this method work? To properly map each statement (stmt) to a result,
-        the following facts must be considered:
-
-        1. Read operations such as `SELECT` produce a non-empty result
-            (calling `next(query_iter)` gets a result that includes at least one column).
-        2. Write operatios such as `INSERT` produce an empty result
-            (calling `next(query_iter)` gets a result with no columns - aka empty).
-        3. End-of-line (EOL) comments do not produce a result, unless is the last stmt
-            in which case produces an empty result.
-        4. Calling procedures such as `CALL my_proc` produce a sequence `(1)*0` which
-            means it may produce zero or more non-empty results followed by just one
-            empty result. In other words, a callproc stmt always terminates with an
-            empty result. E.g., `my_proc` includes an update + select + select + update,
-            then the result sequence will be `110` - note how the write ops results get
-            annulated, just the read ops results are produced. Other examples:
-                * insert + insert -> 0
-                * select + select + insert + select -> 1110
-                * select -> 10
-            Observe how 0 indicates the end of the result sequence. This property is
-            vital to know what result corresponds to what callproc stmt.
-
-        In this regard, the implementation is composed of:
-        1. Parsing: the multi-statement is broken down into single statements, and then
-            for each of these, leading white spaces are removed (including
-            jumping line, vertical line, tab, etc.). Also, EOL comments are removed from
-            the stream, except when the comment is the last statement of the
-            multi-statement string.
-        2. Mapping: the facts described above as used as "game rules" to properly match
-        statements and results. In case, if we run out of statements before running out
-        of results we use a sentinel named "stmt_overflow!" to indicate that the mapping
-        went wrong.
-
-        Acronyms
-            1: a non-empty result
-            2: an empty result
-        """
-        executed_list = parse_multi_statement_query(multi_stmt=self._executed)
-        self._executed = None
-        stmt = executed_list.popleft() if executed_list else b"stmt_overflow!"
-        async for result in query_iter:
-            await self._reset_result()
-            await self._handle_result(result)
-
-            if is_eol_comment(stmt):
-                continue
-
-            self._executed = stmt.rstrip()
-            yield self
-
-            if not stmt.upper().startswith(b"CALL") or "columns" not in result:
-                stmt = executed_list.popleft() if executed_list else b"stmt_overflow!"
-
     async def _fetch_row(self, raw: bool = False) -> Optional[RowType]:
         """Return the next row in the result set."""
         if not self._connection.unread_result:
@@ -386,16 +323,29 @@ class MySQLCursor(MySQLCursorAbstract):
         self._warning_count = eof["warning_count"]
         await self._handle_warnings()
 
-    async def _reset_result(self) -> None:
-        """Reset the cursor to default."""
+    async def _reset_result(self, preserve_last_executed_stmt: bool = False) -> None:
+        """Reset the cursor to default.
+
+        Args:
+            preserve_last_executed_stmt: If it is False, the last executed
+                                         statement value is reset. Otherwise,
+                                         such a value is preserved.
+        """
         self._description = None
         self._warnings = None
         self._warning_count = 0
-        self._executed = None
-        self._executed_list = []
         self._stored_results = []
         self._rowcount = -1
         self._nextrow = (None, None)
+
+        if not preserve_last_executed_stmt:
+            # reset inner state related to statement execution
+            self._executed = None
+            self._executed_list = []
+            self._stmt_partitions = None
+            self._stmt_partition = None
+            self._stmt_map_results = False
+
         await self.reset()
 
     def _have_unread_result(self) -> bool:
@@ -656,81 +606,52 @@ class MySQLCursor(MySQLCursorAbstract):
 
     async def execute(
         self,
-        operation: StrOrBytes,
+        operation: str,
         params: Union[Sequence[Any], Dict[str, Any]] = (),
-        multi: bool = False,
+        map_results: bool = False,
     ) -> None:
-        """Executes the given operation.
-
-        Executes the given operation substituting any markers with the given parameters.
-
-        For example, getting all rows where id is 5:
-          await cursor.execute("SELECT * FROM t1 WHERE id = %s", (5,))
-
-        If the `multi`` parameter is used a `ProgrammingError` is raised. The method for
-        executing multiple statements is `executemulti()`.
-
-        If warnings where generated, and connection.get_warnings is True, then
-        self._warnings will be a list containing these warnings.
-
-        Raises:
-            ProgramingError: If multi parameter is used.
-        """
         if not self._connection:
             raise ProgrammingError("Cursor is not connected")
 
         if not operation:
             return None
 
-        if multi:
-            raise ProgrammingError(
-                "The `multi` parameter cannot be used in the Connector/Python Asyncio "
-                "implementation. Please use `executemulti()` for executing multiple "
-                "statements"
-            )
-
         await self._connection.handle_unread_result()
         await self._reset_result()
 
         stmt = await self._prepare_statement(operation, params)
-        self._executed = stmt
 
-        try:
-            await self._handle_result(await self._connection.cmd_query(stmt))
-        except InterfaceError as err:
-            if self._connection.have_next_result:
-                raise InterfaceError(
-                    "Use `executemulti()` when executing multiple statements"
-                ) from err
-            raise
+        self._stmt_partitions = split_multi_statement(
+            sql_code=stmt, map_results=map_results
+        )
+        self._stmt_partition = next(self._stmt_partitions)
+        self._stmt_map_results = map_results
+        self._executed_list = self._stmt_partition["single_stmts"]
+        self._executed = (
+            self._stmt_partition["single_stmts"].popleft()
+            if map_results
+            else self._stmt_partition["mappable_stmt"]
+        )
+
+        await self._handle_result(
+            await self._connection.cmd_query(self._stmt_partition["mappable_stmt"])
+        )
+
         return None
 
+    @deprecated(
+        "executemulti() is deprecated and will be removed in a future release. "
+        + "Use execute() instead."
+    )
     async def executemulti(
         self,
-        operation: StrOrBytes,
+        operation: str,
         params: Union[Sequence[Any], Dict[str, Any]] = (),
-    ) -> AsyncGenerator[MySQLCursorAbstract, None]:
-        """Execute multiple statements.
-
-        Executes the given operation substituting any markers with the given
-        parameters.
-        """
-
-        if not self._connection:
-            raise ProgrammingError("Cursor is not connected")
-
-        if not operation:
-            raise StopAsyncIteration
-
-        await self._connection.handle_unread_result()
-        await self._reset_result()
-
-        stmt = await self._prepare_statement(operation, params)
-        self._executed = stmt
-        self._executed_list = []
-
-        async for result in self._execute_iter(self._connection.cmd_query_iter(stmt)):
-            yield result
+        map_results: bool = False,
+    ) -> None:
+        return await self.execute(
+            operation=operation, params=params, map_results=map_results
+        )
 
     async def executemany(
         self,
@@ -831,6 +752,59 @@ class MySQLCursor(MySQLCursorAbstract):
 
         return res
 
+    async def nextset(self) -> Optional[bool]:
+        if self._connection._have_next_result:
+            # prepare cursor to load the next result set, and ultimately, load it.
+            await self._connection.handle_unread_result()
+            await self._reset_result(preserve_last_executed_stmt=True)
+            await self._handle_result(
+                await self._connection._handle_result(
+                    await self._connection._socket.read()
+                )
+            )
+
+            # if mapping is enabled, run the if-block, otherwise simply return `True`.
+            if self._stmt_partitions is not None and self._stmt_map_results:
+                if not self._stmt_partition["single_stmts"]:
+                    # It means there are still results to be consumed, but no more
+                    # statements to relate these results to.
+                    # In this case, we raise a no fatal error and don't clear
+                    # `_executed` so its current value is reported when users
+                    # access the property `statement`.
+                    # If this case ever happens, a bug report should be filed,
+                    # assuming it is happening on supported use cases.
+                    warnings.warn(
+                        "MappingWarning: Number of result sets greater than number "
+                        "of single statements."
+                    )
+                else:
+                    self._executed = self._stmt_partition["single_stmts"].popleft()
+            return True
+        if self._stmt_partitions is not None:
+            # Let's see if there are more mappable statements (partitions)
+            # to be executed.
+            # If there are no more partitions, we simply return `None`, otherwise
+            # we execute the correponding mappable multi statement and repeat the
+            # process all over again.
+            try:
+                self._stmt_partition = next(self._stmt_partitions)
+            except StopIteration:
+                pass
+            else:
+                # This block only happens when mapping is enabled because when it
+                # is disabled, only one partition is generated, and at this point,
+                # such partiton has already been processed.
+                self._executed = self._stmt_partition["single_stmts"].popleft()
+                await self._handle_result(
+                    await self._connection.cmd_query(
+                        self._stmt_partition["mappable_stmt"]
+                    )
+                )
+                return True
+
+        await self._reset_result()
+        return None
+
 
 class MySQLCursorBuffered(MySQLCursor):
     """Cursor which fetches rows within execute()."""
@@ -882,8 +856,10 @@ class MySQLCursorBuffered(MySQLCursor):
         Returns:
             list: A list of tuples with all rows of a query result set.
         """
-        if self._executed is None or self._rows is None:
+        if self._executed is None:
             raise InterfaceError(ERR_NO_RESULT_TO_FETCH)
+        if self._rows is None:
+            return []
         res = []
         res = self._rows[self._next_row :]
         self._next_row = len(self._rows)
@@ -1159,10 +1135,15 @@ class MySQLCursorPrepared(MySQLCursor):
         """
         raise NotSupportedError()
 
+    @deprecated(
+        "executemulti() is deprecated and will be removed in a future release. "
+        + "Use execute() instead."
+    )
     async def executemulti(
         self,
-        operation: StrOrBytes,
+        operation: str,
         params: Union[Sequence[Any], Dict[str, Any]] = (),
+        map_results: bool = False,
     ) -> AsyncGenerator[MySQLCursorAbstract, None]:
         """Execute multiple statements.
 
@@ -1205,8 +1186,8 @@ class MySQLCursorPrepared(MySQLCursor):
         self,
         operation: StrOrBytes,
         params: Optional[ParamsSequenceOrDictType] = None,
-        multi: bool = False,
-    ) -> None:  # multi is unused
+        map_results: bool = False,
+    ) -> None:
         """Prepare and execute a MySQL Prepared Statement
 
         This method will prepare the given operation and execute it using
@@ -1215,8 +1196,18 @@ class MySQLCursorPrepared(MySQLCursor):
         If the cursor instance already had a prepared statement, it is
         first closed.
 
-        Note: argument "multi" is unused.
+        *Argument "map_results" is unused as multi statement execution
+        is not supported for prepared statements*.
+
+        Raises:
+            ProgrammingError: When providing a multi statement operation
+                              or setting *map_results* to True.
         """
+        if map_results:
+            raise ProgrammingError(
+                "Multi statement execution not supported for prepared statements."
+            )
+
         if not self._connection:
             raise ProgrammingError("Cursor is not connected")
 

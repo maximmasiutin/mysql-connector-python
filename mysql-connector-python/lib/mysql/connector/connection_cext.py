@@ -478,8 +478,8 @@ class CMySQLConnection(MySQLConnectionAbstract):
         counter = 0
         try:
             fetch_row = prep_stmt.fetch_row if prep_stmt else self._cmysql.fetch_row
-            if self.converter:
-                # When using a converter class, the C extension should not
+            if self.converter or raw:
+                # When using a converter class or `raw`, the C extension should not
                 # convert the values. This can be accomplished by setting
                 # the raw option to True.
                 self._cmysql.raw(True)
@@ -697,7 +697,6 @@ class CMySQLConnection(MySQLConnectionAbstract):
         buffered: bool = False,
         raw_as_string: bool = False,
     ) -> Optional[Union[CextEofPacketType, CextResultType]]:
-        """Send a query to the MySQL server"""
         self.handle_unread_result()
         if raw is None:
             raw = self._raw

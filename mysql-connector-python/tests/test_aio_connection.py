@@ -480,8 +480,11 @@ class MySQLConnectionAioTests(MySQLConnectorAioTestCase):
         packets[-1] = packets[-1][:-2] + b"\x08" + packets[-1][-1:]
         self.cnx._socket._writer.reset()
         self.cnx._socket._writer.add_packets(packets)
-        with self.assertRaises(InterfaceError):
+        # Verify `cmd_query()` does not raise an error when passing a multi statement.
+        try:
             await self.cnx.cmd_query("SELECT 1")
+        except InterfaceError as e:
+            self.fail("An unexpected exception was raised: {}".format(e))
 
     @foreach_cnx_aio()
     async def test_cmd_query_iter(self):

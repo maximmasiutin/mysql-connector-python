@@ -32,17 +32,14 @@
 from __future__ import annotations
 
 import re
-import unicodedata
 import warnings
 
-from collections import deque, namedtuple
+from collections import namedtuple
 from decimal import Decimal
 from typing import (
     TYPE_CHECKING,
     Any,
-    Deque,
     Dict,
-    Generator,
     Iterator,
     List,
     NoReturn,
@@ -53,6 +50,7 @@ from typing import (
     cast,
 )
 
+from ._scripting import split_multi_statement
 from .abstracts import NAMED_TUPLE_CACHE, MySQLCursorAbstract
 from .constants import ServerFlag
 from .errors import (
@@ -114,71 +112,6 @@ RE_SQL_PYTHON_CAPTURE_PARAM_NAME = re.compile(r"%\((.*?)\)s")
 ERR_NO_RESULT_TO_FETCH = "No result set to fetch from"
 
 MAX_RESULTS = 4294967295
-
-
-def is_eol_comment(stmt: bytes) -> bool:
-    """Checks if statement is an end-of-line comment.
-
-    Double-dash comment style requires the second dash to be
-    followed by at least one whitespace (Z) or control character (C) such
-    as a space, tab, newline, and so on.
-
-    Hash comment simply requires start from `#` and nothing else.
-
-    Args:
-        stmt: MySQL statement.
-
-    Returns:
-        Whether or not the statement is an end-of-line comment.
-
-    References:
-        [1]: https://dev.mysql.com/doc/refman/en/comments.html
-    """
-    is_double_dash_comment = (
-        len(stmt) >= 3
-        and stmt.startswith(b"--")
-        and unicodedata.category(chr(stmt[2]))[0] in {"Z", "C"}
-    )
-    is_hash_comment = len(stmt) >= 2 and stmt.startswith(b"#")
-
-    return is_double_dash_comment or is_hash_comment
-
-
-def parse_multi_statement_query(multi_stmt: bytes) -> Deque[bytes]:
-    """Parses a multi-statement query/operation.
-
-    Parsing consists of removing empty (which includes just whitespaces and/or control
-    characters) statements and EOL (end-of-line) comments.
-
-    However, there's a caveat, by rule, the last EOL comment found in the stream isn't
-    removed if and only if it's the last statement.
-
-    Why? EOL comments do not generate results, however, when the last statement is an
-    EOL comment the server returns an empty result. So, in other to match statements
-    and results correctly we need to keep the last EOL comment statement.
-
-    Args:
-        multi_stmt: Query representing multi-statement operations separated by semicolons.
-
-    Returns:
-        A list of statements that aren't empty and don't contain leading
-        ASCII whitespaces. Also, they aren't EOL comments except
-        perhaps for the last one.
-    """
-    executed_list: Deque[bytes] = deque(RE_SQL_SPLIT_STMTS.split(multi_stmt))
-    stmt, num_stms = b"", len(executed_list)
-    while num_stms > 0:
-        num_stms -= 1
-        stmt_next = executed_list.popleft().lstrip()
-        if stmt_next:
-            stmt = stmt_next
-            if not is_eol_comment(stmt):
-                executed_list.append(stmt)
-
-    if is_eol_comment(stmt):
-        executed_list.append(stmt)
-
-    return executed_list
 
 
 class _ParamSubstitutor:
@@ -263,16 +196,29 @@ class MySQLCursor(MySQLCursorAbstract):
         """
         return iter(self.fetchone, None)
 
-    def _reset_result(self) -> None:
-        """Reset the cursor to default"""
+    def _reset_result(self, preserve_last_executed_stmt: bool = False) -> None:
+        """Reset the cursor to default.
+
+        Args:
+            preserve_last_executed_stmt: If it is False, the last executed
+                                         statement value is reset. Otherwise,
+                                         such a value is preserved.
+        """
         self._rowcount: int = -1
         self._nextrow = (None, None)
         self._stored_results: List[MySQLCursor] = []
         self._warnings: Optional[List[WarningType]] = None
         self._warning_count: int = 0
         self._description: Optional[List[DescriptionType]] = None
-        self._executed: Optional[bytes] = None
-        self._executed_list: List[bytes] = []
+
+        if not preserve_last_executed_stmt:
+            # reset inner state related to statement execution
+            self._executed = None
+            self._executed_list = []
+            self._stmt_partitions = None
+            self._stmt_partition = None
+            self._stmt_map_results = False
+
         self.reset()
 
     def _have_unread_result(self) -> bool:
@@ -404,92 +350,12 @@ class MySQLCursor(MySQLCursorAbstract):
         else:
             raise InterfaceError("Invalid result")
 
-    def _execute_iter(
-        self, query_iter: Generator[ResultType, None, None]
-    ) -> Generator[MySQLCursor, None, None]:
-        """Generator returns MySQLCursor objects for multiple statements
-
-        This method is only used when multiple statements are executed
-        by the `cursor.execute(multi_stmt_query, multi=True)` method.
-
-        It matches the given `query_iter` (result of `MySQLConnection.cmd_query_iter()`)
-        and the list of statements that were executed.
-
-        How does this method work? To properly map each statement (stmt) to a result,
-        the following facts must be considered:
-
-        1. Read operations such as `SELECT` produce a non-empty result
-            (calling `next(query_iter)` gets a result that includes at least one column).
-        2. Write operatios such as `INSERT` produce an empty result
-            (calling `next(query_iter)` gets a result with no columns - aka empty).
-        3. End-of-line (EOL) comments do not produce a result, unless is the last stmt
-            in which case produces an empty result.
-        4. Calling procedures such as `CALL my_proc` produce a sequence `(1)*0` which
-            means it may produce zero or more non-empty results followed by just one
-            empty result. In other words, a callproc stmt always terminates with an
-            empty result. E.g., `my_proc` includes an update + select + select + update,
-            then the result sequence will be `110` - note how the write ops results get
-            annulated, just the read ops results are produced. Other examples:
-                * insert + insert -> 0
-                * select + select + insert + select -> 1110
-                * select -> 10
-            Observe how 0 indicates the end of the result sequence. This property is
-            vital to know what result corresponds to what callproc stmt.
-
-        In this regard, the implementation is composed of:
-        1. Parsing: the multi-statement is broken down into single statements, and then
-            for each of these, leading white spaces are removed (including
-            jumping line, vertical line, tab, etc.). Also, EOL comments are removed from
-            the stream, except when the comment is the last statement of the
-            multi-statement string.
-        2. Mapping: the facts described above as used as "game rules" to properly match
-        statements and results. In case, if we run out of statements before running out
-        of results we use a sentinel named "stmt_overflow!" to indicate that the mapping
-        went wrong.
-
-        Acronyms
-            1: a non-empty result
-            2: an empty result
-        """
-        executed_list = parse_multi_statement_query(multi_stmt=self._executed)
-        self._executed = None
-        stmt = executed_list.popleft() if executed_list else b"stmt_overflow!"
-        for result in query_iter:
-            self._reset_result()
-            self._handle_result(result)
-
-            if is_eol_comment(stmt):
-                continue
-
-            self._executed = stmt.rstrip()
-            yield self
-
-            if not stmt.upper().startswith(b"CALL") or "columns" not in result:
-                stmt = executed_list.popleft() if executed_list else b"stmt_overflow!"
-
     def execute(
         self,
-        operation: StrOrBytes,
+        operation: str,
         params: Optional[ParamsSequenceOrDictType] = None,
-        multi: bool = False,
-    ) -> Optional[Generator[MySQLCursor, None, None]]:
-        """Executes the given operation
-
-        Executes the given operation substituting any markers with
-        the given parameters.
-
-        For example, getting all rows where id is 5:
-          cursor.execute("SELECT * FROM t1 WHERE id = %s", (5,))
-
-        The multi argument should be set to True when executing multiple
-        statements in one operation. If not set and multiple results are
-        found, an InterfaceError will be raised.
-
-        If warnings where generated, and connection.get_warnings is True, then
-        self._warnings will be a list containing these warnings.
-
-        Returns an iterator when multi is True, otherwise None.
-        """
+        map_results: bool = False,
+    ) -> None:
         if not operation:
             return None
 
@@ -500,15 +366,14 @@ class MySQLCursor(MySQLCursorAbstract):
             raise ProgrammingError("Cursor is not connected") from err
 
         self._connection.handle_unread_result()
-
         self._reset_result()
-        stmt: StrOrBytes = ""
 
+        stmt = b""
         try:
-            if not isinstance(operation, (bytes, bytearray)):
+            if isinstance(operation, str):
                 stmt = operation.encode(self._connection.python_charset)
             else:
-                stmt = operation
+                stmt = cast(bytes, operation)
         except (UnicodeDecodeError, UnicodeEncodeError) as err:
             raise ProgrammingError(str(err)) from err
 
@@ -528,19 +393,22 @@ class MySQLCursor(MySQLCursorAbstract):
                     " it must be of type list, tuple or dict"
                 )
 
-        self._executed = stmt
-        if multi:
-            self._executed_list = []
-            return self._execute_iter(self._connection.cmd_query_iter(stmt))
+        self._stmt_partitions = split_multi_statement(
+            sql_code=stmt, map_results=map_results
+        )
+        self._stmt_partition = next(self._stmt_partitions)
+        self._stmt_map_results = map_results
+        self._executed_list = self._stmt_partition["single_stmts"]
+        self._executed = (
+            self._stmt_partition["single_stmts"].popleft()
+            if map_results
+            else self._stmt_partition["mappable_stmt"]
+        )
 
-        try:
-            self._handle_result(self._connection.cmd_query(stmt))
-        except InterfaceError as err:
-            if self._connection.have_next_result:
-                raise InterfaceError(
-                    "Use multi=True when executing multiple statements"
-                ) from err
-            raise
+        self._handle_result(
+            self._connection.cmd_query(self._stmt_partition["mappable_stmt"])
+        )
+
         return None
 
     def _batch_insert(
@@ -601,7 +469,7 @@ class MySQLCursor(MySQLCursorAbstract):
 
     def executemany(
         self, operation: str, seq_params: Sequence[ParamsSequenceOrDictType]
-    ) -> Optional[Generator[MySQLCursor, None, None]]:
+    ) -> None:
         """Execute the given operation multiple times
 
         The executemany() method will execute the operation iterating
@@ -931,6 +799,55 @@ class MySQLCursor(MySQLCursorAbstract):
         self._rowcount += rowcount
         return rows
 
+    def nextset(self) -> Optional[bool]:
+        if self._connection._have_next_result:
+            # prepare cursor to load the next result set, and ultimately, load it.
+            self._connection.handle_unread_result()
+            self._reset_result(preserve_last_executed_stmt=True)
+            self._handle_result(
+                self._connection._handle_result(self._connection._socket.recv())
+            )
+
+            # if mapping is enabled, run the if-block, otherwise simply return `True`.
+            if self._stmt_partitions is not None and self._stmt_map_results:
+                if not self._stmt_partition["single_stmts"]:
+                    # It means there are still results to be consumed, but no more
+                    # statements to relate these results to.
+                    # In this case, we raise a no fatal error and don't clear
+                    # `_executed` so its current value is reported when users
+                    # access the property `statement`.
+                    # If this case ever happens, a bug report should be filed,
+                    # assuming it is happening on supported use cases.
+                    warnings.warn(
+                        "MappingWarning: Number of result sets greater than number "
+                        "of single statements."
+                    )
+                else:
+                    self._executed = self._stmt_partition["single_stmts"].popleft()
+            return True
+        if self._stmt_partitions is not None:
+            # Let's see if there are more mappable statements (partitions)
+            # to be executed.
+            # If there are no more partitions, we simply return `None`, otherwise
+            # we execute the correponding mappable multi statement and repeat the
+            # process all over again.
+            try:
+                self._stmt_partition = next(self._stmt_partitions)
+            except StopIteration:
+                pass
+            else:
+                # This block only happens when mapping is enabled because when it
+                # is disabled, only one partition is generated, and at this point,
+                # such partiton has already been processed.
+                self._executed = self._stmt_partition["single_stmts"].popleft()
+                self._handle_result(
+                    self._connection.cmd_query(self._stmt_partition["mappable_stmt"])
+                )
+                return True
+
+        self._reset_result()
+        return None
+
     @property
     def column_names(self) -> Tuple[str, ...]:
         """Returns column names
@@ -942,21 +859,6 @@ class MySQLCursor(MySQLCursorAbstract):
         if not self.description:
             return tuple()
         return tuple(d[0] for d in self.description)
-
-    @property
-    def statement(self) -> Optional[str]:
-        """Returns the executed statement
-
-        This property returns the executed statement. When multiple
-        statements were executed, the current statement in the iterator
-        will be returned.
-        """
-        if self._executed is None:
-            return None
-        try:
-            return self._executed.strip().decode("utf-8")
-        except (AttributeError, UnicodeDecodeError):
-            return self._executed.strip()  # type: ignore[return-value]
 
     @property
     def with_rows(self) -> bool:
@@ -1137,6 +1039,8 @@ class MySQLCursorBufferedRaw(MySQLCursorBuffered):
             list: A list of tuples with all rows of a query result set.
         """
         self._check_executed()
+        if self._rows is None:
+            return []
         return list(self._rows[self._next_row :])
 
     @property
@@ -1226,8 +1130,8 @@ class MySQLCursorPrepared(MySQLCursor):
         self,
         operation: StrOrBytes,
         params: Optional[ParamsSequenceOrDictType] = None,
-        multi: bool = False,
-    ) -> None:  # multi is unused
+        map_results: bool = False,
+    ) -> None:
         """Prepare and execute a MySQL Prepared Statement
 
         This method will prepare the given operation and execute it using
@@ -1236,8 +1140,18 @@ class MySQLCursorPrepared(MySQLCursor):
         If the cursor instance already had a prepared statement, it is
         first closed.
 
-        Note: argument "multi" is unused.
+        *Argument "map_results" is unused as multi statement execution
+        is not supported for prepared statements*.
+
+        Raises:
+            ProgrammingError: When providing a multi statement operation
+                              or setting *map_results* to True.
         """
+        if map_results:
+            raise ProgrammingError(
+                "Multi statement execution not supported for prepared statements."
+            )
+
         charset = self._connection.charset
         if charset == "utf8mb4":
             charset = "utf8"

@@ -894,17 +894,6 @@ class MySQLConnection(MySQLConnectionAbstract):
         buffered: bool = False,
         raw_as_string: bool = False,
     ) -> ResultType:
-        """Send a query to the MySQL server.
-
-        This method send the query to the MySQL server and returns the result.
-
-        If there was a text result, a tuple will be returned consisting of the number
-        of columns and a list containing information about these columns.
-
-        When the query doesn't return a text result, the OK or EOF packet information
-        as dictionary will be returned. In case the result was an error, exception
-        Error will be raised.
-        """
         if not isinstance(query, bytearray):
             if isinstance(query, str):
                 query = query.encode()
@@ -1001,11 +990,6 @@ class MySQLConnection(MySQLConnectionAbstract):
                 )
                 raise DatabaseError(err_msg) from err
             raise
-        if self._have_next_result:
-            raise InterfaceError(
-                "Use cmd_query_iter for statements with multiple queries."
-            )
-
         return result
 
     async def cmd_query_iter(  # type: ignore[override]

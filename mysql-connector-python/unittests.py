@@ -97,6 +97,17 @@ _TOPDIR = os.path.dirname(os.path.realpath(__file__))
 LOGGER = logging.getLogger(tests.LOGGER_NAME)
 tests.setup_logger(LOGGER)
 
+
+class SuppressAsyncioTaskPendingLogs(logging.Filter):
+    """Log filter to suppress `Executing task ...` messages."""
+
+    def filter(self, record: logging.LogRecord):
+        return "Executing <Task pending" not in record.getMessage()
+
+
+logging.getLogger("asyncio").addFilter(SuppressAsyncioTaskPendingLogs())
+
+
 # Only run for supported Python Versions
 if not (((2, 6) <= sys.version_info < (3, 0)) or sys.version_info >= (3, 3)):
     LOGGER.error(

@@ -36,6 +36,7 @@ __all__ = ["to_thread", "open_connection"]
 import asyncio
 import contextvars
 import functools
+import warnings
 
 try:
     import ssl
@@ -151,3 +152,21 @@ async def to_thread(func: Callable, *args: Any, **kwargs: Any) -> asyncio.Future
     ctx = contextvars.copy_context()
     func_call = functools.partial(ctx.run, func, *args, **kwargs)
     return await loop.run_in_executor(None, func_call)
+
+
+def deprecated(reason: str) -> Callable:
+    """Use it to decorate deprecated methods."""
+
+    def decorator(func: Callable) -> Callable:
+        @functools.wraps(func)
+        async def wrapper(*args: Any, **kwargs: Any) -> Callable:
+            warnings.warn(
+                f"Call to deprecated function {func.__name__}. Reason: {reason}",
+                category=DeprecationWarning,
+                stacklevel=2,
+            )
+            return await func(*args, **kwargs)
+
+        return wrapper
+
+    return decorator

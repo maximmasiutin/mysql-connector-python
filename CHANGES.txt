@@ -8,6 +8,13 @@ Copyright (c) 2009, 2024, Oracle and/or its affiliates.
 Full release notes:
  http://dev.mysql.com/doc/relnotes/connector-python/en/
 
+v9.2.0
+======
+
+- WL16285: Remake Multi Statement Execution
+- BUG#36126909: "Unread result found" exception/bad MySQLCursor.statement when query text contains code comments
+- BUG#35810050: Executing multiple statements fails when importing Sakila
+
 v9.1.0
 ======
 

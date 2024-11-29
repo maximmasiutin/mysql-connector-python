@@ -518,7 +518,11 @@ class MySQLConnectionTests(tests.MySQLConnectorTests):
         packets[-1] = packets[-1][:-2] + b"\x08" + packets[-1][-1:]
         self.cnx._socket.sock.reset()
         self.cnx._socket.sock.add_packets(packets)
-        self.assertRaises(errors.InterfaceError, self.cnx.cmd_query, "SELECT 1")
+        # Verify `cmd_query()` does not raise an error when passing a multi statement.
+        try:
+            self.cnx.cmd_query("SELECT 1")
+        except errors.InterfaceError as e:
+            self.fail("An unexpected exception was raised: {}".format(e))
 
     def test_cmd_query_iter(self):
         """Send queries to MySQL"""

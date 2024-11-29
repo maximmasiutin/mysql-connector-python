@@ -57,6 +57,7 @@ from typing import (
     Tuple,
     Type,
     Union,
+    cast,
 )
 
 TLS_V1_3_SUPPORTED = False
@@ -113,6 +114,7 @@ from .types import (
     EofPacketType,
     HandShakeType,
     MySQLConvertibleType,
+    MySQLScriptPartition,
     RowItemType,
     RowType,
     StrOrBytes,
@@ -1868,8 +1870,8 @@ class MySQLConnectionAbstract(ABC):
     ) -> Optional[Dict[str, Any]]:
         """Sends a query to the MySQL server.
 
-        This method sends the query to the MySQL server and returns the result. To send
-        multiple statements, use the `cmd_query_iter()` method instead.
+        This method sends the query to the MySQL server and returns the result.
+        To **send multiple statements, use the `cmd_query_iter()` method instead**.
 
         The returned dictionary contains information depending on what kind of query
         was executed. If the query is a `SELECT` statement, the result contains
@@ -1878,8 +1880,8 @@ class MySQLConnectionAbstract(ABC):
 
         Errors received from the MySQL server are raised as exceptions.
 
-        Arguments `raw`, `buffered` and `raw_as_string` are only meaningful
-        for `C-ext` connections.
+        **Arguments `raw`, `buffered` and `raw_as_string` are only meaningful
+        for `C-ext` connections**.
 
         Args:
             query: Statement to be executed.
@@ -1895,9 +1897,6 @@ class MySQLConnectionAbstract(ABC):
 
         Returns:
             dictionary: `Result` or `OK packet` information
-
-        Raises:
-            InterfaceError: When multiple results are found.
         """
 
     @abstractmethod
@@ -2248,7 +2247,7 @@ class MySQLCursorAbstract(ABC):
         self._warnings: Optional[List[WarningType]] = None
         self._warning_count: int = 0
         self._executed: Optional[bytes] = None
-        self._executed_list: List[StrOrBytes] = []
+        self._executed_list: List[bytes] = []
         self._stored_results: List[MySQLCursorAbstract] = []
         self.arraysize: int = 1
         self._binary: bool = False
@@ -2259,6 +2258,13 @@ class MySQLCursorAbstract(ABC):
             None,
             None,
         )
+
+        # multi statement execution
+        self._stmt_partitions: Optional[Generator[MySQLScriptPartition, None, None]] = (
+            None
+        )
+        self._stmt_partition: Optional[MySQLScriptPartition] = None
+        self._stmt_map_results: bool = False
 
     def __enter__(self) -> MySQLCursorAbstract:
         return self
@@ -2341,50 +2347,135 @@ class MySQLCursorAbstract(ABC):
         params: Union[
             Sequence[MySQLConvertibleType], Dict[str, MySQLConvertibleType]
         ] = (),
-        multi: bool = False,
-    ) -> Optional[Generator[MySQLCursorAbstract, None, None]]:
-        """Executes the given operation substituting any markers with the given parameters.
+        map_results: bool = False,
+    ) -> None:
+        """Executes the given operation (a MySQL script) substituting any markers
+        with the given parameters.
 
         For example, getting all rows where id is 5:
         ```
-        >>> cursor.execute("SELECT * FROM t1 WHERE id = %s", (5,))
+        cursor.execute("SELECT * FROM t1 WHERE id = %s", (5,))
         ```
 
-        The `multi` argument should be set to `True` when executing multiple
-        statements in one operation.
+        If you want each single statement in the script to be related
+        to its corresponding result set, you should enable the `map_results`
+        switch - see workflow example below.
 
-        If warnings were generated, and `connection.get_warnings` is `True`, then
-        `self.warnings` will be a list containing these warnings.
+        If the given script uses `DELIMITER` statements (which are not recognized
+        by MySQL Server), the connector will parse such statements to remove them
+        from the script and substitute delimiters as needed. This pre-processing
+        may cause a performance hit when using long scripts. Note that when enabling
+        `map_results`, the script is expected to use `DELIMITER` statements in order
+        to split the script into multiple query strings.
+
+        The following characters are currently not supported by the connector in
+        `DELIMITER` statements: `"`, `'`, #`, `/*` and `*/`.
+
+        If warnings were generated, and `connection.get_warnings` is
+        `True`, then `self.warnings` will be a list containing these
+        warnings.
 
         Args:
-            operation: Operation to be executed.
+            operation: Operation to be executed - it can be a single or a
+                       multi statement.
             params: The parameters found in the tuple or dictionary params are bound
                     to the variables in the operation. Specify variables using `%s` or
                     `%(name)s` parameter style (that is, using format or pyformat style).
-            multi: If `multi` is set to `True`, `execute()` is able to execute multiple
-                   statements specified in the operation string.
+            map_results: It is `False` by default. If `True`, it allows you to know what
+                        statement caused what result set - see workflow example below.
+                        Only relevant when working with multi statements.
 
         Returns:
-            An iterator when `multi` is `True`, otherwise `None`.
+            `None`.
 
-        Raises:
-            InterfaceError: If `multi` is not set and multiple results are found.
-
-        Examples:
-            The following example selects and inserts data in a single `execute()`
-            operation and displays the result of each statement:
+        Example (basic usage):
+            The following example runs many single statements in a
+            single go and loads the corresponding result sets
+            sequentially:
 
             ```
-            >>> operation = 'SELECT 1; INSERT INTO t1 VALUES (); SELECT 2'
-            >>> for result in cursor.execute(operation, multi=True):
-            >>>     if result.with_rows:
-            >>>         print("Rows produced by statement '{}':".format(
-            >>>         result.statement))
-            >>>         print(result.fetchall())
-            >>>     else:
-            >>>         print("Number of rows affected by statement '{}': {}".format(
-            >>>         result.statement, result.rowcount))
+            sql_operation = '''
+            SET @a=1, @b='2024-02-01';
+            SELECT @a, LENGTH('hello'), @b;
+            SELECT @@version;
+            '''
+            with cnx.cursor() as cur:
+                cur.execute(sql_operation)
+
+                result_set = cur.fetchall()
+                # do something with result set
+                ...
+
+                while cur.nextset():
+                    result_set = cur.fetchall()
+                    # do something with result set
+                    ...
             ```
+
+            In case the operation is a single statement, you may skip the
+            looping section as no more result sets are to be expected.
+
+        Example (statement-result mapping):
+            The following example runs many single statements in a
+            single go and loads the corresponding result sets
+            sequentially. Additionally, each result set gets related
+            to the statement that caused it:
+
+            ```
+            sql_operation = '''
+            SET @a=1, @b='2024-02-01';
+            SELECT @a, LENGTH('hello'), @b;
+            SELECT @@version;
+            '''
+            with cnx.cursor() as cur:
+                cur.execute(sql_operation, map_results=True)
+
+                # statement 1 is `SET @a=1, @b='2024-02-01'`,
+                # result set from statement 1 is `[]` - aka, an empty set.
+                result_set, statement = cur.fetchall(), cur.statement
+                # do something with result set
+                ...
+
+                # 1st call to `nextset()` will laod the result set from statement 2,
+                # statement 2 is `SELECT @a, LENGTH('hello'), @b`,
+                # result set from statement 2 is `[(1, 5, '2024-02-01')]`.
+                #
+                # 2nd call to `nextset()` will laod the result set from statement 3,
+                # statement 3 is `SELECT @@version`,
+                # result set from statement 3 is `[('9.0.0-labs-mrs-8',)]`.
+                #
+                # 3rd call to `nextset()` will return `None` as there are no more sets,
+                # leading to the end of the consumption process of result sets.
+                while cur.nextset():
+                    result_set, statement = cur.fetchall(), cur.statement
+                    # do something with result set
+                    ...
+            ```
+
+            In case the mapping is disabled (`map_results=False`), all result
+            sets get related to the same statement, which is the one provided
+            when calling `execute()`. In other words, the property `statement`
+            will not change as result sets are consumed, which contrasts with
+            the case in which the mapping is enabled. Note that we offer a
+            new fetch-related API command which can be leveraged as a shortcut
+            for consuming result sets - it is equivalent to the previous
+            workflow.
+
+            ```
+            sql_operation = '''
+            SET @a=1, @b='2024-02-01';
+            SELECT @a, LENGTH('hello'), @b;
+            SELECT @@version;
+            '''
+            with cnx.cursor() as cur:
+                cur.execute(sql_operation, map_results=True)
+                for statement, result_set in cur.fetchsets():
+                    # do something with result set
+            ```
+
+            Note that if `map_results` is disabled, all statements returned by
+            `fetchsets()` point to `None`. See the documentation of `fetchsets()`
+            to know more about it.
         """
 
     @abstractmethod
@@ -2394,7 +2485,7 @@ class MySQLCursorAbstract(ABC):
         seq_params: Sequence[
             Union[Sequence[MySQLConvertibleType], Dict[str, MySQLConvertibleType]]
         ],
-    ) -> Optional[Generator[MySQLCursorAbstract, None, None]]:
+    ) -> None:
         """Executes the given operation multiple times.
 
         The `executemany()` method will execute the operation iterating
@@ -2482,6 +2573,83 @@ class MySQLCursorAbstract(ABC):
             ```
         """
 
+    def fetchsets(
+        self,
+    ) -> Generator[
+        tuple[Optional[str], list[Union[RowType, Dict[str, RowItemType]]]], None, None
+    ]:
+        """Generates the result sets stream caused by the last `execute*()`.
+
+        Returns:
+            A 2-tuple; the first element is the statement that caused the
+            result set, and the second is the result set itself.
+
+            This method is used as part of the multi statement
+            execution workflow - see example below.
+
+        Example:
+            Consider the following example where multiple statements are executed in one
+            go:
+
+            ```
+                sql_operation = '''
+                SET @a=1, @b='2024-02-01';
+                SELECT @a, LENGTH('hello'), @b;
+                SELECT @@version;
+                '''
+                with cnx.cursor() as cur:
+                    cur.execute(sql_operation, map_results=True)
+
+                    result_set, statement = cur.fetchall(), cur.statement
+                    # do something with result set
+                    ...
+
+                    while cur.nextset():
+                        result_set, statement = cur.fetchall(), cur.statement
+                        # do something with result set
+                        ...
+            ```
+
+            In this case, as an alternative to loading the result sets with `nextset()`
+            in combination with a `while` loop, you can use `fetchsets()` which is
+            equivalent to the previous approach:
+
+            ```
+                sql_operation = '''
+                SET @a=1, @b='2024-02-01';
+                SELECT @a, LENGTH('hello'), @b;
+                SELECT @@version;
+                '''
+                with cnx.cursor() as cur:
+                    cur.execute(sql_operation)
+                    for statement, result_set in cur.fetchsets():
+                        # do something with result set
+            ```
+        """
+        # Some cursor flavor such as `buffered` raise an exception when they don't have
+        # result sets to fetch from.
+        # Some others, such as `dictionary` or `raw`, return an empty result set
+        # under the same circumstances.
+        statement_cached = None
+        if not self._stmt_map_results:
+            statement_cached = self.statement
+
+        try:
+            result_set = self.fetchall()
+        except InterfaceError:
+            result_set = []
+        yield (
+            self.statement if self._stmt_map_results else statement_cached
+        ), result_set
+        while self.nextset():
+            try:
+                result_set = self.fetchall()
+            except InterfaceError:
+                result_set = []
+            yield (
+                self.statement if self._stmt_map_results else statement_cached
+            ), result_set
+
     @abstractmethod
     def stored_results(self) -> Iterator[MySQLCursorAbstract]:
         """Returns an iterator (of MySQLCursorAbstract subclass instances) for stored results.
@@ -2502,8 +2670,46 @@ class MySQLCursorAbstract(ABC):
             ```
         """
 
-    def nextset(self) -> NoReturn:
-        """Not Implemented."""
+    @abstractmethod
+    def nextset(self) -> Optional[bool]:
+        """Makes the cursor skip to the next available set, discarding
+        any remaining rows from the current set.
+
+        This method is used as part of the multi statement
+        execution workflow - see example below.
+
+        Returns:
+            It returns `None` if there are no more sets. Otherwise, it returns
+            `True` and subsequent calls to the `fetch*()` methods will return
+            rows from the next result set.
+
+        Example:
+            The following example runs many single statements in a
+            single go and loads the corresponding result sets
+            sequentially:
+
+            ```
+            sql_operation = '''
+            SET @a=1, @b='2024-02-01';
+            SELECT @a, LENGTH('hello'), @b;
+            SELECT @@version;
+            '''
+            with cnx.cursor() as cur:
+                cur.execute(sql_operation)
+
+                result_set = cur.fetchall()
+                # do something with result set
+                ...
+
+                while cur.nextset():
+                    result_set = cur.fetchall()
+                    # do something with result set
+                    ...
+            ```
+
+            In case the operation is a single statement, you may skip the
+            looping section as no more result sets are to be expected.
+        """
 
     def setinputsizes(self, sizes: Any) -> NoReturn:
         """Not Implemented."""
@@ -2598,6 +2804,23 @@ class MySQLCursorAbstract(ABC):
         Returns an integer value.
         """
         return self._warning_count
+
+    @property
+    def statement(self) -> Optional[str]:
+        """Returns the latest executed statement.
+
+        When a multiple statement is executed, the value of `statement`
+        corresponds to the one that caused the current result set, provided
+        the statement-result mapping was enabled. Otherwise, the value of
+        `statement` matches the statement just as provided when calling
+        `execute()` and it does not change as result sets are traversed.
+        """
+        if self._executed is None:
+            return None
+        try:
+            return self._executed.strip().decode("utf-8")
+        except (AttributeError, UnicodeDecodeError):
+            return cast(str, self._executed.strip())
 
     def fetchwarnings(self) -> Optional[List[WarningType]]:
         """Returns a list of tuples (WarningType) containing warnings generated by
