@@ -116,7 +116,7 @@ from .types import (
     RowItemType,
     RowType,
     StrOrBytes,
-    WarningType,
+    WarningType
 )
 from .utils import GenericWrapper, import_object
 
@@ -1934,32 +1934,31 @@ class MySQLConnectionAbstract(ABC):
         """
 
     @abstractmethod
-    def cmd_refresh(self, options: int) -> Optional[Dict[str, Any]]:
-        """Sends the Refresh command to the MySQL server.
+    def cmd_refresh(self, options: int) -> Dict[str, Any]:
+        """Send the Refresh command to the MySQL server.
 
-        `WARNING: This MySQL Server functionality is deprecated.`
+        This method sends the Refresh command to the MySQL server. The options
+        argument should be a bitwise value using constants.RefreshOption.
 
-        This method flushes tables or caches, or resets replication server
-        information. The connected user must have the RELOAD privilege.
-
-        The options argument should be a bitmask value constructed using
-        constants from the `constants.RefreshOption` class.
-
-        The result is a dictionary with the OK packet information.
+        Typical usage example:
+            ```
+           RefreshOption = mysql.connector.RefreshOption
+           refresh = RefreshOption.LOG | RefreshOption.INFO
+           cnx.cmd_refresh(refresh)
+           ```
 
         Args:
             options: Bitmask value constructed using constants from
                      the `constants.RefreshOption` class.
 
         Returns:
-            dictionary: OK packet information.
+            A dictionary representing the OK packet got as response when executing
+            the command.
 
-        Examples:
-            ```
-            >>> from mysql.connector import RefreshOption
-            >>> refresh = RefreshOption.LOG | RefreshOption.THREADS
-            >>> cnx.cmd_refresh(refresh)
-            ```
+        Raises:
+            ValueError: If an invalid command `refresh options` is provided.
+            DeprecationWarning: If one of the options is deprecated for the server you
+                                are connecting to.
         """
 
     @abstractmethod

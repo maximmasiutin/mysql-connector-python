@@ -114,6 +114,7 @@ from .cursor import (
 )
 from .logger import logger
 from .network import MySQLTcpSocket, MySQLUnixSocket
+from ._decorating import cmd_refresh_verify_options
 
 
 class MySQLConnection(MySQLConnectionAbstract):
@@ -1164,17 +1165,8 @@ class MySQLConnection(MySQLConnectionAbstract):
             expect_response=False,
         )
 
+    @cmd_refresh_verify_options()
     async def cmd_refresh(self, options: int) -> OkPacketType:
-        """Send the Refresh command to the MySQL server.
-
-        This method sends the Refresh command to the MySQL server. The options
-        argument should be a bitwise value using constants.RefreshOption.
-
-        Usage example:
-           RefreshOption = mysql.connector.RefreshOption
-           refresh = RefreshOption.LOG | RefreshOption.INFO
-           cnx.cmd_refresh(refresh)
-        """
         if not options & (
             RefreshOption.GRANT
             | RefreshOption.LOG

@@ -550,8 +550,17 @@ class MySQLConnectionAioTests(MySQLConnectorAioTestCase):
             RefreshOption.STATUS,
             RefreshOption.REPLICA,
         )
+
+        # test individual options
         for option in refresh_options:
-            self.assertEqual(OK_PACKET_RESULT, await self.cnx.cmd_refresh(option))
+            if tests.MYSQL_VERSION >= (9, 2, 0) and option == RefreshOption.GRANT:
+                with self.assertWarns(DeprecationWarning):
+                    ok_packet = await self.cnx.cmd_refresh(option)
+                self.assertEqual(
+                    {**OK_PACKET_RESULT, **{"warning_count": 1}}, ok_packet
+                )
+            else:
+                self.assertEqual(OK_PACKET_RESULT, await self.cnx.cmd_refresh(option))
 
         # Test combined options
         options = RefreshOption.LOG | RefreshOption.STATUS
@@ -1097,7 +1106,10 @@ class MySQLConnectionAioTests(MySQLConnectorAioTestCase):
     @foreach_cnx_aio()
     async def test_get_server_version(self):
         """Get the MySQL version"""
-        self.assertEqual(self.cnx._server_info.version, self.cnx.get_server_version())
+        self.assertIn(
+            ".".join([str(x) for x in self.cnx.get_server_version()]),
+            self.cnx._server_info.version,
+        )
 
     @foreach_cnx_aio()
     async def test_get_server_info(self):

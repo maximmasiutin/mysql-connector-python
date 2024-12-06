@@ -117,6 +117,7 @@ from .utils import (
     warn_ciphersuites_deprecated,
     warn_tls_version_deprecated,
 )
+from ._decorating import cmd_refresh_verify_options
 
 if TYPE_CHECKING:
     from .abstracts import CMySQLPrepStmt
@@ -927,16 +928,8 @@ class MySQLConnection(MySQLConnectionAbstract):
             self.handle_unread_result()
             yield self._handle_result(self._socket.recv())
 
+    @cmd_refresh_verify_options()
     def cmd_refresh(self, options: int) -> OkPacketType:
-        """Send the Refresh command to the MySQL server
-
-        This method sends the Refresh command to the MySQL server. The options
-        argument should be a bitwise value using constants.RefreshOption.
-        Usage example:
-         RefreshOption = mysql.connector.RefreshOption
-         refresh = RefreshOption.LOG | RefreshOption.THREADS
-         cnx.cmd_refresh(refresh)
-        """
         if not options & (
             RefreshOption.GRANT
             | RefreshOption.LOG

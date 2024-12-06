@@ -1119,7 +1119,7 @@ class MySQLConnectionAbstract(ABC):
             return `None`.
         """
         if self._server_info is not None:
-            return self._server_info.version  # type: ignore[return-value]
+            return self._server_info.version_tuple
         return None
 
     def get_server_info(self) -> Optional[str]:
@@ -1507,10 +1507,25 @@ class MySQLConnectionAbstract(ABC):
         This method sends the Refresh command to the MySQL server. The options
         argument should be a bitwise value using constants.RefreshOption.
 
-        Usage example:
+        Typical usage example:
+            ```
            RefreshOption = mysql.connector.RefreshOption
            refresh = RefreshOption.LOG | RefreshOption.INFO
-           cnx.cmd_refresh(refresh)
+           await cnx.cmd_refresh(refresh)
+           ```
+
+        Args:
+            options: Bitmask value constructed using constants from
+                     the `constants.RefreshOption` class.
+
+        Returns:
+            A dictionary representing the OK packet got as response when executing
+            the command.
+
+        Raises:
+            ValueError: If an invalid command `refresh options` is provided.
+            DeprecationWarning: If one of the options is deprecated for the server you
+                                are connecting to.
         """
 
     async def cmd_stmt_send_long_data(

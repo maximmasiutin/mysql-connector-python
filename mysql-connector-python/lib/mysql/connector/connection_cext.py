@@ -81,6 +81,7 @@ from .utils import (
     warn_ciphersuites_deprecated,
     warn_tls_version_deprecated,
 )
+from ._decorating import cmd_refresh_verify_options
 
 HAVE_CMYSQL = False
 
@@ -959,8 +960,8 @@ class CMySQLConnection(MySQLConnectionAbstract):
             self._post_connection()
         return res
 
+    @cmd_refresh_verify_options()
     def cmd_refresh(self, options: int) -> Optional[CextEofPacketType]:
-        """Send the Refresh command to the MySQL server"""
         try:
             self.handle_unread_result()
             self._cmysql.refresh(options)
