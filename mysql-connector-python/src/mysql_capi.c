@@ -2797,11 +2797,18 @@ MySQL_fetch_row(MySQL *self)
             else {
                 if (field_flags & SET_FLAG) {
                     if (!strlen(row[i])) {
+                        Py_XDECREF(value);
                         value = PySet_New(NULL);
                     }
                     else {
-                        value =
-                            PySet_New(PyUnicode_Split(value, PyUnicode_FromString(","), -1));
+                        PyObject *sep = PyUnicode_FromString(",");
+                        PyObject *iterable = PyUnicode_Split(value, sep, -1);
+
+                        Py_XDECREF(value);
+                        value = PySet_New(iterable);
+
+                        Py_XDECREF(sep);
+                        Py_XDECREF(iterable);
                     }
                     if (!value) {
                         goto error;
@@ -3764,6 +3771,7 @@ MySQLPrepStmt_fetch_row(MySQLPrepStmt *self)
                     }
                     Py_XDECREF(mod_decimal);
                 }
+                Py_XDECREF(obj);
                 break;
             /* MYSQL_TYPE_CHAR, MYSQL_TYPE_VARCHAR, MYSQL_TYPE_STRING, */
             /* MYSQL_TYPE_VAR_STRING, MYSQL_TYPE_GEOMETRY, MYSQL_TYPE_BLOB */
@@ -3788,7 +3796,7 @@ MySQLPrepStmt_fetch_row(MySQLPrepStmt *self)
                     }
 
                     for (token = strtok_r(PyBytes_AsString(obj), ",", &rest); token != NULL;
-                         token = strtok_r(NULL, ",", &rest)) {
+                        token = strtok_r(NULL, ",", &rest)) {
                         PyObject *us = PyUnicode_FromString(token);
                         PySet_Add(set, us);
                         Py_DECREF(us);
