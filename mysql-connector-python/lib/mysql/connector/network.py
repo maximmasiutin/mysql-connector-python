@@ -29,6 +29,8 @@
 """Module implementing low-level socket communication with MySQL servers.
 """
 
+# pylint: disable=overlapping-except
+
 import socket
 import struct
 import warnings
@@ -162,7 +164,7 @@ class NetworkBrokerPlain(NetworkBroker):
         """Write packet to the comm channel."""
         try:
             sock.sendall(pkt)
-        except TimeoutError as err:
+        except (socket.timeout, TimeoutError) as err:
             raise WriteTimeoutError(errno=3024) from err
         except IOError as err:
             raise OperationalError(
@@ -241,7 +243,7 @@ class NetworkBrokerPlain(NetworkBroker):
 
             # Read the payload, and return packet
             return header + self._recv_chunk(sock, size=payload_len)
-        except TimeoutError as err:
+        except (socket.timeout, TimeoutError) as err:
             raise ReadTimeoutError(errno=3024, msg=err.strerror) from err
         except IOError as err:
             raise OperationalError(
@@ -427,7 +429,7 @@ class NetworkBrokerCompressed(NetworkBrokerPlain):
                     struct.unpack("<I", header[4:7] + b"\x00")[0],
                 )
                 self._recv_compressed_pkt(sock, compressed_pll, uncompressed_pll)
-            except TimeoutError as err:
+            except (socket.timeout, TimeoutError) as err:
                 raise ReadTimeoutError(errno=3024) from err
             except IOError as err:
                 raise OperationalError(
@@ -700,7 +702,7 @@ class MySQLUnixSocket(MySQLSocket):
             )
             self.sock.settimeout(self._connection_timeout)
             self.sock.connect(self.unix_socket)
-        except TimeoutError as err:
+        except (socket.timeout, TimeoutError) as err:
             raise ConnectionTimeoutError(
                 errno=2002,
                 values=(
@@ -795,7 +797,7 @@ class MySQLTCPSocket(MySQLSocket):
             self.sock = socket.socket(self._family, socktype, proto)
             self.sock.settimeout(self._connection_timeout)
             self.sock.connect(sockaddr)
-        except TimeoutError as err:
+        except (socket.timeout, TimeoutError) as err:
             raise ConnectionTimeoutError(
                 errno=2003,
                 values=(
