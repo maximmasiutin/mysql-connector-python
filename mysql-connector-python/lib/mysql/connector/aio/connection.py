@@ -99,6 +99,7 @@ from ..utils import (
     warn_ciphersuites_deprecated,
     warn_tls_version_deprecated,
 )
+from ._decorating import cmd_refresh_verify_options
 from .abstracts import MySQLConnectionAbstract, MySQLCursorAbstract, ServerInfo
 from .charsets import charsets
 from .cursor import (
@@ -118,7 +119,6 @@ from .cursor import (
 from .logger import logger
 from .network import MySQLTcpSocket, MySQLUnixSocket
 from .utils import handle_read_write_timeout
-from ._decorating import cmd_refresh_verify_options
 
 
 class MySQLConnection(MySQLConnectionAbstract):

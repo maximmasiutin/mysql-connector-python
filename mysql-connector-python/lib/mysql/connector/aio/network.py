@@ -570,7 +570,7 @@ class MySQLSocket(ABC):
                 if self._writer.transport is not None:
                     self._writer.transport.abort()
                 await self._writer.wait_closed()
-            except Exception as _:
+            except Exception as _:  # pylint: disable=broad-exception-caught)
                 # we can ignore issues like ConnectionRefused or ConnectionAborted
                 # as these instances might popup if the connection was closed due to timeout issues
                 pass

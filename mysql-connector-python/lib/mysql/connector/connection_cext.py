@@ -50,6 +50,7 @@ from typing import (
 )
 
 from . import version
+from ._decorating import cmd_refresh_verify_options
 from .abstracts import CMySQLPrepStmt, MySQLConnectionAbstract
 from .constants import (
     ClientFlag,
@@ -82,7 +83,6 @@ from .utils import (
     warn_ciphersuites_deprecated,
     warn_tls_version_deprecated,
 )
-from ._decorating import cmd_refresh_verify_options
 
 HAVE_CMYSQL = False
 
@@ -671,7 +671,7 @@ class CMySQLConnection(MySQLConnectionAbstract):
 
         return None
 
-    def cmd_stmt_prepare(  # type: ignore[override]
+    def cmd_stmt_prepare(
         self,
         statement: bytes,
         **kwargs: Any,
@@ -688,7 +688,7 @@ class CMySQLConnection(MySQLConnectionAbstract):
             raise InterfaceError(str(err)) from err
 
     @with_context_propagation
-    def cmd_stmt_execute(  # type: ignore[override]
+    def cmd_stmt_execute(
         self,
         statement_id: CMySQLPrepStmt,
         *args: Any,

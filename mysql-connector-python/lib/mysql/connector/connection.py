@@ -57,6 +57,7 @@ from typing import (
 )
 
 from . import version
+from ._decorating import cmd_refresh_verify_options
 from .abstracts import MySQLConnectionAbstract
 from .authentication import MySQLAuthenticator, get_auth_plugin
 from .constants import (
@@ -121,7 +122,6 @@ from .utils import (
     warn_ciphersuites_deprecated,
     warn_tls_version_deprecated,
 )
-from ._decorating import cmd_refresh_verify_options
 
 if TYPE_CHECKING:
     from .abstracts import CMySQLPrepStmt
@@ -1635,7 +1635,7 @@ class MySQLConnection(MySQLConnectionAbstract):
 
     def cmd_stmt_close(
         self,
-        statement_id: int,
+        statement_id: int,  # type: ignore[override]
         **kwargs: Any,
     ) -> None:
         """Deallocate a prepared MySQL statement
@@ -1654,7 +1654,7 @@ class MySQLConnection(MySQLConnectionAbstract):
 
     def cmd_stmt_send_long_data(
         self,
-        statement_id: int,
+        statement_id: int,  # type: ignore[override]
         param_id: int,
         data: BinaryIO,
         **kwargs: Any,
@@ -1699,7 +1699,7 @@ class MySQLConnection(MySQLConnectionAbstract):
 
     def cmd_stmt_reset(
         self,
-        statement_id: int,
+        statement_id: int,  # type: ignore[override]
         **kwargs: Any,
     ) -> None:
         """Reset data for prepared statement sent as long data

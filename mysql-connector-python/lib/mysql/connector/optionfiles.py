@@ -70,8 +70,10 @@ def read_option_files(**config: Union[str, List[str]]) -> Dict[str, Any]:
         )
         del config["option_files"]
 
-        config_from_file = option_parser.get_groups_as_dict_with_priority(*groups)
-        config_options: Dict[str, Tuple[str, int]] = {}
+        config_from_file: Dict[str, Any] = (
+            option_parser.get_groups_as_dict_with_priority(*groups)
+        )
+        config_options: Dict[str, Tuple[str, int, str]] = {}
         for group in groups:
             try:
                 for option, value in config_from_file[group].items():
