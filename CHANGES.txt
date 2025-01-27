@@ -18,6 +18,7 @@ v9.3.0
 - BUG#37453587: Github links in PyPI project's pages do not work
 - BUG#37447394: Unable to escape a parameter marker (`%s`) used in a query that should not be treated as a parameter marker
 - BUG#37418436: Arbitrary File Read in MySQL Python Client library
+- BUG#37399636: The C-extension has a memory leak when working with prepared statements
 
 v9.2.0
 ======

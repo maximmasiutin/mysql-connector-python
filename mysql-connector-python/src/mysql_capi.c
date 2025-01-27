@@ -3259,8 +3259,6 @@ void
 MySQLPrepStmt_dealloc(MySQLPrepStmt *self)
 {
     if (self) {
-        MySQLPrepStmt_free_result(self);
-        MySQLPrepStmt_close(self);
         Py_TYPE(self)->tp_free((PyObject *)self);
     }
 }
@@ -3950,6 +3948,10 @@ MySQLPrepStmt_close(MySQLPrepStmt *self)
         PyErr_SetString(MySQLInterfaceError, mysql_stmt_error(self->stmt));
         return NULL;
     }
+
+    // Decrementing the reference counting - counterpart of the
+    // increment taking place at MySQL_stmt_prepare.
+    Py_XDECREF(self);
 
     Py_RETURN_NONE;
 }
