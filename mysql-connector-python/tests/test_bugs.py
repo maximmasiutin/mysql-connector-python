@@ -1,6 +1,6 @@
 # -*- coding: utf-8 -*-
 
-# Copyright (c) 2009, 2024, Oracle and/or its affiliates.
+# Copyright (c) 2009, 2025, Oracle and/or its affiliates.
 #
 # This program is free software; you can redistribute it and/or modify
 # it under the terms of the GNU General Public License, version 2.0, as
@@ -2015,7 +2015,9 @@ class BugOra16369511(tests.MySQLConnectorTests):
             cur.execute(sql, (self.data_file + "_spam",))
         except (errors.InterfaceError, errors.DatabaseError) as exc:
             self.assertTrue(
-                "not found" in str(exc) or "could not be read" in str(exc),
+                "not found" in str(exc)
+                or "could not be read" in str(exc)
+                or "does not exist" in str(exc),
                 "Was: " + str(exc),
             )
 
@@ -3528,6 +3530,7 @@ class BugOra19168737(tests.MySQLConnectorTests):
         }
         exp.update(config)
         self.assertEqual(exp, new_config)
+
 
 class BugOra21530100(tests.MySQLConnectorTests):
     """BUG#21530100: CONNECT FAILS WHEN USING MULTIPLE OPTION_GROUPS WITH
@@ -8910,6 +8913,7 @@ class BugOra36765200(tests.MySQLConnectorTests):
                 "Error message cannot contain unstructured bind address",
             )
 
+
 class BugOra37145655(tests.MySQLConnectorTests):
     """BUG#37145655: MySQL Connector/Python Configuration Files RCE"""
 
@@ -8937,28 +8941,42 @@ class BugOra37145655(tests.MySQLConnectorTests):
             ],
         }
         self.assertEqual(
-            exp, read_option_files(option_files=opt_file, option_groups=["correct_config"])
+            exp,
+            read_option_files(option_files=opt_file, option_groups=["correct_config"]),
         )
         exp.pop("failover")
         exp["unix_socket"] = "unix_socket_path_for_bug37145655"
         self.assertEqual(
-            exp, read_option_files(option_files=opt_file, option_groups=["correct_config_with_unix_socket"])
+            exp,
+            read_option_files(
+                option_files=opt_file, option_groups=["correct_config_with_unix_socket"]
+            ),
         )
         self.assertEqual(
-            exp, read_option_files(option_files=opt_file, option_groups=["correct_config_with_socket"])
+            exp,
+            read_option_files(
+                option_files=opt_file, option_groups=["correct_config_with_socket"]
+            ),
         )
         del exp["unix_socket"]
         exp["port"] = "int(10000)"
         exp["allow_local_infile"] = "__import__('os').system('whoami')"
         self.assertEqual(
-            exp, read_option_files(option_files=opt_file, option_groups=["incorrect_config"])
+            exp,
+            read_option_files(
+                option_files=opt_file, option_groups=["incorrect_config"]
+            ),
         )
-        with self.assertRaises((errors.InterfaceError, TypeError),) as _:
+        with self.assertRaises(
+            (errors.InterfaceError, TypeError),
+        ) as _:
             with mysql.connector.connect(
                 read_default_file=opt_file,
                 option_groups=["incorrect_config"],
             ) as _:
                 pass
+
+
 class BugOra36922645(tests.MySQLConnectorTests):
     """BUG#36922645: Option `connection_timeout` is overwritten and works as "query" timeout instead
 

@@ -1,4 +1,4 @@
-# Copyright (c) 2012, 2024, Oracle and/or its affiliates.
+# Copyright (c) 2012, 2025, Oracle and/or its affiliates.
 #
 # This program is free software; you can redistribute it and/or modify
 # it under the terms of the GNU General Public License, version 2.0, as
@@ -26,8 +26,7 @@
 # along with this program; if not, write to the Free Software Foundation, Inc.,
 # 51 Franklin St, Fifth Floor, Boston, MA 02110-1301  USA
 
-"""Module implementing low-level socket communication with MySQL servers.
-"""
+"""Module implementing low-level socket communication with MySQL servers."""
 
 # pylint: disable=overlapping-except
 
@@ -754,15 +753,12 @@ class MySQLTCPSocket(MySQLSocket):
         """Open the TCP/IP connection to the MySQL server."""
         # pylint: disable=no-member
         # Get address information
-        addrinfo: Union[
-            Tuple[None, None, None, None, None],
-            Tuple[
-                socket.AddressFamily,
-                socket.SocketKind,
-                int,
-                str,
-                Union[Tuple[str, int], Tuple[str, int, int, int]],
-            ],
+        addrinfo: Tuple[
+            socket.AddressFamily,
+            socket.SocketKind,
+            int,
+            str,
+            Union[tuple[str, int], tuple[str, int, int, int], tuple[int, bytes]],
         ] = (None, None, None, None, None)
         try:
             addrinfos = socket.getaddrinfo(

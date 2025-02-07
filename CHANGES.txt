@@ -12,6 +12,7 @@ v9.3.0
 ======
 
 - BUG#37453587: Github links in PyPI project's pages do not work
+- BUG#37418436: Arbitrary File Read in MySQL Python Client library
 
 v9.2.0
 ======

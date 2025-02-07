@@ -1,4 +1,4 @@
-# Copyright (c) 2024, Oracle and/or its affiliates.
+# Copyright (c) 2024, 2025 Oracle and/or its affiliates.
 #
 # This program is free software; you can redistribute it and/or modify
 # it under the terms of the GNU General Public License, version 2.0, as
@@ -29,13 +29,18 @@
 """Multi Statement Tests."""
 
 
+from collections import deque
 import os
 
 from typing import Any, TypedDict, Union
 
 import tests
 
-from mysql.connector._scripting import MySQLScriptSplitter, split_multi_statement
+from mysql.connector._scripting import (
+    MySQLScriptSplitter,
+    split_multi_statement,
+    get_local_infile_filenames,
+)
 from mysql.connector.aio import connect as aio_connect
 from mysql.connector.errors import InterfaceError, ProgrammingError, NotSupportedError
 
@@ -377,6 +382,65 @@ END""",
         mapping=[],
     ),
 }
+
+
+class GetLocalInfileFilenamesUnitTests(tests.MySQLConnectorTests):
+    """Verify _scripting.get_local_infile_filenames() gets one filename
+    for each `LOCAL INFILE` request specified in a MySQL Script."""
+
+    def test_get_local_infile_filenames(self):
+        scripts = [
+            r"""
+            SELECT foo; LOAD DATA lOCal InFILE "/etc/INFILE.csv" INTO TABLE dummy;
+            LOAD DATA LOW_PRIORITY LOCAL INFILE
+                                                '/etc/passwd' INTO TABLE local_data;
+            LOAD DATA LOW_PRIORITY LOCAL INFILE 'C:\Users\lucas\Desktop\lab\scripts\bugs\data\non_confidential.txt' INTO TABLE local;
+
+            LOAD DATA CONCURRENT 
+            LOCAL 
+            INFILE 
+            "/tmp/test.txt" INTO TABLE infile;
+
+            SELECT @@version; SELECT 'LOCAL INFILE'; SELECT * from local_infile;
+            """,
+            """
+            -- SELECT foo; LOAD DATA lOCal InFILE "/etc/INFILE.csv" INTO TABLE dummy;
+            SELECT "hello", "hola", "ola";
+
+            SELECT foo; LOAD DATA local InfilE "/usr/local/infile/data.txt" INTO TABLE baz;
+            # SELECT foo; LOAD DATA lOCal InFILE "/usr/bar/goo/data.txt" INTO TABLE baz;
+            SELECT ":D";
+
+            /*
+            LOAD DATA CONCURRENT 
+            LOCAL 
+            INFILE 
+            "/tmp/test.txt" INTO TABLE infile;
+            */
+
+            LOAD DATA InFILE "/etc/INFILE.csv" INTO TABLE dummy;
+            """,
+        ]
+
+        expected_filenames = [
+            deque(
+                [
+                    "/etc/INFILE.csv",
+                    "/etc/passwd",
+                    r"C:\Users\lucas\Desktop\lab\scripts\bugs\data\non_confidential.txt",
+                    "/tmp/test.txt",
+                ]
+            ),
+            deque(
+                [
+                    "/usr/local/infile/data.txt",
+                ]
+            ),
+        ]
+
+        for script, exp_filenames in zip(scripts, expected_filenames):
+            filenames = get_local_infile_filenames(script.encode("utf-8"))
+            self.assertEqual(exp_filenames, filenames)
 
 
 class MySQLScriptSplitterUnitTests(tests.MySQLConnectorTests):

@@ -1,4 +1,4 @@
-# Copyright (c) 2009, 2024, Oracle and/or its affiliates.
+# Copyright (c) 2009, 2025, Oracle and/or its affiliates.
 #
 # This program is free software; you can redistribute it and/or modify
 # it under the terms of the GNU General Public License, version 2.0, as
@@ -77,8 +77,10 @@ PROTOCOL_VERSION = 10
 AUTH_SWITCH_STATUS = 0xFE
 EXCHANGE_FURTHER_STATUS = 0x01
 OK_STATUS = 0x00
+EOF_STATUS = 0xFE
 MFA_STATUS = 0x02
 ERR_STATUS = 0xFF
+LOCAL_INFILE_STATUS = 0xFB
 DEFAULT_CHARSET_ID = 45
 DEFAULT_MAX_ALLOWED_PACKET = 1073741824
 
@@ -911,7 +913,7 @@ class MySQLProtocol:
 
     @staticmethod
     def prepare_binary_timestamp(
-        value: Union[datetime.date, datetime.datetime]
+        value: Union[datetime.date, datetime.datetime],
     ) -> Tuple[bytes, int]:
         """Prepare a timestamp object for the MySQL binary protocol
 
@@ -954,7 +956,7 @@ class MySQLProtocol:
 
     @staticmethod
     def prepare_binary_time(
-        value: Union[datetime.timedelta, datetime.time]
+        value: Union[datetime.timedelta, datetime.time],
     ) -> Tuple[bytes, int]:
         """Prepare a time object for the MySQL binary protocol
 

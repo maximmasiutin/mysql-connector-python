@@ -1,4 +1,4 @@
-# Copyright (c) 2009, 2024, Oracle and/or its affiliates.
+# Copyright (c) 2024, 2025, Oracle and/or its affiliates.
 #
 # This program is free software; you can redistribute it and/or modify
 # it under the terms of the GNU General Public License, version 2.0, as
@@ -32,7 +32,7 @@ import re
 import unicodedata
 
 from collections import deque
-from typing import Generator, Optional
+from typing import Deque, Generator, Optional
 
 from .errors import InterfaceError
 from .types import MySQLScriptPartition
@@ -380,3 +380,27 @@ def split_multi_statement(
                 single_stmts=deque(stmts[i : len(stmts)]),
             )
         )
+
+
+def get_local_infile_filenames(script: bytes) -> Deque[str]:
+    """Scans the MySQL script looking for `filenames` (one for each
+    `LOCAL INFILE` statement found).
+
+    Arguments:
+        script: a MySQL script that may include one or more `LOCAL INFILE` statements.
+
+    Returns:
+        filenames: a list of filenames (one for each `LOCAL INFILE` statement found).
+        An empty list is returned if no matches are found.
+    """
+    matches = re.findall(
+        pattern=rb"""LOCAL\s+INFILE\s+(["'])((?:\\\1|(?:(?!\1)).)*)(\1)""",
+        string=MySQLScriptSplitter.remove_comments(script),
+        flags=re.IGNORECASE,
+    )
+    if not matches or len(matches[0]) != 3:
+        return deque([])
+
+    # If there is a match, we get  ("'", "filename", "'") , that's to say,
+    # the 1st and 3rd entries are the quote symbols, and the 2nd the actual filename.
+    return deque([match[1].decode("utf-8") for match in matches])

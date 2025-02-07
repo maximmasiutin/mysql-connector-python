@@ -1,4 +1,4 @@
-# Copyright (c) 2009, 2024, Oracle and/or its affiliates.
+# Copyright (c) 2009, 2025, Oracle and/or its affiliates.
 #
 # This program is free software; you can redistribute it and/or modify
 # it under the terms of the GNU General Public License, version 2.0, as
@@ -43,8 +43,8 @@ def cmd_refresh_verify_options() -> Callable:
     """Decorator verifying which options are relevant and which aren't based on
     the server version the client is connecting to."""
 
-    def decorator(func: Callable) -> Callable:
-        @functools.wraps(func)
+    def decorator(cmd_refresh: Callable) -> Callable:
+        @functools.wraps(cmd_refresh)
         async def wrapper(
             cnx: "MySQLConnectionAbstract", *args: Any, **kwargs: Any
         ) -> Callable:
@@ -63,7 +63,7 @@ def cmd_refresh_verify_options() -> Callable:
                     stacklevel=1,
                 )
 
-            return await func(cnx, options, **kwargs)
+            return await cmd_refresh(cnx, options, **kwargs)
 
         return wrapper
 

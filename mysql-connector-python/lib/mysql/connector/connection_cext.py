@@ -1,4 +1,4 @@
-# Copyright (c) 2014, 2024, Oracle and/or its affiliates.
+# Copyright (c) 2014, 2025, Oracle and/or its affiliates.
 #
 # This program is free software; you can redistribute it and/or modify
 # it under the terms of the GNU General Public License, version 2.0, as
@@ -752,6 +752,11 @@ class CMySQLConnection(MySQLConnectionAbstract):
         try:
             if not isinstance(query, bytes):
                 query = query.encode("utf-8")
+
+            # Set/Reset internal state related to query execution
+            self._query = query
+            self._local_infile_filenames = None
+
             self._cmysql.query(
                 query,
                 raw=raw,

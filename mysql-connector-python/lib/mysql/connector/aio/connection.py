@@ -1,4 +1,4 @@
-# Copyright (c) 2023, 2024, Oracle and/or its affiliates.
+# Copyright (c) 2023, 2025, Oracle and/or its affiliates.
 #
 # This program is free software; you can redistribute it and/or modify
 # it under the terms of the GNU General Public License, version 2.0, as
@@ -59,6 +59,7 @@ from typing import (
 )
 
 from .. import version
+from .._scripting import get_local_infile_filenames
 from ..constants import (
     ClientFlag,
     FieldType,
@@ -81,6 +82,7 @@ from ..errors import (
     WriteTimeoutError,
     get_exception,
 )
+from ..protocol import EOF_STATUS, ERR_STATUS, LOCAL_INFILE_STATUS, OK_STATUS
 from ..types import (
     BinaryProtocolType,
     DescriptionType,
@@ -219,7 +221,7 @@ class MySQLConnection(MySQLConnectionAbstract):
         """Get the handshake from the MySQL server."""
         packet = await self._socket.read()
         logger.debug("Protocol::Handshake packet: %s", packet)
-        if packet[4] == 255:
+        if packet[4] == ERR_STATUS:
             raise get_exception(packet)
 
         self._handshake = self._protocol.parse_handshake(packet)
@@ -368,11 +370,11 @@ class MySQLConnection(MySQLConnectionAbstract):
         packet, an error will be raised. If the packet is neither an OK or an Error
         packet, InterfaceError will be raised.
         """
-        if packet[4] == 0:
+        if packet[4] == OK_STATUS:
             ok_pkt = self._protocol.parse_ok(packet)
             self._handle_server_status(ok_pkt["status_flag"])
             return ok_pkt
-        if packet[4] == 255:
+        if packet[4] == ERR_STATUS:
             raise get_exception(packet)
         raise InterfaceError("Expected OK packet")
 
@@ -393,11 +395,11 @@ class MySQLConnection(MySQLConnectionAbstract):
         packet, an error will be raised. If the packet is neither and OK or an Error
         packet, InterfaceError will be raised.
         """
-        if packet[4] == 254:
+        if packet[4] == EOF_STATUS:
             eof = self._protocol.parse_eof(packet)
             self._handle_server_status(eof["status_flag"])
             return eof
-        if packet[4] == 255:
+        if packet[4] == ERR_STATUS:
             raise get_exception(packet)
         raise InterfaceError("Expected EOF packet")
 
@@ -409,7 +411,49 @@ class MySQLConnection(MySQLConnectionAbstract):
         write_timeout: Optional[int] = None,
     ) -> OkPacketType:
         """Handle a LOAD DATA INFILE LOCAL request."""
+        if self._local_infile_filenames is None:
+            self._local_infile_filenames = get_local_infile_filenames(self._query)
+            if not self._local_infile_filenames:
+                raise InterfaceError(
+                    "No `LOCAL INFILE` statements found in the client's request. "
+                    "Check your request includes valid `LOCAL INFILE` statements."
+                )
+        elif not self._local_infile_filenames:
+            raise InterfaceError(
+                "Got more `LOCAL INFILE` responses than number of `LOCAL INFILE` "
+                "statements specified in the client's request. Please, report this "
+                "issue to the development team."
+            )
+
         file_name = os.path.abspath(filename)
+        file_name_from_request = os.path.abspath(self._local_infile_filenames.popleft())
+
+        # Verify the file location specified by `filename` from client's request exists
+        if not os.path.exists(file_name_from_request):
+            raise InterfaceError(
+                f"Location specified by filename {file_name_from_request} "
+                "from client's request does not exist."
+            )
+
+        # Verify the file location specified by `filename` from server's response exists
+        if not os.path.exists(file_name):
+            raise InterfaceError(
+                f"Location specified by filename {file_name} from server's "
+                "response does not exist."
+            )
+
+        # Verify the `filename` specified by server's response matches the one from
+        # the client's request.
+        try:
+            if not os.path.samefile(file_name, file_name_from_request):
+                raise InterfaceError(
+                    f"Filename {file_name} from the server's response is not the same "
+                    f"as filename {file_name_from_request} from the "
+                    "client's request."
+                )
+        except OSError as err:
+            raise InterfaceError from err
+
         if os.path.islink(file_name):
             raise OperationalError("Use of symbolic link is not allowed")
         if not self._allow_local_infile and not self._allow_local_infile_in_path:
@@ -478,16 +522,16 @@ class MySQLConnection(MySQLConnectionAbstract):
         """
         if not packet or len(packet) < 4:
             raise InterfaceError("Empty response")
-        if packet[4] == 0:
+        if packet[4] == OK_STATUS:
             return self._handle_ok(packet)
-        if packet[4] == 251:
+        if packet[4] == LOCAL_INFILE_STATUS:
             filename = packet[5:].decode()
             return await self._handle_load_data_infile(
                 filename, read_timeout, write_timeout
             )
-        if packet[4] == 254:
+        if packet[4] == EOF_STATUS:
             return self._handle_eof(packet)
-        if packet[4] == 255:
+        if packet[4] == ERR_STATUS:
             raise get_exception(packet)
 
         # We have a text result set
@@ -520,9 +564,9 @@ class MySQLConnection(MySQLConnectionAbstract):
 
         Returns a dict()
         """
-        if packet[4] == 0:
+        if packet[4] == OK_STATUS:
             return self._protocol.parse_binary_prepare_ok(packet)
-        if packet[4] == 255:
+        if packet[4] == ERR_STATUS:
             raise get_exception(packet)
         raise InterfaceError("Expected Binary OK packet")
 
@@ -545,11 +589,11 @@ class MySQLConnection(MySQLConnectionAbstract):
         """
         if not packet or len(packet) < 4:
             raise InterfaceError("Empty response")
-        if packet[4] == 0:
+        if packet[4] == OK_STATUS:
             return self._handle_ok(packet)
-        if packet[4] == 254:
+        if packet[4] == EOF_STATUS:
             return self._handle_eof(packet)
-        if packet[4] == 255:
+        if packet[4] == ERR_STATUS:
             raise get_exception(packet)
 
         # We have a binary result set
@@ -965,6 +1009,11 @@ class MySQLConnection(MySQLConnectionAbstract):
             if isinstance(query, str):
                 query = query.encode()
             query = bytearray(query)
+
+        # Set/Reset internal state related to query execution
+        self._query = query
+        self._local_infile_filenames = None
+
         # Prepare query attrs
         charset = self._charset.name if self._charset.name != "utf8mb4" else "utf8"
         packet = bytearray()
