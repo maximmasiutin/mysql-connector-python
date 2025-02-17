@@ -52,14 +52,7 @@ from typing import (
 from . import version
 from ._decorating import cmd_refresh_verify_options
 from .abstracts import CMySQLPrepStmt, MySQLConnectionAbstract
-from .constants import (
-    ClientFlag,
-    FieldFlag,
-    FieldType,
-    ServerFlag,
-    ShutdownType,
-    raise_warning_against_deprecated_cursor_class,
-)
+from .constants import ClientFlag, FieldFlag, FieldType, ServerFlag, ShutdownType
 from .conversion import MySQLConverter
 from .errors import (
     InterfaceError,
@@ -95,14 +88,10 @@ try:
         CMySQLCursor,
         CMySQLCursorBuffered,
         CMySQLCursorBufferedDict,
-        CMySQLCursorBufferedNamedTuple,
         CMySQLCursorBufferedRaw,
         CMySQLCursorDict,
-        CMySQLCursorNamedTuple,
         CMySQLCursorPrepared,
         CMySQLCursorPreparedDict,
-        CMySQLCursorPreparedNamedTuple,
-        CMySQLCursorPreparedRaw,
         CMySQLCursorRaw,
     )
 
@@ -792,7 +781,6 @@ class CMySQLConnection(MySQLConnectionAbstract):
         prepared: Optional[bool] = None,
         cursor_class: Optional[Type[CMySQLCursor]] = None,  # type: ignore[override]
         dictionary: Optional[bool] = None,
-        named_tuple: Optional[bool] = None,
         read_timeout: Optional[int] = None,
         write_timeout: Optional[int] = None,
     ) -> CMySQLCursor:
@@ -801,9 +789,9 @@ class CMySQLConnection(MySQLConnectionAbstract):
         By default, CMySQLCursor is returned. Depending on the options
         while connecting, a buffered and/or raw cursor is instantiated
         instead. Also depending upon the cursor options, rows can be
-        returned as dictionary or named tuple.
+        returned as a dictionary or a tuple.
 
-        Dictionary and namedtuple based cursors are available with buffered
+        Dictionary based cursors are available with buffered
         output but not raw.
 
         It is possible to also give a custom cursor through the
@@ -820,7 +808,6 @@ class CMySQLConnection(MySQLConnectionAbstract):
         :param prepared: Return a cursor which uses prepared statements
         :param cursor_class: Use a custom cursor class
         :param dictionary: Rows are returned as dictionary
-        :param named_tuple: Rows are returned as named tuple
         :return: Subclass of CMySQLCursor
         :rtype: CMySQLCursor or subclass
         """
@@ -850,8 +837,6 @@ class CMySQLConnection(MySQLConnectionAbstract):
             cursor_type |= 2
         if dictionary is True:
             cursor_type |= 4
-        if named_tuple is True:
-            cursor_type |= 8
         if prepared is True:
             cursor_type |= 16
 
@@ -862,23 +847,16 @@ class CMySQLConnection(MySQLConnectionAbstract):
             3: CMySQLCursorBufferedRaw,
             4: CMySQLCursorDict,
             5: CMySQLCursorBufferedDict,
-            8: CMySQLCursorNamedTuple,
-            9: CMySQLCursorBufferedNamedTuple,
             16: CMySQLCursorPrepared,
-            18: CMySQLCursorPreparedRaw,
             20: CMySQLCursorPreparedDict,
-            24: CMySQLCursorPreparedNamedTuple,
         }
         try:
-            raise_warning_against_deprecated_cursor_class(
-                cursor_name=types[cursor_type].__name__
-            )
             return (types[cursor_type])(self)
         except KeyError:
-            args = ("buffered", "raw", "dictionary", "named_tuple", "prepared")
+            args = ("buffered", "raw", "dictionary", "prepared")
             raise ValueError(
                 "Cursor not available with given criteria: "
-                + ", ".join([args[i] for i in range(5) if cursor_type & (1 << i) != 0])
+                + ", ".join([args[i] for i in range(4) if cursor_type & (1 << i) != 0])
             ) from None
 
     @property

@@ -60,10 +60,8 @@ from mysql.connector.aio.cursor import (
     MySQLCursor,
     MySQLCursorBuffered,
     MySQLCursorBufferedDict,
-    MySQLCursorBufferedNamedTuple,
     MySQLCursorBufferedRaw,
     MySQLCursorDict,
-    MySQLCursorNamedTuple,
     MySQLCursorPrepared,
     MySQLCursorRaw,
 )
@@ -1374,9 +1372,7 @@ class MySQLConnectionAioTests(MySQLConnectorAioTestCase):
             ({"buffered": True, "raw": True}, MySQLCursorBufferedRaw),
             ({"prepared": True}, MySQLCursorPrepared),
             ({"dictionary": True}, MySQLCursorDict),
-            ({"named_tuple": True}, MySQLCursorNamedTuple),
             ({"dictionary": True, "buffered": True}, MySQLCursorBufferedDict),
-            ({"named_tuple": True, "buffered": True}, MySQLCursorBufferedNamedTuple),
         ]
         for kwargs, exp in cases:
             self.assertTrue(isinstance(await self.cnx.cursor(**kwargs), exp))
@@ -1385,8 +1381,6 @@ class MySQLConnectionAioTests(MySQLConnectorAioTestCase):
             await self.cnx.cursor(prepared=True, buffered=True)
         with self.assertRaises(ValueError):
             await self.cnx.cursor(dictionary=True, raw=True)
-        with self.assertRaises(ValueError):
-            await self.cnx.cursor(named_tuple=True, raw=True)
 
         # Test when connection is closed
         await self.cnx.close()

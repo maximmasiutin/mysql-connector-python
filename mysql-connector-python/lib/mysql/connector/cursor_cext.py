@@ -1,4 +1,4 @@
-# Copyright (c) 2014, 2024, Oracle and/or its affiliates.
+# Copyright (c) 2014, 2025, Oracle and/or its affiliates.
 #
 # This program is free software; you can redistribute it and/or modify
 # it under the terms of the GNU General Public License, version 2.0, as
@@ -34,7 +34,6 @@ from __future__ import annotations
 import re
 import warnings
 
-from collections import namedtuple
 from typing import (
     TYPE_CHECKING,
     Any,
@@ -69,7 +68,7 @@ from .types import (
 # isort: split
 
 from ._scripting import split_multi_statement
-from .abstracts import NAMED_TUPLE_CACHE, CMySQLPrepStmt, MySQLCursorAbstract
+from .abstracts import CMySQLPrepStmt, MySQLCursorAbstract
 from .cursor import (
     RE_PY_PARAM,
     RE_SQL_COMMENT,
@@ -560,11 +559,6 @@ class CMySQLCursor(MySQLCursorAbstract):
                 result = self._connection.fetch_eof_columns()
                 if isinstance(self, (CMySQLCursorDict, CMySQLCursorBufferedDict)):
                     cursor_class = CMySQLCursorBufferedDict
-                elif isinstance(
-                    self,
-                    (CMySQLCursorNamedTuple, CMySQLCursorBufferedNamedTuple),
-                ):
-                    cursor_class = CMySQLCursorBufferedNamedTuple
                 elif self._raw:
                     cursor_class = CMySQLCursorBufferedRaw
                 else:
@@ -989,82 +983,6 @@ class CMySQLCursorBufferedDict(CMySQLCursorBuffered):
         return [dict(zip(self.column_names, row)) for row in res]
 
 
-class CMySQLCursorNamedTuple(CMySQLCursor):
-    """Cursor using C Extension returning rows as named tuples"""
-
-    named_tuple: Any = None
-
-    def _handle_resultset(self) -> None:
-        """Handle a result set"""
-        super()._handle_resultset()
-        columns = tuple(self.column_names)
-        try:
-            self.named_tuple = NAMED_TUPLE_CACHE[columns]
-        except KeyError:
-            self.named_tuple = namedtuple("Row", columns)  # type: ignore[misc]
-            NAMED_TUPLE_CACHE[columns] = self.named_tuple
-
-    def fetchone(self) -> Optional[RowType]:
-        """Return next row of a query result set.
-
-        Returns:
-            tuple or None: A row from query result set.
-        """
-        row = super().fetchone()
-        if row:
-            return self.named_tuple(*row)
-        return None
-
-    def fetchmany(self, size: int = 1) -> List[RowType]:
-        """Return the next set of rows of a query result set.
-
-        When no more rows are available, it returns an empty list.
-        The number of rows returned can be specified using the size argument,
-        which defaults to one.
-
-        Returns:
-            list: The next set of rows of a query result set.
-        """
-        res = super().fetchmany(size=size)
-        if not res:
-            return []
-        return [self.named_tuple(*row) for row in res]
-
-    def fetchall(self) -> List[RowType]:
-        """Return all rows of a query result set.
-
-        Returns:
-            list: A list of tuples with all rows of a query result set.
-        """
-        res = super().fetchall()
-        return [self.named_tuple(*row) for row in res]
-
-
-class CMySQLCursorBufferedNamedTuple(CMySQLCursorBuffered):
-    """Cursor using C Extension buffering and returning rows as named tuples"""
-
-    named_tuple: Any = None
-
-    def _handle_resultset(self) -> None:
-        super()._handle_resultset()
-        self.named_tuple = namedtuple("Row", self.column_names)  # type: ignore[misc]
-
-    def _fetch_row(self) -> Optional[RowType]:
-        row = super()._fetch_row()
-        if row:
-            return self.named_tuple(*row)
-        return None
-
-    def fetchall(self) -> List[RowType]:
-        """Return all rows of a query result set.
-
-        Returns:
-            list: A list of tuples with all rows of a query result set.
-        """
-        res = super().fetchall()
-        return [self.named_tuple(*row) for row in res]
-
-
 class CMySQLCursorPrepared(CMySQLCursor):
     """Cursor using MySQL Prepared Statements"""
 
@@ -1345,18 +1263,3 @@ class CMySQLCursorPreparedDict(CMySQLCursorDict, CMySQLCursorPrepared):  # type:
     3. CMySQLCursorPrepared (right parent class)
     4. CMySQLCursor (base class)
     """
-
-
-class CMySQLCursorPreparedNamedTuple(CMySQLCursorNamedTuple, CMySQLCursorPrepared):
-    """This class is a blend of features from CMySQLCursorNamedTuple and CMySQLCursorPrepared"""
-
-
-class CMySQLCursorPreparedRaw(CMySQLCursorPrepared):
-    """This class is a blend of features from CMySQLCursorRaw and CMySQLCursorPrepared"""
-
-    def __init__(
-        self,
-        connection: CMySQLConnection,
-    ):
-        super().__init__(connection)
-        self._raw = True

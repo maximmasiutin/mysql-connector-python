@@ -1,6 +1,6 @@
 # -*- coding: utf-8 -*-
 
-# Copyright (c) 2014, 2024, Oracle and/or its affiliates.
+# Copyright (c) 2014, 2025, Oracle and/or its affiliates.
 #
 # This program is free software; you can redistribute it and/or modify
 # it under the terms of the GNU General Public License, version 2.0, as
@@ -239,14 +239,9 @@ class CMySQLConnectionTests(tests.MySQLConnectorTests):
             ({"buffered": True, "raw": True}, cursor_cext.CMySQLCursorBufferedRaw),
             ({"prepared": True}, cursor_cext.CMySQLCursorPrepared),
             ({"dictionary": True}, cursor_cext.CMySQLCursorDict),
-            ({"named_tuple": True}, cursor_cext.CMySQLCursorNamedTuple),
             (
                 {"dictionary": True, "buffered": True},
                 cursor_cext.CMySQLCursorBufferedDict,
-            ),
-            (
-                {"named_tuple": True, "buffered": True},
-                cursor_cext.CMySQLCursorBufferedNamedTuple,
             ),
         ]
         for kwargs, exp in cases:
@@ -254,7 +249,6 @@ class CMySQLConnectionTests(tests.MySQLConnectorTests):
 
         self.assertRaises(ValueError, self.cnx.cursor, prepared=True, buffered=True)
         self.assertRaises(ValueError, self.cnx.cursor, dictionary=True, raw=True)
-        self.assertRaises(ValueError, self.cnx.cursor, named_tuple=True, raw=True)
 
         # Test when connection is closed
         self.cnx.close()

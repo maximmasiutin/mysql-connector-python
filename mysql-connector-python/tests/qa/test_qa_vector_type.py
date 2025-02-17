@@ -1,4 +1,4 @@
-# Copyright (c) 2024, Oracle and/or its affiliates.
+# Copyright (c) 2024, 2025, Oracle and/or its affiliates.
 #
 # This program is free software; you can redistribute it and/or modify
 # it under the terms of the GNU General Public License, version 2.0, as
@@ -293,33 +293,13 @@ class _BaseVectorTests(_BaseCommon):
         self._test_cursor(cur_conf)
 
     @tests.foreach_cnx()
-    def test_cursor_buffered_named_tuple(self):
-        cur_conf = {"buffered": True, "named_tuple": True}
-        self._test_cursor(cur_conf)
-
-    @tests.foreach_cnx()
     def test_cursor_buffered_dictionary(self):
         cur_conf = {"buffered": True, "dictionary": True}
         self._test_cursor(cur_conf)
 
     @tests.foreach_cnx()
-    def test_cursor_named_tuple(self):
-        cur_conf = {"named_tuple": True}
-        self._test_cursor(cur_conf)
-
-    @tests.foreach_cnx()
     def test_cursor_prepared(self):
         cur_conf = {"prepared": True}
-        self._test_cursor(cur_conf)
-
-    @tests.foreach_cnx()
-    def test_cursor_prepared_raw(self):
-        cur_conf = {"prepared": True, "raw": True}
-        self._test_cursor(cur_conf)
-
-    @tests.foreach_cnx()
-    def test_cursor_prepared_named_tuple(self):
-        cur_conf = {"prepared": True, "named_tuple": True}
         self._test_cursor(cur_conf)
 
     def _test_cmd_query_kernel(self, raw, record_id):
@@ -759,33 +739,13 @@ class _BaseVectorTestsAio(_BaseCommon):
         await self._test_cursor(cur_conf)
 
     @tests.foreach_cnx_aio()
-    async def test_cursor_buffered_named_tuple(self):
-        cur_conf = {"buffered": True, "named_tuple": True}
-        await self._test_cursor(cur_conf)
-
-    @tests.foreach_cnx_aio()
     async def test_cursor_buffered_dictionary(self):
         cur_conf = {"buffered": True, "dictionary": True}
         await self._test_cursor(cur_conf)
 
     @tests.foreach_cnx_aio()
-    async def test_cursor_named_tuple(self):
-        cur_conf = {"named_tuple": True}
-        await self._test_cursor(cur_conf)
-
-    @tests.foreach_cnx_aio()
     async def test_cursor_prepared(self):
         cur_conf = {"prepared": True}
-        await self._test_cursor(cur_conf)
-
-    @tests.foreach_cnx_aio()
-    async def test_cursor_prepared_raw(self):
-        cur_conf = {"prepared": True, "raw": True}
-        await self._test_cursor(cur_conf)
-
-    @tests.foreach_cnx_aio()
-    async def test_cursor_prepared_named_tuple(self):
-        cur_conf = {"prepared": True, "named_tuple": True}
         await self._test_cursor(cur_conf)
 
     async def _test_cmd_query_kernel(self, raw, record_id):

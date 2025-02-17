@@ -68,21 +68,16 @@ from .constants import (
     ServerCmd,
     ServerFlag,
     flag_is_set,
-    raise_warning_against_deprecated_cursor_class,
 )
 from .conversion import MySQLConverter
 from .cursor import (
     MySQLCursor,
     MySQLCursorBuffered,
     MySQLCursorBufferedDict,
-    MySQLCursorBufferedNamedTuple,
     MySQLCursorBufferedRaw,
     MySQLCursorDict,
-    MySQLCursorNamedTuple,
     MySQLCursorPrepared,
     MySQLCursorPreparedDict,
-    MySQLCursorPreparedNamedTuple,
-    MySQLCursorPreparedRaw,
     MySQLCursorRaw,
 )
 from .errors import (
@@ -1376,7 +1371,6 @@ class MySQLConnection(MySQLConnectionAbstract):
         prepared: Optional[bool] = None,
         cursor_class: Optional[Type[MySQLCursor]] = None,  # type: ignore[override]
         dictionary: Optional[bool] = None,
-        named_tuple: Optional[bool] = None,
         read_timeout: Optional[int] = None,
         write_timeout: Optional[int] = None,
     ) -> MySQLCursor:
@@ -1385,9 +1379,9 @@ class MySQLConnection(MySQLConnectionAbstract):
         By default, MySQLCursor is returned. Depending on the options
         while connecting, a buffered and/or raw cursor is instantiated
         instead. Also depending upon the cursor options, rows can be
-        returned as dictionary or named tuple.
+        returned as a dictionary or a tuple.
 
-        Dictionary and namedtuple based cursors are available with buffered
+        Dictionary based cursors are available with buffered
         output but not raw.
 
         It is possible to also give a custom cursor through the
@@ -1430,8 +1424,6 @@ class MySQLConnection(MySQLConnectionAbstract):
             cursor_type |= 2
         if dictionary is True:
             cursor_type |= 4
-        if named_tuple is True:
-            cursor_type |= 8
         if prepared is True:
             cursor_type |= 16
 
@@ -1442,23 +1434,16 @@ class MySQLConnection(MySQLConnectionAbstract):
             3: MySQLCursorBufferedRaw,
             4: MySQLCursorDict,
             5: MySQLCursorBufferedDict,
-            8: MySQLCursorNamedTuple,
-            9: MySQLCursorBufferedNamedTuple,
             16: MySQLCursorPrepared,
-            18: MySQLCursorPreparedRaw,
             20: MySQLCursorPreparedDict,
-            24: MySQLCursorPreparedNamedTuple,
         }
         try:
-            raise_warning_against_deprecated_cursor_class(
-                cursor_name=types[cursor_type].__name__
-            )
             return (types[cursor_type])(self, read_timeout, write_timeout)
         except KeyError:
-            args = ("buffered", "raw", "dictionary", "named_tuple", "prepared")
+            args = ("buffered", "raw", "dictionary", "prepared")
             raise ValueError(
                 "Cursor not available with given criteria: "
-                + ", ".join([args[i] for i in range(5) if cursor_type & (1 << i) != 0])
+                + ", ".join([args[i] for i in range(4) if cursor_type & (1 << i) != 0])
             ) from None
 
     def commit(self) -> None:

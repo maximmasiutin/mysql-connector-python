@@ -1,4 +1,4 @@
-# Copyright (c) 2014, 2024, Oracle and/or its affiliates.
+# Copyright (c) 2014, 2025, Oracle and/or its affiliates.
 #
 # This program is free software; you can redistribute it and/or modify
 # it under the terms of the GNU General Public License, version 2.0, as
@@ -32,7 +32,7 @@ import mysql.connector
 
 
 class WL7292Tests(tests.MySQLConnectorTests):
-    """Testing the resultset retrieved namedtuples and dictionaries."""
+    """Testing the resultset retrieved dictionaries."""
 
     def setUp(self):
         config = tests.get_mysql_config()
@@ -81,29 +81,3 @@ class WL7292Tests(tests.MySQLConnectorTests):
                 ):
                     test_cdb = 1
             self.assertEqual(1, test_cdb)
-
-    @tests.foreach_cnx()
-    def test_curnamed(self):
-        """Retrieving the resultset as namedtuple."""
-        test_cn = 0
-        with self.cnx.cursor(named_tuple=True) as curnam:
-            curnam.execute("select * from wl7292 where dept='cs'")
-            for row in curnam:
-                if (row.id == 1 and row.name == "abc") or (
-                    row.id == 3 and row.name == "ghi"
-                ):
-                    test_cn = 1
-            self.assertEqual(1, test_cn)
-
-    @tests.foreach_cnx()
-    def test_curnamed_buff(self):
-        """Buffered retrieval of resultset."""
-        test_cnb = 0
-        with self.cnx.cursor(named_tuple=True, buffered=True) as curnam_buff:
-            curnam_buff.execute("select * from wl7292 where dept='cs'")
-            for row in curnam_buff:
-                if (row.id == 1 and row.name == "abc") or (
-                    row.id == 3 and row.name == "ghi"
-                ):
-                    test_cnb = 1
-            self.assertEqual(1, test_cnb)

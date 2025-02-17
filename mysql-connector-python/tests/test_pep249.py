@@ -1,4 +1,4 @@
-# Copyright (c) 2009, 2024, Oracle and/or its affiliates.
+# Copyright (c) 2009, 2025, Oracle and/or its affiliates.
 #
 # This program is free software; you can redistribute it and/or modify
 # it under the terms of the GNU General Public License, version 2.0, as
@@ -49,8 +49,6 @@ CURSOR_TYPES = [
     {"raw": True, "buffered": True},  # MySQLCursorBufferedRaw
     {"dictionary": True},  # MySQLCursorDict
     {"dictionary": True, "buffered": True},  # MySQLCursorBufferedDict
-    {"named_tuple": True},  # MySQLCursorNamedTuple
-    {"named_tuple": True, "buffered": True},  # MySQLCursorBufferedNamedTuple
     {"prepared": True},  # MySQLCursorPrepared
 ]
 

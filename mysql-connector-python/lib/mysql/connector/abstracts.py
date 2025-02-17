@@ -123,8 +123,6 @@ from .types import (
 )
 from .utils import GenericWrapper, import_object
 
-NAMED_TUPLE_CACHE: weakref.WeakValueDictionary[Any, Any] = weakref.WeakValueDictionary()
-
 DUPLICATED_IN_LIST_ERROR = (
     "The '{list}' list must not contain repeated values, the value "
     "'{value}' is duplicated."
@@ -1681,7 +1679,6 @@ class MySQLConnectionAbstract(ABC):
         prepared: Optional[bool] = None,
         cursor_class: Optional[Type["MySQLCursorAbstract"]] = None,
         dictionary: Optional[bool] = None,
-        named_tuple: Optional[bool] = None,
         read_timeout: Optional[int] = None,
         write_timeout: Optional[int] = None,
     ) -> "MySQLCursorAbstract":
@@ -1690,9 +1687,9 @@ class MySQLConnectionAbstract(ABC):
         By default, `MySQLCursor` or `CMySQLCursor` is returned. Depending on the
         options while connecting, a buffered and/or raw cursor is instantiated
         instead. Also depending upon the cursor options, rows can be returned as
-        dictionary or named tuple.
+        a dictionary or a tuple.
 
-        Dictionary and namedtuple based cursors are available with buffered output
+        Dictionary based cursors are available with buffered output
         but not raw.
 
         It is possible to also give a custom cursor through the `cursor_class`
@@ -1716,7 +1713,6 @@ class MySQLConnectionAbstract(ABC):
                           or `cursor_cext.CMySQLCursor` according to the type of
                           connection that's being used.
             dictionary: If `True`, the cursor returns rows as dictionaries.
-            named_tuple: If `True`, the cursor returns rows as named tuples.
             read_timeout: A positive integer representing timeout in seconds for each
                           attempt to read any data from the server.
             write_timeout: A positive integer representing timeout in seconds for each

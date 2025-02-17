@@ -118,7 +118,6 @@ if TYPE_CHECKING:
 
 
 IS_POSIX = os.name == "posix"
-NAMED_TUPLE_CACHE: weakref.WeakValueDictionary[Any, Any] = weakref.WeakValueDictionary()
 
 
 @dataclass
@@ -1456,7 +1455,6 @@ class MySQLConnectionAbstract(ABC):
         prepared: Optional[bool] = None,
         cursor_class: Optional[Type[MySQLCursorAbstract]] = None,
         dictionary: Optional[bool] = None,
-        named_tuple: Optional[bool] = None,
         read_timeout: Optional[int] = None,
         write_timeout: Optional[int] = None,
     ) -> MySQLCursorAbstract:
@@ -1464,8 +1462,8 @@ class MySQLConnectionAbstract(ABC):
 
         By default, MySQLCursor is returned. Depending on the options while
         connecting, a buffered and/or raw cursor is instantiated instead.
-        Also depending upon the cursor options, rows can be returned as dictionary or
-        named tuple.
+        Also depending upon the cursor options, rows can be returned as a dictionary
+        or a tuple.
 
         It is possible to also give a custom cursor through the cursor_class
         parameter, but it needs to be a subclass of

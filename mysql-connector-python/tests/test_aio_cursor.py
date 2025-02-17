@@ -1,4 +1,4 @@
-# Copyright (c) 2023, 2024, Oracle and/or its affiliates.
+# Copyright (c) 2023, 2025, Oracle and/or its affiliates.
 #
 # This program is free software; you can redistribute it and/or modify
 # it under the terms of the GNU General Public License, version 2.0, as
@@ -37,14 +37,10 @@ from mysql.connector.aio.cursor import (
     MySQLCursor,
     MySQLCursorBuffered,
     MySQLCursorBufferedDict,
-    MySQLCursorBufferedNamedTuple,
     MySQLCursorBufferedRaw,
     MySQLCursorDict,
-    MySQLCursorNamedTuple,
     MySQLCursorPrepared,
     MySQLCursorPreparedDict,
-    MySQLCursorPreparedNamedTuple,
-    MySQLCursorPreparedRaw,
     MySQLCursorRaw,
 )
 from mysql.connector.errors import Error, InterfaceError, ProgrammingError
@@ -887,94 +883,6 @@ class MySQLCursorBufferedDictTests(
         await self._test_callproc(self.cnx, MySQLCursorBufferedDict)
 
 
-class MySQLCursorNamedTupleTests(
-    tests.MySQLConnectorAioTestCase, MySQLCursorTestsMixin
-):
-    @foreach_cnx_aio()
-    async def test__init__(self):
-        async with MySQLCursorNamedTuple(connection=self.cnx) as cur:
-            self.assertEqual(None, await cur.execute(None, None))
-
-    @foreach_cnx_aio()
-    async def test_connection_cursor(self):
-        async with await self.cnx.cursor(named_tuple=True) as cur:
-            self.assertIsInstance(cur, MySQLCursorNamedTuple)
-
-    @cnx_aio_config(get_warnings=True)
-    @foreach_cnx_aio()
-    async def test_execute(self):
-        await self._test_execute(self.cnx, MySQLCursorNamedTuple)
-
-    @foreach_cnx_aio()
-    async def test_executemulti(self):
-        await self._test_executemulti(self.cnx, MySQLCursorNamedTuple)
-
-    @cnx_aio_config(get_warnings=True)
-    @foreach_cnx_aio()
-    async def test_executemany(self):
-        await self._test_executemany(self.cnx, MySQLCursorNamedTuple)
-
-    @foreach_cnx_aio()
-    async def test_fetchone(self):
-        await self._test_fetchone(self.cnx, MySQLCursorNamedTuple)
-
-    @foreach_cnx_aio()
-    async def test_fetchall(self):
-        await self._test_fetchall(self.cnx, MySQLCursorNamedTuple)
-
-    @foreach_cnx_aio()
-    async def test_fetchmany(self):
-        await self._test_fetchmany(self.cnx, MySQLCursorNamedTuple)
-
-    @foreach_cnx_aio()
-    async def test_callproc(self):
-        await self._test_callproc(self.cnx, MySQLCursorNamedTuple)
-
-
-class MySQLCursorBufferedNamedTupleTests(
-    tests.MySQLConnectorAioTestCase, MySQLCursorTestsMixin
-):
-    @foreach_cnx_aio()
-    async def test__init__(self):
-        async with MySQLCursorBufferedNamedTuple(connection=self.cnx) as cur:
-            self.assertEqual(None, await cur.execute(None, None))
-
-    @foreach_cnx_aio()
-    async def test_connection_cursor(self):
-        async with await self.cnx.cursor(buffered=True, named_tuple=True) as cur:
-            self.assertIsInstance(cur, MySQLCursorBufferedNamedTuple)
-
-    @cnx_aio_config(get_warnings=True)
-    @foreach_cnx_aio()
-    async def test_execute(self):
-        await self._test_execute(self.cnx, MySQLCursorBufferedNamedTuple)
-
-    @foreach_cnx_aio()
-    async def test_executemulti(self):
-        await self._test_executemulti(self.cnx, MySQLCursorBufferedNamedTuple)
-
-    @cnx_aio_config(get_warnings=True)
-    @foreach_cnx_aio()
-    async def test_executemany(self):
-        await self._test_executemany(self.cnx, MySQLCursorBufferedNamedTuple)
-
-    @foreach_cnx_aio()
-    async def test_fetchone(self):
-        await self._test_fetchone(self.cnx, MySQLCursorBufferedNamedTuple)
-
-    @foreach_cnx_aio()
-    async def test_fetchall(self):
-        await self._test_fetchall(self.cnx, MySQLCursorBufferedNamedTuple)
-
-    @foreach_cnx_aio()
-    async def test_fetchmany(self):
-        await self._test_fetchmany(self.cnx, MySQLCursorBufferedNamedTuple)
-
-    @foreach_cnx_aio()
-    async def test_callproc(self):
-        await self._test_callproc(self.cnx, MySQLCursorBufferedNamedTuple)
-
-
 class MySQLCursorPreparedTests(tests.MySQLConnectorAioTestCase, MySQLCursorTestsMixin):
     @foreach_cnx_aio()
     async def test__init__(self):
@@ -1007,42 +915,6 @@ class MySQLCursorPreparedTests(tests.MySQLConnectorAioTestCase, MySQLCursorTests
     @foreach_cnx_aio()
     async def test_fetchmany(self):
         await self._test_fetchmany(self.cnx, MySQLCursorPrepared)
-
-
-class MySQLCursorPreparedRawTests(
-    tests.MySQLConnectorAioTestCase, MySQLCursorTestsMixin
-):
-    @foreach_cnx_aio()
-    async def test__init__(self):
-        async with MySQLCursorPreparedRaw(connection=self.cnx) as cur:
-            self.assertEqual(None, await cur.execute(None, None))
-
-    @foreach_cnx_aio()
-    async def test_connection_cursor(self):
-        async with await self.cnx.cursor(prepared=True, raw=True) as cur:
-            self.assertIsInstance(cur, MySQLCursorPreparedRaw)
-
-    @cnx_aio_config(get_warnings=True)
-    @foreach_cnx_aio()
-    async def test_execute(self):
-        await self._test_execute(self.cnx, MySQLCursorPreparedRaw)
-
-    @cnx_aio_config(get_warnings=True)
-    @foreach_cnx_aio()
-    async def test_executemany(self):
-        await self._test_executemany(self.cnx, MySQLCursorPreparedRaw)
-
-    @foreach_cnx_aio()
-    async def test_fetchone(self):
-        await self._test_fetchone(self.cnx, MySQLCursorPreparedRaw)
-
-    @foreach_cnx_aio()
-    async def test_fetchall(self):
-        await self._test_fetchall(self.cnx, MySQLCursorPreparedRaw)
-
-    @foreach_cnx_aio()
-    async def test_fetchmany(self):
-        await self._test_fetchmany(self.cnx, MySQLCursorPreparedRaw)
 
 
 class MySQLCursorPreparedDictTests(
@@ -1079,106 +951,3 @@ class MySQLCursorPreparedDictTests(
     @foreach_cnx_aio()
     async def test_fetchmany(self):
         await self._test_fetchmany(self.cnx, MySQLCursorPreparedDict)
-
-
-class MySQLCursorPreparedNamedTupleTests(
-    tests.MySQLConnectorAioTestCase, MySQLCursorTestsMixin
-):
-    @foreach_cnx_aio()
-    async def test__init__(self):
-        async with MySQLCursorPreparedNamedTuple(connection=self.cnx) as cur:
-            self.assertEqual(None, await cur.execute(None, None))
-
-    @foreach_cnx_aio()
-    async def test_connection_cursor(self):
-        async with await self.cnx.cursor(prepared=True, named_tuple=True) as cur:
-            self.assertIsInstance(cur, MySQLCursorPreparedNamedTuple)
-
-    @cnx_aio_config(get_warnings=True)
-    @foreach_cnx_aio()
-    async def test_execute(self):
-        await self._test_execute(self.cnx, MySQLCursorPreparedNamedTuple)
-
-    @cnx_aio_config(get_warnings=True)
-    @foreach_cnx_aio()
-    async def test_executemany(self):
-        await self._test_executemany(self.cnx, MySQLCursorPreparedNamedTuple)
-
-    @foreach_cnx_aio()
-    async def test_fetchone(self):
-        await self._test_fetchone(self.cnx, MySQLCursorPreparedNamedTuple)
-
-    @foreach_cnx_aio()
-    async def test_fetchall(self):
-        await self._test_fetchall(self.cnx, MySQLCursorPreparedNamedTuple)
-
-    @foreach_cnx_aio()
-    async def test_fetchmany(self):
-        await self._test_fetchmany(self.cnx, MySQLCursorPreparedNamedTuple)
-
-
-class MySQLCursorDeprecatedTests(tests.MySQLConnectorAioTestCase):
-
-    @foreach_cnx_aio()
-    async def test_deprecation_cursor_prepared_raw(self):
-        with warnings.catch_warnings(record=True) as warnings_stack:
-            # Cause all warnings to always be triggered.
-            warnings.simplefilter("always", DeprecationWarning)
-            # The warning should be raised as the cursor is instantiated
-            async with await self.cnx.cursor(prepared=True, raw=True) as _:
-                pass
-            self.assertTrue(
-                len(warnings_stack) != 0,
-                msg="No warnings were caught as warnings_stack was empty",
-            )
-            self.assertTrue(issubclass(warnings_stack[-1].category, DeprecationWarning))
-            self.assertTrue("deprecated" in str(warnings_stack[-1].message))
-            warnings.resetwarnings()
-
-    @foreach_cnx_aio()
-    async def test_deprecation_cursor_named_tuple(self):
-        with warnings.catch_warnings(record=True) as warnings_stack:
-            # Cause all warnings to always be triggered.
-            warnings.simplefilter("always", DeprecationWarning)
-            # The warning should be raised as the cursor is instantiated
-            async with await self.cnx.cursor(named_tuple=True) as _:
-                pass
-            self.assertTrue(
-                len(warnings_stack) != 0,
-                msg="No warnings were caught as warnings_stack was empty",
-            )
-            self.assertTrue(issubclass(warnings_stack[-1].category, DeprecationWarning))
-            self.assertTrue("deprecated" in str(warnings_stack[-1].message))
-            warnings.resetwarnings()
-
-    @foreach_cnx_aio()
-    async def test_deprecation_cursor_buffered_named_tuple(self):
-        with warnings.catch_warnings(record=True) as warnings_stack:
-            # Cause all warnings to always be triggered.
-            warnings.simplefilter("always", DeprecationWarning)
-            # The warning should be raised as the cursor is instantiated
-            async with await self.cnx.cursor(buffered=True, named_tuple=True) as _:
-                pass
-            self.assertTrue(
-                len(warnings_stack) != 0,
-                msg="No warnings were caught as warnings_stack was empty",
-            )
-            self.assertTrue(issubclass(warnings_stack[-1].category, DeprecationWarning))
-            self.assertTrue("deprecated" in str(warnings_stack[-1].message))
-            warnings.resetwarnings()
-
-    @foreach_cnx_aio()
-    async def test_deprecation_cursor_prepared_named_tuple(self):
-        with warnings.catch_warnings(record=True) as warnings_stack:
-            # Cause all warnings to always be triggered.
-            warnings.simplefilter("always", DeprecationWarning)
-            # The warning should be raised as the cursor is instantiated
-            async with await self.cnx.cursor(prepared=True, named_tuple=True) as _:
-                pass
-            self.assertTrue(
-                len(warnings_stack) != 0,
-                msg="No warnings were caught as warnings_stack was empty",
-            )
-            self.assertTrue(issubclass(warnings_stack[-1].category, DeprecationWarning))
-            self.assertTrue("deprecated" in str(warnings_stack[-1].message))
-            warnings.resetwarnings()

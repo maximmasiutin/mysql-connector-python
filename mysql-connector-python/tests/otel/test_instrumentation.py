@@ -1,4 +1,4 @@
-# Copyright (c) 2023, 2024, Oracle and/or its affiliates.
+# Copyright (c) 2023, 2025, Oracle and/or its affiliates.
 #
 # This program is free software; you can redistribute it and/or modify
 # it under the terms of the GNU General Public License, version 2.0, as
@@ -631,7 +631,6 @@ class PythonWithGlobalInstSpanTests(tests.MySQLConnectorTests):
         buffered: bool = False,
         raw: bool = False,
         dictionary: bool = False,
-        named_tuple: bool = False,
         prepared: bool = False,
     ) -> None:
         exps = expected or [self.data, [("ham", 42)]]
@@ -649,7 +648,6 @@ class PythonWithGlobalInstSpanTests(tests.MySQLConnectorTests):
                 buffered=buffered,
                 raw=raw,
                 dictionary=dictionary,
-                named_tuple=named_tuple,
                 prepared=prepared,
             )
             self.assertListEqual(res, exp)
@@ -705,9 +703,6 @@ class PythonWithGlobalInstSpanTests(tests.MySQLConnectorTests):
             [dict(zip(["c1", "c2"], ("ham", 42)))],
         ]
         self.test_plain_cursor(expected=exp, dictionary=True)
-
-    def test_named_tuple_cursor(self) -> None:
-        self.test_plain_cursor(named_tuple=True)
 
     def test_prepared_cursor(self) -> None:
         self.test_plain_cursor(prepared=True)

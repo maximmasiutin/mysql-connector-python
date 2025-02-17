@@ -1,4 +1,4 @@
-# Copyright (c) 2009, 2024, Oracle and/or its affiliates.
+# Copyright (c) 2009, 2025, Oracle and/or its affiliates.
 #
 # This program is free software; you can redistribute it and/or modify
 # it under the terms of the GNU General Public License, version 2.0, as
@@ -34,7 +34,6 @@ from __future__ import annotations
 import re
 import warnings
 
-from collections import namedtuple
 from decimal import Decimal
 from typing import (
     TYPE_CHECKING,
@@ -51,7 +50,7 @@ from typing import (
 )
 
 from ._scripting import split_multi_statement
-from .abstracts import NAMED_TUPLE_CACHE, MySQLCursorAbstract
+from .abstracts import MySQLCursorAbstract
 from .constants import ServerFlag
 from .errors import (
     Error,
@@ -628,11 +627,6 @@ class MySQLCursor(MySQLCursorAbstract):
                 self._connection.can_consume_results = False
                 if isinstance(self, (MySQLCursorDict, MySQLCursorBufferedDict)):
                     cursor_class = MySQLCursorBufferedDict
-                elif isinstance(
-                    self,
-                    (MySQLCursorNamedTuple, MySQLCursorBufferedNamedTuple),
-                ):
-                    cursor_class = MySQLCursorBufferedNamedTuple
                 elif self._raw:
                     cursor_class = MySQLCursorBufferedRaw
                 else:
@@ -1432,64 +1426,6 @@ class MySQLCursorDict(MySQLCursor):
         ]
 
 
-class MySQLCursorNamedTuple(MySQLCursor):
-    """
-    Cursor fetching rows as named tuple.
-
-    The fetch methods of this class will return namedtuples instead of tuples.
-    Each row is returned as a namedtuple and the values can be accessed as:
-    row.col1, row.col2
-    """
-
-    def _row_to_python(
-        self,
-        rowdata: RowType,
-        desc: Optional[List[DescriptionType]] = None,  # pylint: disable=unused-argument
-    ) -> Optional[RowType]:
-        """Convert a MySQL text result row to Python types
-
-        Returns a named tuple.
-        """
-        row = rowdata
-
-        if row:
-            columns = tuple(self.column_names)
-            try:
-                named_tuple = NAMED_TUPLE_CACHE[columns]
-            except KeyError:
-                named_tuple = namedtuple("Row", columns)  # type:ignore[no-redef, misc]
-                NAMED_TUPLE_CACHE[columns] = named_tuple
-            return named_tuple(*row)
-        return None
-
-    def fetchone(self) -> Optional[RowType]:
-        """Return next row of a query result set.
-
-        Returns:
-            tuple or None: A row from query result set.
-        """
-        row = super().fetchone()
-        if not row:
-            return None
-        return (
-            self._row_to_python(row, self.description)
-            if hasattr(self._connection, "converter")
-            else row
-        )
-
-    def fetchall(self) -> List[Optional[RowType]]:
-        """Return all rows of a query result set.
-
-        Returns:
-            list: A list of tuples with all rows of a query result set.
-        """
-        return [
-            self._row_to_python(row, self.description)
-            for row in super().fetchall()
-            if row
-        ]
-
-
 class MySQLCursorBufferedDict(MySQLCursorDict, MySQLCursorBuffered):
     """
     Buffered Cursor fetching rows as dictionaries.
@@ -1508,38 +1444,6 @@ class MySQLCursorBufferedDict(MySQLCursorDict, MySQLCursorBuffered):
         return None
 
     def fetchall(self) -> List[Optional[Dict[str, RowItemType]]]:
-        """Return all rows of a query result set.
-
-        Returns:
-            list: A list of tuples with all rows of a query result set.
-        """
-        if self._executed is None or self._rows is None:
-            raise InterfaceError(ERR_NO_RESULT_TO_FETCH)
-        res = []
-        for row in self._rows[self._next_row :]:
-            res.append(self._row_to_python(row, self.description))
-        self._next_row = len(self._rows)
-        return res
-
-
-class MySQLCursorBufferedNamedTuple(MySQLCursorNamedTuple, MySQLCursorBuffered):
-    """
-    Buffered Cursor fetching rows as named tuple.
-    """
-
-    def fetchone(self) -> Optional[RowType]:
-        """Return next row of a query result set.
-
-        Returns:
-            tuple or None: A row from query result set.
-        """
-        self._check_executed()
-        row = self._fetch_row()
-        if row:
-            return self._row_to_python(row, self.description)
-        return None
-
-    def fetchall(self) -> List[Optional[RowType]]:
         """Return all rows of a query result set.
 
         Returns:
@@ -1588,105 +1492,3 @@ class MySQLCursorPreparedDict(MySQLCursorDict, MySQLCursorPrepared):  # type: ig
             for row in super().fetchmany(size=size)
             if row
         ]
-
-
-class MySQLCursorPreparedNamedTuple(MySQLCursorNamedTuple, MySQLCursorPrepared):
-    """
-    This class is a blend of features from MySQLCursorNamedTuple and MySQLCursorPrepared
-    """
-
-    def fetchmany(self, size: Optional[int] = None) -> List[RowType]:
-        """Return the next set of rows of a query result set.
-
-        When no more rows are available, it returns an empty list.
-        The number of rows returned can be specified using the size argument,
-        which defaults to one.
-
-        Returns:
-            list: The next set of rows of a query result set represented
-                  as a list of named tuples where column names are used as names.
-        """
-        return [
-            self._row_to_python(row, self.description)
-            for row in super().fetchmany(size=size)
-            if row
-        ]
-
-
-class MySQLCursorPreparedRaw(MySQLCursorPrepared):
-    """
-    This class is a blend of features from MySQLCursorRaw and MySQLCursorPrepared
-    """
-
-    def __init__(
-        self,
-        connection: Optional[MySQLConnection] = None,
-        read_timeout: Optional[int] = None,
-        write_timeout: Optional[int] = None,
-    ) -> None:
-        super().__init__(connection, read_timeout, write_timeout)
-        self._raw: bool = True
-
-    def fetchone(self) -> Optional[RowType]:
-        """Return next row of a query result set.
-
-        Returns:
-            tuple or None: A row from query result set.
-        """
-        self._check_executed()
-        if self._cursor_exists:
-            self._connection.cmd_stmt_fetch(
-                self._prepared["statement_id"],
-                read_timeout=self._read_timeout,
-                write_timeout=self._write_timeout,
-            )
-        return self._fetch_row(raw=self._raw) or None
-
-    def fetchmany(self, size: Optional[int] = None) -> List[RowType]:
-        """Return the next set of rows of a query result set.
-
-        When no more rows are available, it returns an empty list.
-        The number of rows returned can be specified using the size argument,
-        which defaults to one.
-
-        Returns:
-            list: The next set of rows of a query result set.
-        """
-        self._check_executed()
-        res = []
-        cnt = size or self.arraysize
-        while cnt > 0 and self._have_unread_result():
-            cnt -= 1
-            row = self._fetch_row(raw=self._raw)
-            if row:
-                res.append(row)
-        return res
-
-    def fetchall(self) -> List[RowType]:
-        """Return all rows of a query result set.
-
-        Returns:
-            list: A list of tuples with all rows of a query result set.
-        """
-        self._check_executed()
-        rows = []
-        if self._nextrow[0]:
-            rows.append(self._nextrow[0])
-        while self._have_unread_result():
-            if self._cursor_exists:
-                self._connection.cmd_stmt_fetch(
-                    self._prepared["statement_id"],
-                    MAX_RESULTS,
-                    read_timeout=self._read_timeout,
-                    write_timeout=self._write_timeout,
-                )
-            (tmp, eof) = self._connection.get_rows(
-                raw=self._raw,
-                binary=self._binary,
-                columns=self.description,
-                read_timeout=self._read_timeout,
-            )
-            rows.extend(tmp)
-            self._handle_eof(eof)
-        self._rowcount = len(rows)
-        return rows

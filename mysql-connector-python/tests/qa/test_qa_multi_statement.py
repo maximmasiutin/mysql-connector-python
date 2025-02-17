@@ -1,4 +1,4 @@
-# Copyright (c) 2024, 2025 Oracle and/or its affiliates.
+# Copyright (c) 2024, 2025, Oracle and/or its affiliates.
 #
 # This program is free software; you can redistribute it and/or modify
 # it under the terms of the GNU General Public License, version 2.0, as
@@ -817,13 +817,6 @@ class MySQLCursorTests(tests.MySQLConnectorTests):
         self._test_rowcount(**kwargs)
 
     @tests.foreach_cnx()
-    def test_cursor_named_tuple(self):
-        kwargs = {"named_tuple": True}
-        self._test_execute_mapping_disabled(**kwargs)
-        self._test_execute_mapping_enabled(**kwargs)
-        self._test_rowcount(**kwargs)
-
-    @tests.foreach_cnx()
     def test_cursor_buffered_raw(self):
         kwargs = {"buffered": True, "raw": True}
         self._test_execute_mapping_disabled(**kwargs)
@@ -833,13 +826,6 @@ class MySQLCursorTests(tests.MySQLConnectorTests):
     @tests.foreach_cnx()
     def test_cursor_buffered_dictionary(self):
         kwargs = {"buffered": True, "dictionary": True}
-        self._test_execute_mapping_disabled(**kwargs)
-        self._test_execute_mapping_enabled(**kwargs)
-        self._test_rowcount(**kwargs)
-
-    @tests.foreach_cnx()
-    def test_cursor_buffered_named_tuple(self):
-        kwargs = {"buffered": True, "named_tuple": True}
         self._test_execute_mapping_disabled(**kwargs)
         self._test_execute_mapping_enabled(**kwargs)
         self._test_rowcount(**kwargs)
@@ -1005,12 +991,6 @@ class MySQLAsyncCursorTests(tests.MySQLConnectorAioTestCase):
         await self._test_execute_mapping_enabled(**kwargs)
 
     @tests.foreach_cnx_aio()
-    async def test_cursor_named_tuple(self):
-        kwargs = {"named_tuple": True}
-        await self._test_execute_mapping_disabled(**kwargs)
-        await self._test_execute_mapping_enabled(**kwargs)
-
-    @tests.foreach_cnx_aio()
     async def test_cursor_buffered_raw(self):
         kwargs = {"buffered": True, "raw": True}
         await self._test_execute_mapping_disabled(**kwargs)
@@ -1019,12 +999,6 @@ class MySQLAsyncCursorTests(tests.MySQLConnectorAioTestCase):
     @tests.foreach_cnx_aio()
     async def test_cursor_buffered_dictionary(self):
         kwargs = {"buffered": True, "dictionary": True}
-        await self._test_execute_mapping_disabled(**kwargs)
-        await self._test_execute_mapping_enabled(**kwargs)
-
-    @tests.foreach_cnx_aio()
-    async def test_cursor_buffered_named_tuple(self):
-        kwargs = {"buffered": True, "named_tuple": True}
         await self._test_execute_mapping_disabled(**kwargs)
         await self._test_execute_mapping_enabled(**kwargs)
 
