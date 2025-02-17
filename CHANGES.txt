@@ -3,10 +3,15 @@ MySQL Connector/Python - Release Notes & Changes
 ====================================================
 
 MySQL Connector/Python
-Copyright (c) 2009, 2024, Oracle and/or its affiliates.
+Copyright (c) 2009, 2025, Oracle and/or its affiliates.
 
 Full release notes:
  http://dev.mysql.com/doc/relnotes/connector-python/en/
+
+v9.3.0
+======
+
+- BUG#37453587: Github links in PyPI project's pages do not work
 
 v9.2.0
 ======

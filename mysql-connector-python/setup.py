@@ -1,7 +1,7 @@
 #!/usr/bin/env python
 # -*- coding: utf-8 -*-
 
-# Copyright (c) 2009, 2024, Oracle and/or its affiliates.
+# Copyright (c) 2009, 2025, Oracle and/or its affiliates.
 #
 # This program is free software; you can redistribute it and/or modify
 # it under the terms of the GNU General Public License, version 2.0, as
@@ -48,6 +48,7 @@ try:
 except ImportError:
     DistWheel = None
 
+GITHUB_URL = "https://github.com/mysql/mysql-connector-python"
 METADATA_FILES = (
     "README.txt",
     "README.rst",
@@ -116,7 +117,7 @@ def main() -> None:
             "Documentation": "https://dev.mysql.com/doc/connector-python/en/",
             "Downloads": "https://dev.mysql.com/downloads/connector/python/",
             "Release Notes": "https://dev.mysql.com/doc/relnotes/connector-python/en/",
-            "Source Code": "https://github.com/mysql/mysql-connector-python",
+            "Source Code": GITHUB_URL,
             "Bug System": "https://bugs.mysql.com/",
             "Slack": "https://mysqlcommunity.slack.com/messages/connectors",
             "Forums": "https://forums.mysql.com/list.php?50",
@@ -201,6 +202,11 @@ def get_long_description() -> str:
                     if repl_name == "repl" or repl_name.endswith("mysql"):
                         block_text = block_text.replace(repl_source, repl_target)
             long_description = long_description.replace(block_match.group(), block_text)
+    # Make replacements for files that are directly accessible within GitHub but not within PyPI
+    files_regex_fragment = "|".join(mf.replace(".", r"\.") for mf in METADATA_FILES)
+    long_description = re.sub(pattern=rf"\<(?P<file_name>{files_regex_fragment})\>",
+                              repl=f"<{GITHUB_URL}/blob/trunk/\g<file_name>>",
+                              string=long_description)
     return long_description
 
 
