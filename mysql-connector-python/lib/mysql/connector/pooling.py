@@ -1,4 +1,4 @@
-# Copyright (c) 2013, 2024, Oracle and/or its affiliates.
+# Copyright (c) 2013, 2025, Oracle and/or its affiliates.
 #
 # This program is free software; you can redistribute it and/or modify
 # it under the terms of the GNU General Public License, version 2.0, as
@@ -615,7 +615,7 @@ class MySQLConnectionPool:
                     if (
                         self._reset_session
                         and self._cnx_config["compress"]
-                        and cnx.get_server_version() < (5, 7, 3)
+                        and cnx.server_version < (5, 7, 3)
                     ):
                         raise NotSupportedError(
                             "Pool reset session is not supported with "

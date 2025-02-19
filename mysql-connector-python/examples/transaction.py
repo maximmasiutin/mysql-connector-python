@@ -1,7 +1,7 @@
 #!/usr/bin/env python
 # -*- coding: utf-8 -*-
 
-# Copyright (c) 2009, 2024, Oracle and/or its affiliates.
+# Copyright (c) 2009, 2025, Oracle and/or its affiliates.
 #
 # This program is free software; you can redistribute it and/or modify
 # it under the terms of the GNU General Public License, version 2.0, as
@@ -59,7 +59,7 @@ def main(config):
     ) ENGINE=InnoDB"""
     cursor.execute(stmt_create)
 
-    warnings = cursor.fetchwarnings()
+    warnings = cursor.warnings
     if warnings:
         ids = [i for l, i, m in warnings]
         output.append("Oh oh.. we got warnings..")

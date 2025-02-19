@@ -1,6 +1,6 @@
 # -*- coding: utf-8 -*-
 
-# Copyright (c) 2009, 2024, Oracle and/or its affiliates.
+# Copyright (c) 2009, 2025, Oracle and/or its affiliates.
 #
 # This program is free software; you can redistribute it and/or modify
 # it under the terms of the GNU General Public License, version 2.0, as
@@ -199,7 +199,7 @@ class TestExamples(tests.MySQLConnectorTests):
             self.fail(e)
         output = self._exec_main(example)
 
-        if self.cnx.get_server_version() < (5, 6, 4):
+        if self.cnx.server_version < (5, 6, 4):
             exp = "does not support fractional precision for timestamps."
             self.assertTrue(output[0].endswith(exp))
         else:

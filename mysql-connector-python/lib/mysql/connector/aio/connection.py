@@ -99,7 +99,7 @@ from ..utils import (
     warn_ciphersuites_deprecated,
     warn_tls_version_deprecated,
 )
-from ._decorating import cmd_refresh_verify_options
+from ._decorating import cmd_refresh_verify_options, handle_read_write_timeout
 from .abstracts import MySQLConnectionAbstract, MySQLCursorAbstract, ServerInfo
 from .charsets import charsets
 from .cursor import (
@@ -114,7 +114,6 @@ from .cursor import (
 )
 from .logger import logger
 from .network import MySQLTcpSocket, MySQLUnixSocket
-from .utils import handle_read_write_timeout
 
 
 class MySQLConnection(MySQLConnectionAbstract):
@@ -155,7 +154,7 @@ class MySQLConnection(MySQLConnectionAbstract):
 
         # Set converter class
         try:
-            self.set_converter_class(self._converter_class)
+            self.converter_class = self._converter_class
         except TypeError as err:
             raise AttributeError(
                 "Converter classA should be a subclass of "
@@ -267,14 +266,14 @@ class MySQLConnection(MySQLConnectionAbstract):
             self._client_flags |= ClientFlag.SSL
 
         if self._handshake["capabilities"] & ClientFlag.PLUGIN_AUTH:
-            self.set_client_flags([ClientFlag.PLUGIN_AUTH])
+            self.client_flags = [ClientFlag.PLUGIN_AUTH]
 
         if self._handshake["capabilities"] & ClientFlag.CLIENT_QUERY_ATTRIBUTES:
             self._server_info.query_attrs_is_supported = True
-            self.set_client_flags([ClientFlag.CLIENT_QUERY_ATTRIBUTES])
+            self.client_flags = [ClientFlag.CLIENT_QUERY_ATTRIBUTES]
 
         if self._handshake["capabilities"] & ClientFlag.MULTI_FACTOR_AUTHENTICATION:
-            self.set_client_flags([ClientFlag.MULTI_FACTOR_AUTHENTICATION])
+            self.client_flags = [ClientFlag.MULTI_FACTOR_AUTHENTICATION]
 
     async def _do_auth(self) -> None:
         """Authenticate with the MySQL server.

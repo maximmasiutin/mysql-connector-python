@@ -844,7 +844,7 @@ class MySQLConnectionAioTests(MySQLConnectorAioTestCase):
         cnx._password = "spam"
         cnx._database = "test"
         cnx._charset = charsets.get_by_id(45)
-        cnx._client_flags = flags
+        cnx.client_flags = flags
 
         cnx._socket._writer.add_packet(OK_PACKET)
         await cnx._do_auth()
@@ -861,7 +861,7 @@ class MySQLConnectionAioTests(MySQLConnectorAioTestCase):
                 bytearray(b"\x07\x00\x00\x02\x00\x00\x00\x02\x00\x00\x00"),
             ]
         )
-        cnx.set_client_flags([-ClientFlag.CONNECT_WITH_DB])
+        cnx.client_flags = [-ClientFlag.CONNECT_WITH_DB]
         await cnx._do_auth()
 
         # Using an unknown database should raise an error
@@ -878,7 +878,7 @@ class MySQLConnectionAioTests(MySQLConnectorAioTestCase):
             ]
         )
         flags &= ~ClientFlag.CONNECT_WITH_DB
-        cnx._client_flags = flags
+        cnx.client_flags = flags
         with self.assertRaises(ProgrammingError):
             await cnx._do_auth()
 
@@ -1099,37 +1099,38 @@ class MySQLConnectionAioTests(MySQLConnectorAioTestCase):
             await self.cnx.ping()
 
     @foreach_cnx_aio()
-    async def test_set_converter_class(self):
-        """Set the converter class"""
+    async def test_converter_class(self):
+        """Set the converter class setter property"""
 
         class TestConverterWrong: ...
 
-        self.assertRaises(TypeError, self.cnx.set_converter_class, TestConverterWrong)
+        with self.assertRaises(TypeError):
+            self.cnx.converter_class = TestConverterWrong
 
         class TestConverter(MySQLConverterBase): ...
 
-        self.cnx.set_converter_class(TestConverter)
+        self.cnx.converter_class = TestConverter
         self.assertTrue(isinstance(self.cnx.converter, TestConverter))
         self.assertEqual(self.cnx._converter_class, TestConverter)
 
     @foreach_cnx_aio()
-    async def test_get_server_version(self):
+    async def test_server_version(self):
         """Get the MySQL version"""
         self.assertIn(
-            ".".join([str(x) for x in self.cnx.get_server_version()]),
+            ".".join([str(x) for x in self.cnx.server_version]),
             self.cnx._server_info.version,
         )
 
     @foreach_cnx_aio()
-    async def test_get_server_info(self):
+    async def test_server_info(self):
         """Get the original MySQL version information"""
         self.assertEqual(
             self.cnx._handshake["server_version_original"],
-            self.cnx.get_server_info(),
+            self.cnx.server_info,
         )
 
         del self.cnx._handshake["server_version_original"]
-        self.assertEqual(None, self.cnx.get_server_info())
+        self.assertEqual(None, self.cnx.server_info)
 
     @foreach_cnx_aio()
     async def test_connection_id(self):
@@ -1253,16 +1254,19 @@ class MySQLConnectionAioTests(MySQLConnectorAioTestCase):
         self.assertEqual("latin2_general_ci", self.cnx.collation)
 
     @foreach_cnx_aio()
-    async def test_set_client_flags(self):
-        """Set the client flags."""
-        self.assertRaises(ProgrammingError, self.cnx.set_client_flags, "Spam")
-        self.assertRaises(ProgrammingError, self.cnx.set_client_flags, 0)
+    async def test_client_flags(self):
+        """Test the client flags setter property."""
+
+        with self.assertRaises(ProgrammingError):
+            self.cnx.client_flags = "Spam"
+        with self.assertRaises(ProgrammingError):
+            self.cnx.client_flags = 0
 
         default_flags = ClientFlag.get_default()
 
         exp = default_flags
-        self.assertEqual(exp, self.cnx.set_client_flags(exp))
-        self.assertEqual(exp, self.cnx._client_flags)
+        self.cnx.client_flags = exp
+        self.assertEqual(exp, self.cnx.client_flags)
 
         exp = default_flags
         exp |= ClientFlag.SSL
@@ -1273,8 +1277,8 @@ class MySQLConnectionAioTests(MySQLConnectorAioTestCase):
             ClientFlag.FOUND_ROWS,
             -ClientFlag.MULTI_RESULTS,
         ]
-        self.assertEqual(exp, self.cnx.set_client_flags(flags))
-        self.assertEqual(exp, self.cnx._client_flags)
+        self.cnx.client_flags = flags
+        self.assertEqual(exp, self.cnx.client_flags)
 
     @foreach_cnx_aio()
     def test_user(self):
@@ -3015,7 +3019,7 @@ class WL14237_not_supported(tests.MySQLConnectorTests):
             async with await cnx.cursor(prepared=prepared) as cur:
                 self.assertListEqual([], cur.get_attributes())
                 cur.add_attribute("attr_1", "attr_val")
-                # verify get_attributes returns a single attribute that was set
+                # verify attributes getter returns a single attribute that was set
                 self.assertListEqual([("attr_1", "attr_val")], cur.get_attributes())
 
                 with warnings.catch_warnings(record=True) as warn:
@@ -3150,7 +3154,7 @@ class WL14237(tests.MySQLConnectorTests):
                 for attr_name, attr_val, my_value in self.test_attributes:
                     self.assertListEqual([], cur.get_attributes())
                     cur.add_attribute(attr_name, attr_val)
-                    # verify get_attributes returns the single attribute set
+                    # verify attributes getter returns the single attribute set
                     self.assertListEqual([(attr_name, attr_val)], cur.get_attributes())
                     await cur.execute(
                         self.query_insert.format(
@@ -3190,7 +3194,7 @@ class WL14237(tests.MySQLConnectorTests):
                 self.assertEqual([(len(added_attrs),)], await cur.fetchall())
                 # Check that attribute values are correct
                 await self._check_attribute_values_are_correct(attr_name, my_value)
-                # verify that `get_attributes()` returns an empty list
+                # verify that `attributes` getter returns an empty list
             cur.clear_attributes()
             self.assertListEqual([], cur.get_attributes())
             await cur.close()
@@ -3198,7 +3202,7 @@ class WL14237(tests.MySQLConnectorTests):
         await self._empty_table()
 
     async def _test_3_query_attr_add_attribute_error_bad_name_par(self, prepared=False):
-        "Test add_attribute() invalid name parameter."
+        "Test 'attributes' setter invalid name parameter."
         attr_name_invalid = [1, 1.5, ["invalid"], b"invalid", object]
         attr_val = "valid"
 
@@ -3219,7 +3223,7 @@ class WL14237(tests.MySQLConnectorTests):
     async def _test_4_query_attr_add_attribute_error_bad_value_par(
         self, prepared=False
     ):
-        "Test add_attribute() invalid value parameter."
+        "Test 'attributes' setter invalid value parameter."
         attr_name = "invalid"
         attr_values_not_supported = [
             ["l", "i", "s", "t"],
@@ -3246,7 +3250,7 @@ class WL14237(tests.MySQLConnectorTests):
                 for attr_name, attr_val, my_value in self.test_attributes:
                     self.assertListEqual([], cur.get_attributes())
                     cur.add_attribute(attr_name, attr_val)
-                    # verify get_attributes returns a single attribute that was set
+                    # verify attributes getter returns a single attribute that was set
                     self.assertListEqual([(attr_name, attr_val)], cur.get_attributes())
                     if prepared:
                         await cur.execute(
@@ -3328,7 +3332,7 @@ class WL14237(tests.MySQLConnectorTests):
                 self.assertEqual(("1", "2"), res[0])
 
     async def _check_expected_behavior_for_unnamed_query_attrs(self, prepared=False):
-        "Check behavior add_attribute() and get_attributes() when the name is ''"
+        "Check behavior attributes getter and setter properties when the name is ''"
         async with self.cnx.__class__(**self.config) as cnx:
             async with await cnx.cursor(prepared=prepared) as cur:
                 cur.add_attribute("", 1)
@@ -3354,12 +3358,12 @@ class WL14237(tests.MySQLConnectorTests):
 
     @foreach_cnx_aio()
     async def test_3_query_attr_add_attribute_error_bad_name_par(self):
-        "Test add_attribute() invalid name parameter."
+        "Test 'attributes' setter property invalid name parameter."
         await self._test_3_query_attr_add_attribute_error_bad_name_par()
 
     @foreach_cnx_aio()
     async def test_4_query_attr_add_attribute_error_bad_value_par(self):
-        "Test add_attribute() invalid value parameter."
+        "Test 'attributes' setter property invalid value parameter."
         await self._test_4_query_attr_add_attribute_error_bad_value_par()
 
     @foreach_cnx_aio()
@@ -3379,12 +3383,12 @@ class WL14237(tests.MySQLConnectorTests):
 
     @foreach_cnx_aio()
     async def test_8_query_attr_add_attribute_error_bad_name_par_prepared_cur(self):
-        "Test add_attribute() invalid name parameter, prepared stmt."
+        "Test 'attributes' setter property invalid name parameter, prepared stmt."
         await self._test_3_query_attr_add_attribute_error_bad_name_par(prepared=True)
 
     @foreach_cnx_aio()
     async def test_9_query_attr_add_attribute_error_bad_value_par_prepared_cur(self):
-        "Test add_attribute() invalid value parameter, prepared stmt."
+        "Test 'attributes' setter property invalid value parameter, prepared stmt."
         await self._test_4_query_attr_add_attribute_error_bad_value_par(prepared=True)
 
     @foreach_cnx_aio(MySQLConnection)
@@ -3404,7 +3408,7 @@ class WL14237(tests.MySQLConnectorTests):
 
     @foreach_cnx_aio()
     async def test_13_check_expected_behavior_for_unnamed_query_attrs(self):
-        "Check behavior add_attribute() and get_attributes() when the name is ''"
+        "Check behavior 'attributes' getter and setter properties when the name is ''"
         await self._check_expected_behavior_for_unnamed_query_attrs()
 
     @foreach_cnx_aio(MySQLConnection)
@@ -3425,5 +3429,5 @@ class WL14237(tests.MySQLConnectorTests):
     async def test_16_check_expected_behavior_for_unnamed_query_attrs_prepared_cur(
         self,
     ):
-        "Check behavior add_attribute() and get_attributes() when the name is ''"
+        "Check behavior 'attributes' getter and setter properties when the name is ''"
         await self._check_expected_behavior_for_unnamed_query_attrs(prepared=True)

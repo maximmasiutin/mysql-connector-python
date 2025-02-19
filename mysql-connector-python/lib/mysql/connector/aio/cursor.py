@@ -49,6 +49,7 @@ from typing import (
     Union,
 )
 
+from .._decorating import deprecated as deprecated_sync
 from .._scripting import split_multi_statement
 from ..constants import ServerFlag
 from ..cursor import (
@@ -82,8 +83,8 @@ from ..types import (
     StrOrBytes,
     WarningType,
 )
+from ._decorating import deprecated
 from .abstracts import MySQLConnectionAbstract, MySQLCursorAbstract
-from .utils import deprecated
 
 ERR_NO_RESULT_TO_FETCH = "No result set to fetch from"
 
@@ -482,6 +483,10 @@ class MySQLCursor(MySQLCursorAbstract):
         except Exception as err:
             raise InterfaceError(f"Failed executing the operation; {err}") from None
 
+    @deprecated_sync(
+        "The property counterpart 'stored_results' will be added in a future release, "
+        "and this method will be removed."
+    )
     def stored_results(self) -> Iterator[MySQLCursorAbstract]:
         """Returns an iterator for stored results.
 

@@ -644,20 +644,19 @@ class MySQLCursorTests(tests.TestsCursor):
         self._test_execute_cleanup(self.cnx, tbl)
         self.cur.close()
 
-    def test_fetchwarnings(self):
-        """MySQLCursor object fetchwarnings()-method"""
-        self.check_method(self.cur, "fetchwarnings")
+    def test_warnings(self):
+        """MySQLCursor object warnings-property"""
 
         self.assertEqual(
             None,
-            self.cur.fetchwarnings(),
+            self.cur.warnings,
             "There should be no warnings after initiating cursor.",
         )
 
         exp = ["A warning"]
         self.cur._warnings = exp
         self.cur._warning_count = len(self.cur._warnings)
-        self.assertEqual(exp, self.cur.fetchwarnings())
+        self.assertEqual(exp, self.cur.warnings)
         self.cur.close()
 
     def test_stored_results(self):

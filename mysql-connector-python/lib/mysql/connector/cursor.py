@@ -49,6 +49,7 @@ from typing import (
     cast,
 )
 
+from ._decorating import deprecated
 from ._scripting import split_multi_statement
 from .abstracts import MySQLCursorAbstract
 from .constants import ServerFlag
@@ -532,6 +533,10 @@ class MySQLCursor(MySQLCursorAbstract):
         self._rowcount = rowcnt
         return None
 
+    @deprecated(
+        "The property counterpart 'stored_results' will be added in a future release, "
+        "and this method will be removed."
+    )
     def stored_results(self) -> Iterator[MySQLCursor]:
         """Returns an iterator for stored results
 
@@ -662,16 +667,6 @@ class MySQLCursor(MySQLCursorAbstract):
             raise
         except Exception as err:
             raise InterfaceError(f"Failed calling stored routine; {err}") from None
-
-    def getlastrowid(self) -> Optional[int]:
-        """Returns the value generated for an AUTO_INCREMENT column
-
-        Returns the value generated for an AUTO_INCREMENT column by
-        the previous INSERT or UPDATE statement.
-
-        Returns a long value or None.
-        """
-        return self._last_insert_id
 
     def _fetch_warnings(self) -> Optional[List[WarningType]]:
         """

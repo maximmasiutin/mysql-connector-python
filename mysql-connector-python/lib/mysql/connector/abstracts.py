@@ -75,6 +75,7 @@ except ImportError:
 from .constants import (
     CONN_ATTRS_DN,
     DEFAULT_CONFIGURATION,
+    DEPRECATED_METHOD_WARNING,
     MYSQL_DEFAULT_CHARSET_ID_57,
     MYSQL_DEFAULT_CHARSET_ID_80,
     OPENSSL_CS_NAMES,
@@ -107,6 +108,7 @@ if OTEL_ENABLED:
         trace,
     )
 
+from ._decorating import deprecated
 from .optionfiles import read_option_files
 from .tls_ciphers import UNACCEPTABLE_TLS_CIPHERSUITES, UNACCEPTABLE_TLS_VERSIONS
 from .types import (
@@ -597,7 +599,7 @@ class MySQLConnectionAbstract(ABC):
         # Configure client flags
         try:
             default = ClientFlag.get_default()
-            self.set_client_flags(config["client_flags"] or default)
+            self.client_flags = config["client_flags"] or default
             del config["client_flags"]
         except KeyError:
             pass  # Missing client_flags-argument is OK
@@ -605,7 +607,7 @@ class MySQLConnectionAbstract(ABC):
         try:
             if config["compress"]:
                 self._compress = True
-                self.set_client_flags([ClientFlag.COMPRESS])
+                self.client_flags = [ClientFlag.COMPRESS]
         except KeyError:
             pass  # Missing compress argument is OK
 
@@ -627,9 +629,9 @@ class MySQLConnectionAbstract(ABC):
             ):
                 raise AttributeError("allow_local_infile_in_path must be a directory")
         if self._allow_local_infile or self._allow_local_infile_in_path:
-            self.set_client_flags([ClientFlag.LOCAL_FILES])
+            self.client_flags = [ClientFlag.LOCAL_FILES]
         else:
-            self.set_client_flags([-ClientFlag.LOCAL_FILES])
+            self.client_flags = [-ClientFlag.LOCAL_FILES]
 
         try:
             if not config["consume_results"]:
@@ -655,7 +657,7 @@ class MySQLConnectionAbstract(ABC):
 
         # Set converter class
         try:
-            self.set_converter_class(config["converter_class"])
+            self.converter_class = config["converter_class"]
         except KeyError:
             pass  # Using default converter class
         except TypeError as err:
@@ -949,6 +951,7 @@ class MySQLConnectionAbstract(ABC):
 
         return version
 
+    @deprecated(DEPRECATED_METHOD_WARNING.format(property_name="server_version"))
     def get_server_version(self) -> Optional[Tuple[int, ...]]:
         """Gets the MySQL version.
 
@@ -958,8 +961,29 @@ class MySQLConnectionAbstract(ABC):
         """
         return self._server_version
 
+    @deprecated(DEPRECATED_METHOD_WARNING.format(property_name="server_info"))
     def get_server_info(self) -> Optional[str]:
         """Gets the original MySQL version information.
+
+        Returns:
+            The original MySQL server as text. If not previously connected, it will
+            return `None`.
+        """
+        return self.server_info
+
+    @property
+    def server_version(self) -> Optional[Tuple[int, ...]]:
+        """Gets the MySQL Server version the connector is connected to.
+
+        Returns:
+            The MySQL server version as a tuple. If not previously connected, it will
+            return `None`.
+        """
+        return self._server_version
+
+    @property
+    def server_info(self) -> Optional[str]:
+        """Gets the original MySQL server version information.
 
         Returns:
             The original MySQL server as text. If not previously connected, it will
@@ -992,6 +1016,7 @@ class MySQLConnectionAbstract(ABC):
             ```
         """
 
+    @deprecated(DEPRECATED_METHOD_WARNING.format(property_name="client_flags"))
     def set_client_flags(self, flags: Union[int, Sequence[int]]) -> int:
         """Sets the client flags.
 
@@ -1020,6 +1045,40 @@ class MySQLConnectionAbstract(ABC):
             >>> cnx.reconnect()
             ```
         """
+        self.client_flags = flags
+        return self.client_flags
+
+    @property
+    def client_flags(self) -> int:
+        """Gets the client flags of the current session."""
+        return self._client_flags
+
+    @client_flags.setter
+    def client_flags(self, flags: Union[int, Sequence[int]]) -> None:
+        """Sets the client flags.
+
+        The flags-argument can be either an int or a list (or tuple) of
+        ClientFlag-values. If it is an integer, it will set client_flags
+        to flags as is.
+
+        If flags is a sequence, each item in the sequence sets the flag when the
+        value is positive or unsets it when negative (see example below).
+
+        Args:
+            flags: A list (or tuple), each flag will be set or unset when it's negative.
+
+        Raises:
+            ProgrammingError: When the flags argument is not a set or an integer
+                              bigger than 0.
+
+        Examples:
+            ```
+            For example, to unset `LONG_FLAG` and set the `FOUND_ROWS` flags:
+            >>> from mysql.connector.constants import ClientFlag
+            >>> cnx.client_flags = [ClientFlag.FOUND_ROWS, -ClientFlag.LONG_FLAG]
+            >>> cnx.reconnect()
+            ```
+        """
         if isinstance(flags, int) and flags > 0:
             self._client_flags = flags
         elif isinstance(flags, (tuple, list)):
@@ -1029,8 +1088,7 @@ class MySQLConnectionAbstract(ABC):
                 else:
                     self._client_flags |= flag
         else:
-            raise ProgrammingError("set_client_flags expect integer (>0) or set")
-        return self._client_flags
+            raise ProgrammingError("client_flags setter expect integer (>0) or set")
 
     def shutdown(self) -> NoReturn:
         """Shuts down connection to MySQL Server.
@@ -1129,17 +1187,28 @@ class MySQLConnectionAbstract(ABC):
         else:
             self._password = ""
 
+    @deprecated(DEPRECATED_METHOD_WARNING.format(property_name="use_unicode"))
     def set_unicode(self, value: bool = True) -> None:
-        """Toggles unicode mode.
-
-        Sets whether we return string fields as unicode or not.
+        """Sets whether we return string fields as unicode or not.
 
         Args:
             value: A boolean - default is `True`.
         """
-        self._use_unicode = value
-        if self.converter:
-            self.converter.set_unicode(value)
+        self.use_unicode = value
+
+    @property
+    def use_unicode(self) -> bool:
+        """Gets whether we return string fields as unicode or not."""
+        return self._use_unicode
+
+    @use_unicode.setter
+    @abstractmethod
+    def use_unicode(self, value: bool) -> None:
+        """Sets whether we return string fields as unicode or not.
+
+        Args:
+            value: A boolean - default is `True`.
+        """
 
     @property
     def autocommit(self) -> bool:
@@ -1882,7 +1951,24 @@ class MySQLConnectionAbstract(ABC):
                     cur.execute(f"SET SESSION `{key}` = {value}")
             cur.close()
 
+    @deprecated(DEPRECATED_METHOD_WARNING.format(property_name="converter_class"))
     def set_converter_class(self, convclass: Optional[Type[MySQLConverter]]) -> None:
+        """
+        Sets the converter class to be used.
+
+        Args:
+            convclass: Should be a class overloading methods and members of
+                       `conversion.MySQLConverter`.
+        """
+        self.converter_class = convclass
+
+    @property
+    def converter_class(self) -> Optional[Type[MySQLConverter]]:
+        """Gets the converter class set for the current session."""
+        return self._converter_class
+
+    @converter_class.setter
+    def converter_class(self, convclass: Optional[Type[MySQLConverter]]) -> None:
         """
         Sets the converter class to be used.
 
@@ -1893,7 +1979,7 @@ class MySQLConnectionAbstract(ABC):
         if convclass and issubclass(convclass, MySQLConverterBase):
             charset_name = self._character_set.get_info(self._charset_id)[0]
             self._converter_class = convclass
-            self.converter = convclass(charset_name, self._use_unicode)
+            self.converter = convclass(charset_name, self.use_unicode)
             self.converter.str_fallback = self._converter_str_fallback
         else:
             raise TypeError(
@@ -3010,7 +3096,7 @@ class MySQLCursorAbstract(ABC):
 
     @property
     def warnings(self) -> Optional[List[WarningType]]:
-        """Returns a list of tuples (WarningType) containing warnings generated
+        """Gets a list of tuples (WarningType) containing warnings generated
         by the previously executed operation.
 
         Examples:
@@ -3053,6 +3139,7 @@ class MySQLCursorAbstract(ABC):
         except (AttributeError, UnicodeDecodeError):
             return cast(str, self._executed.strip())
 
+    @deprecated(DEPRECATED_METHOD_WARNING.format(property_name="warnings"))
     def fetchwarnings(self) -> Optional[List[WarningType]]:
         """Returns a list of tuples (WarningType) containing warnings generated by
         the previously executed operation.

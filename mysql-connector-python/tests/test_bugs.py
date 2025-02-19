@@ -248,7 +248,7 @@ class Bug499362(tests.MySQLConnectorTests):
     def test_charset(self):
         cur = self.cnx.cursor()
 
-        ver = self.cnx.get_server_version()
+        ver = self.cnx.server_version
 
         varlst = [
             "character_set_client",
@@ -352,22 +352,22 @@ class Bug501290(tests.MySQLConnectorTests):
         self._setup()
         flags = constants.ClientFlag.default
         for flag in flags:
-            self.assertTrue(self.cnx._client_flags & flag)
+            self.assertTrue(self.cnx.client_flags & flag)
 
     @foreach_cnx()
     def test_set_unset(self):
         self._setup()
-        orig = self.cnx._client_flags
+        orig = self.cnx.client_flags
 
         exp = self.default_flags | constants.ClientFlag.COMPRESS
         if tests.MYSQL_VERSION < (5, 7):
             exp = exp & ~constants.ClientFlag.CONNECT_ARGS
-        self.cnx.set_client_flags([constants.ClientFlag.COMPRESS])
+        self.cnx.client_flags = [constants.ClientFlag.COMPRESS]
         for flag in constants.ClientFlag.default:
-            self.assertTrue(self.cnx._client_flags & flag)
+            self.assertTrue(self.cnx.client_flags & flag)
 
-        self.cnx.set_client_flags([-constants.ClientFlag.COMPRESS])
-        self.assertEqual(self.cnx._client_flags, orig)
+        self.cnx.client_flags = [-constants.ClientFlag.COMPRESS]
+        self.assertEqual(self.cnx.client_flags, orig)
 
     @foreach_cnx()
     def test_isset_client_flag(self):
@@ -375,7 +375,7 @@ class Bug501290(tests.MySQLConnectorTests):
         flag = constants.ClientFlag.COMPRESS
         data = self.default_flags | flag
 
-        self.cnx._client_flags = data
+        self.cnx.client_flags = data
         self.assertEqual(True, self.cnx.isset_client_flag(flag))
 
 
@@ -2357,7 +2357,7 @@ class BugOra17573172(tests.MySQLConnectorTests):
         self.cnx.commit()
 
     def test_read_only(self):
-        if self.cnx.get_server_version() < (5, 6, 5):
+        if self.cnx.server_version < (5, 6, 5):
             self.assertRaises(ValueError, self.cnx.start_transaction, readonly=True)
         else:
             self.cnx.start_transaction(readonly=True)
@@ -3174,7 +3174,7 @@ class Bug499410(tests.MySQLConnectorTests):
         config["use_unicode"] = False
         cnx = connection.MySQLConnection(**config)
 
-        self.assertEqual(False, cnx._use_unicode)
+        self.assertEqual(False, cnx.use_unicode)
         cnx.close()
 
     @cnx_config(use_unicode=False, charset="greek")
@@ -3208,7 +3208,7 @@ class Bug499410(tests.MySQLConnectorTests):
 
         cur.execute(f"SELECT c1 FROM {tbl}")
         res_nonunicode = cur.fetchall()
-        self.cnx.set_unicode(True)
+        self.cnx.use_unicode = True
         cur.execute(f"SELECT c1 FROM {tbl}")
         res_unicode = cur.fetchall()
 
@@ -3871,7 +3871,7 @@ class BugOra19777815(tests.MySQLConnectorTests):
         cur = self.cnx.cursor()
         cur.callproc(self.sp1)
         exp = [("Warning", 1642, "TEST WARNING")]
-        self.assertEqual(exp, cur.fetchwarnings())
+        self.assertEqual(exp, cur.warnings)
 
     @foreach_cnx(get_warnings=True)
     def test_warning_with_rows(self):
@@ -3882,7 +3882,7 @@ class BugOra19777815(tests.MySQLConnectorTests):
         self.assertEqual(exp, next(cur.stored_results()).fetchall())
 
         exp = [("Warning", 1642, "TEST WARNING")]
-        self.assertEqual(exp, cur.fetchwarnings())
+        self.assertEqual(exp, cur.warnings)
 
 
 class BugOra20407036(tests.MySQLConnectorTests):
@@ -4251,7 +4251,7 @@ class BugOra21536507(tests.MySQLConnectorTests):
         drop_stmt = "DROP TABLE IF EXISTS unknown"
         self.assertRaises(errors.DatabaseError, cur.execute, drop_stmt)
         exp = [("Note", 1051, "Unknown table 'myconnpy.unknown'")]
-        res = cur.fetchwarnings()
+        res = cur.warnings
         self.assertEqual("Note", res[0][0])
         self.assertEqual(1051, res[0][1])
         self.assertTrue(res[0][2].startswith("Unknown table"))
@@ -4269,7 +4269,7 @@ class BugOra21536507(tests.MySQLConnectorTests):
                 ("Warning", 1292, "Truncated incorrect DOUBLE value: 'b'"),
                 ("Warning", 1292, "Truncated incorrect DOUBLE value: 'a'"),
             ]
-        self.assertEqual(exp, cur.fetchwarnings())
+        self.assertEqual(exp, cur.warnings)
         try:
             cur.close()
         except errors.InternalError as exc:
@@ -4346,7 +4346,7 @@ class BugOra21492428(tests.MySQLConnectorTests):
             ("A B C D", "    ppppp    "),
         ]
 
-        if self.cnx.get_server_version() > (5, 6):
+        if self.cnx.server_version > (5, 6):
             self._credentials += [
                 (" PQRSWITHSPACE", " 1 2 3 "),
                 ("XYZ1WITHSPACE ", "XYZ123    "),
@@ -6476,12 +6476,12 @@ class BugOra30416704(tests.MySQLConnectorTests):
 
     @foreach_cnx()
     def test_without_use_unicode(self):
-        self.cnx.set_unicode(False)
+        self.cnx.use_unicode = False
         self._test_result(self.cnx, self.exp_binary_values, use_binary_charset=True)
 
     @foreach_cnx()
     def test_without_use_unicode_cursor_prepared(self):
-        self.cnx.set_unicode(False)
+        self.cnx.use_unicode = False
         self._test_result(
             self.cnx,
             self.exp_binary_values,

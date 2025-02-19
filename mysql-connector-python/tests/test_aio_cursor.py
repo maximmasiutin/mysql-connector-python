@@ -563,7 +563,7 @@ class MySQLCursorTests(tests.MySQLConnectorAioTestCase, MySQLCursorTestsMixin):
                     getattr(cur, key),
                     f"Default for '{key}' did not match.",
                 )
-            self.assertEqual(None, cur.getlastrowid())
+            self.assertEqual(None, cur.lastrowid)
 
         # Assign an invalid connection object
         self.assertRaises(AttributeError, MySQLCursor, connection="invalid")
@@ -607,18 +607,17 @@ class MySQLCursorTests(tests.MySQLConnectorAioTestCase, MySQLCursorTestsMixin):
         await self._test_fetchmany(self.cnx, MySQLCursor)
 
     @foreach_cnx_aio()
-    async def test_fetchwarnings(self):
+    async def test_warnings(self):
         async with await self.cnx.cursor() as cur:
             self.assertEqual(
                 None,
-                cur.fetchwarnings(),
+                cur.warnings,
                 "There should be no warnings after initiating cursor",
             )
             exp = ["A warning"]
             cur._warnings = exp
             cur._warning_count = len(cur._warnings)
             self.assertEqual(exp, cur.warnings)
-            self.assertEqual(exp, cur.fetchwarnings())
 
     @foreach_cnx_aio()
     async def test_stored_results(self):

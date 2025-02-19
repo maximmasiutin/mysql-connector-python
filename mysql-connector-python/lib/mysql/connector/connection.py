@@ -57,7 +57,7 @@ from typing import (
 )
 
 from . import version
-from ._decorating import cmd_refresh_verify_options
+from ._decorating import cmd_refresh_verify_options, handle_read_write_timeout
 from ._scripting import get_local_infile_filenames
 from .abstracts import MySQLConnectionAbstract
 from .authentication import MySQLAuthenticator, get_auth_plugin
@@ -117,7 +117,6 @@ from .types import (
 )
 from .utils import (
     get_platform,
-    handle_read_write_timeout,
     int1store,
     int4store,
     lc_int,
@@ -250,14 +249,14 @@ class MySQLConnection(MySQLConnectionAbstract):
             self._client_flags |= ClientFlag.SSL
 
         if handshake["capabilities"] & ClientFlag.PLUGIN_AUTH:
-            self.set_client_flags([ClientFlag.PLUGIN_AUTH])
+            self.client_flags = [ClientFlag.PLUGIN_AUTH]
 
         if handshake["capabilities"] & ClientFlag.CLIENT_QUERY_ATTRIBUTES:
             self._query_attrs_supported = True
-            self.set_client_flags([ClientFlag.CLIENT_QUERY_ATTRIBUTES])
+            self.client_flags = [ClientFlag.CLIENT_QUERY_ATTRIBUTES]
 
         if handshake["capabilities"] & ClientFlag.MULTI_FACTOR_AUTHENTICATION:
-            self.set_client_flags([ClientFlag.MULTI_FACTOR_AUTHENTICATION])
+            self.client_flags = [ClientFlag.MULTI_FACTOR_AUTHENTICATION]
 
         self._handshake = handshake
 
@@ -394,7 +393,7 @@ class MySQLConnection(MySQLConnectionAbstract):
                 self._ssl,
                 self._conn_attrs,
             )
-            self.set_converter_class(self._converter_class)
+            self.converter_class = self._converter_class
 
             if self._client_flags & ClientFlag.COMPRESS:
                 # update the network layer accordingly
@@ -1285,6 +1284,12 @@ class MySQLConnection(MySQLConnectionAbstract):
             path (str): Path that user can upload files.
         """
         self._allow_local_infile_in_path = path
+
+    @MySQLConnectionAbstract.use_unicode.setter  # type: ignore
+    def use_unicode(self, value: bool) -> None:
+        self._use_unicode = value
+        if self.converter:
+            self.converter.set_unicode(value)
 
     def reset_session(
         self,

@@ -1,7 +1,7 @@
 #!/usr/bin/env python
 # -*- coding: utf-8 -*-
 
-# Copyright (c) 2009, 2024, Oracle and/or its affiliates.
+# Copyright (c) 2009, 2025, Oracle and/or its affiliates.
 #
 # This program is free software; you can redistribute it and/or modify
 # it under the terms of the GNU General Public License, version 2.0, as
@@ -59,10 +59,10 @@ CREATE_TABLE = (
 def main(config):
     output = []
     cnx = mysql.connector.Connect(**config)
-    if cnx.get_server_version() < (5, 6, 4):
+    if cnx.server_version < (5, 6, 4):
         output.append(
             "MySQL {0} does not support fractional precision"
-            " for timestamps.".format(cnx.get_server_info())
+            " for timestamps.".format(cnx.server_info)
         )
         return output
     cursor = cnx.cursor()

@@ -1,4 +1,4 @@
-# Copyright (c) 2009, 2024, Oracle and/or its affiliates.
+# Copyright (c) 2009, 2025, Oracle and/or its affiliates.
 #
 # This program is free software; you can redistribute it and/or modify
 # it under the terms of the GNU General Public License, version 2.0, as
@@ -28,7 +28,6 @@
 
 """Utilities."""
 
-import functools
 import importlib
 import os
 import platform
@@ -721,29 +720,6 @@ def warn_tls_version_deprecated(tls_version: str) -> None:
             "MySQL Connector/Python."
         )
         warnings.warn(warn_msg, DeprecationWarning)
-
-
-def handle_read_write_timeout() -> Callable:
-    """
-    Decorator to close the current connection if a read or a write timeout
-    is raised by the method passed via the func parameter.
-    """
-
-    def decorator(cnx_method: Callable) -> Callable:
-        @functools.wraps(cnx_method)
-        def handle_cnx_method(
-            cnx: "MySQLConnectionAbstract", *args: Any, **kwargs: Any
-        ) -> Any:
-            try:
-                return cnx_method(cnx, *args, **kwargs)
-            except Exception as err:
-                if isinstance(err, TimeoutError):
-                    cnx.close()
-                raise err
-
-        return handle_cnx_method
-
-    return decorator
 
 
 class GenericWrapper:

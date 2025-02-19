@@ -906,7 +906,7 @@ class MySQLConnectionTests(tests.MySQLConnectorTests):
                 bytearray(b"\x07\x00\x00\x02\x00\x00\x00\x02\x00\x00\x00"),
             ]
         )
-        self.cnx.set_client_flags([-constants.ClientFlag.CONNECT_WITH_DB])
+        self.cnx.client_flags = [-constants.ClientFlag.CONNECT_WITH_DB]
         self.assertEqual(True, self.cnx._do_auth(**kwargs))
 
         # Using an unknown database should raise an error
@@ -1157,18 +1157,18 @@ class MySQLConnectionTests(tests.MySQLConnectorTests):
             self.assertEqual(toggle, cnx._raw)
         for toggle in [False, True]:
             cnx.config(use_unicode=toggle)
-            self.assertEqual(toggle, cnx._use_unicode)
+            self.assertEqual(toggle, cnx.use_unicode)
 
         # Test client flags
         cnx = _DummyMySQLConnection()
-        cnx.set_client_flags(constants.ClientFlag.get_default())
+        cnx.client_flags = constants.ClientFlag.get_default()
         flag = exp = constants.ClientFlag.COMPRESS
         cnx.config(client_flags=flag)
-        self.assertEqual(exp, cnx._client_flags)
+        self.assertEqual(exp, cnx.client_flags)
 
         # Setting client flags using a list
         cnx = _DummyMySQLConnection()
-        cnx.set_client_flags(constants.ClientFlag.get_default())
+        cnx.client_flags = constants.ClientFlag.get_default()
         flags = [
             constants.ClientFlag.COMPRESS,
             constants.ClientFlag.FOUND_ROWS,
@@ -1177,7 +1177,7 @@ class MySQLConnectionTests(tests.MySQLConnectorTests):
         for flag in flags:
             exp |= flag
         cnx.config(client_flags=flags)
-        self.assertEqual(exp, cnx._client_flags)
+        self.assertEqual(exp, cnx.client_flags)
 
         # and unsetting client flags again
         exp = constants.ClientFlag.get_default()
@@ -1186,12 +1186,12 @@ class MySQLConnectionTests(tests.MySQLConnectorTests):
             -constants.ClientFlag.FOUND_ROWS,
         ]
         cnx.config(client_flags=flags)
-        self.assertEqual(exp, cnx._client_flags)
+        self.assertEqual(exp, cnx.client_flags)
 
         # Test compress argument
         cnx.config(compress=True)
         exp = constants.ClientFlag.COMPRESS
-        self.assertEqual(exp, cnx._client_flags & constants.ClientFlag.COMPRESS)
+        self.assertEqual(exp, cnx.client_flags & constants.ClientFlag.COMPRESS)
 
         # Test converter class
         class TestConverter(MySQLConverterBase): ...
@@ -1354,7 +1354,7 @@ class MySQLConnectionTests(tests.MySQLConnectorTests):
         self.assertTrue(isinstance(self.cnx._socket, network.MySQLTCPSocket))
         self.cnx.close()
 
-        self.cnx._client_flags |= constants.ClientFlag.COMPRESS
+        self.cnx.client_flags |= constants.ClientFlag.COMPRESS
         self.cnx._open_connection()
         self.assertIsInstance(
             self.cnx._socket._netbroker, network.NetworkBrokerCompressed
@@ -1551,32 +1551,33 @@ class MySQLConnectionTests(tests.MySQLConnectorTests):
         self.cnx.disconnect()
         self.assertRaises(errors.InterfaceError, self.cnx.ping)
 
-    def test_set_converter_class(self):
-        """Set the converter class"""
+    def test_converter_class(self):
+        """Set the converter class setter property"""
 
         class TestConverterWrong: ...
 
-        self.assertRaises(TypeError, self.cnx.set_converter_class, TestConverterWrong)
+        with self.assertRaises(TypeError):
+            self.cnx.converter_class = TestConverterWrong
 
         class TestConverter(MySQLConverterBase): ...
 
-        self.cnx.set_converter_class(TestConverter)
+        self.cnx.converter_class = TestConverter
         self.assertTrue(isinstance(self.cnx.converter, TestConverter))
         self.assertEqual(self.cnx._converter_class, TestConverter)
 
-    def test_get_server_version(self):
+    def test_server_version(self):
         """Get the MySQL version"""
-        self.assertEqual(self.cnx._server_version, self.cnx.get_server_version())
+        self.assertEqual(self.cnx._server_version, self.cnx.server_version)
 
-    def test_get_server_info(self):
+    def test_server_info(self):
         """Get the original MySQL version information"""
         self.assertEqual(
             self.cnx._handshake["server_version_original"],
-            self.cnx.get_server_info(),
+            self.cnx.server_info,
         )
 
         del self.cnx._handshake["server_version_original"]
-        self.assertEqual(None, self.cnx.get_server_info())
+        self.assertEqual(None, self.cnx.server_info)
 
     def test_connection_id(self):
         """MySQL connection ID"""
@@ -1711,16 +1712,19 @@ class MySQLConnectionTests(tests.MySQLConnectorTests):
         except:
             self.fail("Expected errors.ProgrammingError to be raised")
 
-    def test_set_client_flags(self):
-        """Set the client flags"""
-        self.assertRaises(errors.ProgrammingError, self.cnx.set_client_flags, "Spam")
-        self.assertRaises(errors.ProgrammingError, self.cnx.set_client_flags, 0)
+    def test_client_flags(self):
+        """Test the client flags setter property"""
+
+        with self.assertRaises(errors.ProgrammingError):
+            self.cnx.client_flags = "Spam"
+        with self.assertRaises(errors.ProgrammingError):
+            self.cnx.client_flags = 0
 
         default_flags = constants.ClientFlag.get_default()
 
         exp = default_flags
-        self.assertEqual(exp, self.cnx.set_client_flags(exp))
-        self.assertEqual(exp, self.cnx._client_flags)
+        self.cnx.client_flags = exp
+        self.assertEqual(exp, self.cnx.client_flags)
 
         exp = default_flags
         exp |= constants.ClientFlag.SSL
@@ -1731,8 +1735,8 @@ class MySQLConnectionTests(tests.MySQLConnectorTests):
             constants.ClientFlag.FOUND_ROWS,
             -constants.ClientFlag.MULTI_RESULTS,
         ]
-        self.assertEqual(exp, self.cnx.set_client_flags(flags))
-        self.assertEqual(exp, self.cnx._client_flags)
+        self.cnx.client_flags = flags
+        self.assertEqual(exp, self.cnx.client_flags)
 
     def test_user(self):
         exp = "ham"
@@ -3589,7 +3593,7 @@ class WL14237_not_supported(tests.MySQLConnectorTests):
             with cnx.cursor(prepared=prepared) as cur:
                 self.assertListEqual([], cur.get_attributes())
                 cur.add_attribute("attr_1", "attr_val")
-                # verify get_attributes returns a single attribute that was set
+                # verify 'attributes' getter returns a single attribute that was set
                 self.assertListEqual([("attr_1", "attr_val")], cur.get_attributes())
 
                 with warnings.catch_warnings(record=True) as warn:
@@ -3714,7 +3718,7 @@ class WL14237(tests.MySQLConnectorTests):
                 for attr_name, attr_val, my_value in self.test_attributes:
                     self.assertListEqual([], cur.get_attributes())
                     cur.add_attribute(attr_name, attr_val)
-                    # verify get_attributes returns the single attribute set
+                    # verify 'attributes' getter returns the single attribute set
                     self.assertListEqual([(attr_name, attr_val)], cur.get_attributes())
                     cur.execute(
                         self.query_insert.format(
@@ -3752,14 +3756,14 @@ class WL14237(tests.MySQLConnectorTests):
                 self.assertEqual([(len(added_attrs),)], cur.fetchall())
                 # Check that attribute values are correct
                 self._check_attribute_values_are_correct(attr_name, my_value)
-                # verify that `get_attributes()` returns an empty list
+                # verify that `attributes` getter returns an empty list
             cur.clear_attributes()
             self.assertListEqual([], cur.get_attributes())
 
         self._empty_table()
 
     def _test_3_query_attr_add_attribute_error_bad_name_par(self, prepared=False):
-        "Test add_attribute() invalid name parameter."
+        "Test 'attributes' setter property invalid name parameter."
         attr_name_invalid = [1, 1.5, ["invalid"], b"invalid", object]
         attr_val = "valid"
 
@@ -3774,15 +3778,11 @@ class WL14237(tests.MySQLConnectorTests):
                 "Unexpected message found: {}".format(context.exception),
             )
 
-            self.assertRaises(
-                ProgrammingError,
-                cur.add_attribute,
-                name=attr_name,
-                value=attr_val,
-            )
+            with self.assertRaises(ProgrammingError):
+                cur.add_attribute(name=attr_name, value=attr_val)
 
     def _test_4_query_attr_add_attribute_error_bad_value_par(self, prepared=False):
-        "Test add_attribute() invalid value parameter."
+        "Test 'attributes' setter property invalid value parameter."
         attr_name = "invalid"
         attr_values_not_supported = [
             ["l", "i", "s", "t"],
@@ -3809,7 +3809,7 @@ class WL14237(tests.MySQLConnectorTests):
         for attr_name, attr_val, my_value in self.test_attributes:
             self.assertListEqual([], cur.get_attributes())
             cur.add_attribute(attr_name, attr_val)
-            # verify get_attributes returns a single attribute that was set
+            # verify 'attributes' getter returns a single attribute that was set
             self.assertListEqual([(attr_name, attr_val)], cur.get_attributes())
             if prepared:
                 cur.execute(
@@ -3884,7 +3884,7 @@ class WL14237(tests.MySQLConnectorTests):
             self.assertEqual(("1", "2"), res[0])
 
     def _check_expected_behavior_for_unnamed_query_attrs(self, prepared=False):
-        "Check behavior add_attribute() and get_attributes() when the name is ''"
+        "Check behavior 'attributes' getter and setter properties when the name is ''"
         with self.cnx.__class__(**self.config) as cnx:
             cur = cnx.cursor(prepared=prepared)
             cur.add_attribute("", 1)
@@ -3908,12 +3908,12 @@ class WL14237(tests.MySQLConnectorTests):
 
     @tests.foreach_cnx()
     def test_3_query_attr_add_attribute_error_bad_name_par(self):
-        "Test add_attribute() invalid name parameter."
+        "Test 'attributes' setter property invalid name parameter."
         self._test_3_query_attr_add_attribute_error_bad_name_par()
 
     @tests.foreach_cnx()
     def test_4_query_attr_add_attribute_error_bad_value_par(self):
-        "Test add_attribute() invalid value parameter."
+        "Test 'attributes' setter property invalid value parameter."
         self._test_4_query_attr_add_attribute_error_bad_value_par()
 
     @tests.foreach_cnx()
@@ -3933,12 +3933,12 @@ class WL14237(tests.MySQLConnectorTests):
 
     @tests.foreach_cnx()
     def test_8_query_attr_add_attribute_error_bad_name_par_prepared_cur(self):
-        "Test add_attribute() invalid name parameter, prepared stmt."
+        "Test 'attributes' setter property invalid name parameter, prepared stmt."
         self._test_3_query_attr_add_attribute_error_bad_name_par(prepared=True)
 
     @tests.foreach_cnx()
     def test_9_query_attr_add_attribute_error_bad_value_par_prepared_cur(self):
-        "Test add_attribute() invalid value parameter, prepared stmt."
+        "Test 'attributes' setter property invalid value parameter, prepared stmt."
         self._test_4_query_attr_add_attribute_error_bad_value_par(prepared=True)
 
     @tests.foreach_cnx(MySQLConnection)
@@ -3958,7 +3958,7 @@ class WL14237(tests.MySQLConnectorTests):
 
     @tests.foreach_cnx()
     def test_13_check_expected_behavior_for_unnamed_query_attrs(self):
-        "Check behavior add_attribute() and get_attributes() when the name is ''"
+        "Check behavior 'attributes' getter and setter properties when the name is ''"
         self._check_expected_behavior_for_unnamed_query_attrs()
 
     @tests.foreach_cnx(MySQLConnection)
@@ -3979,7 +3979,7 @@ class WL14237(tests.MySQLConnectorTests):
     def test_16_check_expected_behavior_for_unnamed_query_attrs_prepared_cur(
         self,
     ):
-        "Check behavior add_attribute() and get_attributes() when the name is ''"
+        "Check behavior 'attributes' getter and setter properties when the name is ''"
         self._check_expected_behavior_for_unnamed_query_attrs(prepared=True)
 
     def _test_named_parameters_are_transmitted(self, prepared=False):

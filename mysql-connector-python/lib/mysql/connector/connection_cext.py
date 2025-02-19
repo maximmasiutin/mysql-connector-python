@@ -193,12 +193,8 @@ class CMySQLConnection(MySQLConnectionAbstract):
         if self._cmysql:
             self._cmysql.set_load_data_local_infile_option(path)
 
-    def set_unicode(self, value: bool = True) -> None:
-        """Toggle unicode mode
-
-        Set whether we return string fields as unicode or not.
-        Default is True.
-        """
+    @MySQLConnectionAbstract.use_unicode.setter  # type: ignore
+    def use_unicode(self, value: bool) -> None:
         self._use_unicode = value
         if self._cmysql:
             self._cmysql.use_unicode(value)
@@ -276,7 +272,7 @@ class CMySQLConnection(MySQLConnectionAbstract):
             raw=self._raw,
             charset_name=charset_name,
             connection_timeout=(self._connection_timeout or 0),
-            use_unicode=self._use_unicode,
+            use_unicode=self.use_unicode,
             auth_plugin=self._auth_plugin,
             plugin_dir=self._plugin_dir,
         )
@@ -293,7 +289,7 @@ class CMySQLConnection(MySQLConnectionAbstract):
             "password3": self._password3,
             "database": self._database,
             "port": self._port,
-            "client_flags": self._client_flags,
+            "client_flags": self.client_flags,
             "unix_socket": self._unix_socket,
             "compress": self._compress,
             "ssl_disabled": True,

@@ -52,6 +52,7 @@ from typing import (
 # pylint: disable=import-error,no-name-in-module
 from _mysql_connector import MySQLInterfaceError
 
+from ._decorating import deprecated
 from .types import (
     CextEofPacketType,
     CextResultType,
@@ -742,6 +743,10 @@ class CMySQLCursor(MySQLCursorAbstract):
         """
         return iter(self.fetchone, None)
 
+    @deprecated(
+        "The property counterpart 'stored_results' will be added in a future release, "
+        "and this method will be removed."
+    )
     def stored_results(self) -> Generator[CMySQLCursor, None, None]:
         """Returns an iterator for stored results
 

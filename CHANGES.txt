@@ -11,6 +11,7 @@ Full release notes:
 v9.3.0
 ======
 
+- WL#16752: Deprecate class methods to access instance data or to know instance internal state
 - WL#16327: Remove Cursors Prepared Raw and Named Tuple
 - BUG#37541353: (Contribution) Fix typing annotation of MySQLConnectionAbstract's close function
 - BUG#37453587: Github links in PyPI project's pages do not work

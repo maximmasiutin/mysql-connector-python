@@ -1,6 +1,6 @@
 # -*- coding: utf-8 -*-
 
-# Copyright (c) 2009, 2024, Oracle and/or its affiliates.
+# Copyright (c) 2009, 2025, Oracle and/or its affiliates.
 #
 # This program is free software; you can redistribute it and/or modify
 # it under the terms of the GNU General Public License, version 2.0, as
@@ -802,7 +802,7 @@ class MySQLConverterIntegrationTests(tests.MySQLConnectorTests):
 
     @tests.foreach_cnx()
     def test_converter_class_integration(self):
-        self.cnx.set_converter_class(conversion.MySQLConverter)
+        self.cnx.converter_class = conversion.MySQLConverter
         with self.cnx.cursor() as cur:
             cur.execute(f"DROP TABLE IF EXISTS {self.table_name}")
             cur.execute(self.create_table_stmt.format(self.table_name))

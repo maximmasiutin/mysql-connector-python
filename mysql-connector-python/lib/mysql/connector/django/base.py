@@ -1,4 +1,4 @@
-# Copyright (c) 2020, 2024, Oracle and/or its affiliates.
+# Copyright (c) 2020, 2025, Oracle and/or its affiliates.
 #
 # This program is free software; you can redistribute it and/or modify
 # it under the terms of the GNU General Public License, version 2.0, as
@@ -591,7 +591,7 @@ class DatabaseWrapper(BaseDatabaseWrapper):  # pylint: disable=abstract-method
         """Return MySQL version."""
         config = self.get_connection_params()
         with mysql.connector.connect(**config) as conn:
-            server_version: Tuple[int, ...] = conn.get_server_version()
+            server_version: Tuple[int, ...] = conn.server_version
         return server_version
 
     @cached_property
