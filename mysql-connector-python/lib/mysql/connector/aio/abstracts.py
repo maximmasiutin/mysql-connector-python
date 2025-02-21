@@ -48,8 +48,10 @@ from typing import (
     TYPE_CHECKING,
     Any,
     AsyncGenerator,
+    Awaitable,
     BinaryIO,
     Callable,
+    ClassVar,
     Deque,
     Dict,
     Generator,
@@ -1445,7 +1447,7 @@ class MySQLConnectionAbstract(ABC):
         no exceptions.
         """
 
-    disconnect: Callable[[], Any] = close
+    disconnect: ClassVar[Callable[["MySQLConnectionAbstract"], Awaitable[None]]] = close
 
     @abstractmethod
     async def cursor(

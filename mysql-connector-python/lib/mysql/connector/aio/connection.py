@@ -47,7 +47,6 @@ from typing import (
     Any,
     AsyncGenerator,
     BinaryIO,
-    Callable,
     Dict,
     List,
     Mapping,
@@ -750,17 +749,6 @@ class MySQLConnection(MySQLConnectionAbstract):
             pass  # Getting an exception would mean we are disconnected.
 
     async def close(self) -> None:
-        """Close the connection.
-
-        It closes any opened cursor associated to this connection, and closes the
-        underling socket connection.
-
-        `MySQLConnection.close()` is a synonymous for `MySQLConnection.disconnect()`
-        method name and more commonly used.
-
-        This method tries to send a `QUIT` command and close the socket. It raises
-        no exceptions.
-        """
         with contextlib.suppress(Error):
             for cursor in tuple(self._cursors):
                 await cursor.close()
@@ -773,7 +761,7 @@ class MySQLConnection(MySQLConnectionAbstract):
             await self._socket.close_connection()
         self._socket = None
 
-    disconnect: Callable[[], Any] = close
+    disconnect = close
 
     async def cursor(
         self,

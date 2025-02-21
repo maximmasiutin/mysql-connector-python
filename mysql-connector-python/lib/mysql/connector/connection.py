@@ -449,7 +449,6 @@ class MySQLConnection(MySQLConnectionAbstract):
             pass  # Getting an exception would mean we are disconnected.
 
     def close(self) -> None:
-        """Disconnect from the MySQL server"""
         if self._span and self._span.is_recording():
             # pylint: disable=possibly-used-before-assignment
             record_exception_event(self._span, sys.exc_info()[1])

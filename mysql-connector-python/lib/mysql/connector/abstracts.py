@@ -46,6 +46,7 @@ from typing import (
     Any,
     BinaryIO,
     Callable,
+    ClassVar,
     Deque,
     Dict,
     Generator,
@@ -1494,7 +1495,7 @@ class MySQLConnectionAbstract(ABC):
             self._execute_query(self._init_command)
 
     @abstractmethod
-    def disconnect(self) -> None:
+    def close(self) -> None:
         """Disconnects from the MySQL server.
 
         This method tries to send a `QUIT` command and close the socket. It raises
@@ -1507,7 +1508,7 @@ class MySQLConnectionAbstract(ABC):
         use `shutdown()`.
         """
 
-    close: Callable[[], Any] = disconnect
+    disconnect: ClassVar[Callable[["MySQLConnectionAbstract"], None]] = close
 
     def connect(self, **kwargs: Any) -> None:
         """Connects to the MySQL server.
