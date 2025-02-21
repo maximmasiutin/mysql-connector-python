@@ -1,4 +1,4 @@
-# Copyright (c) 2021, 2024, Oracle and/or its affiliates.
+# Copyright (c) 2021, 2025, Oracle and/or its affiliates.
 #
 # This program is free software; you can redistribute it and/or modify
 # it under the terms of the GNU General Public License, version 2.0, as
@@ -50,14 +50,15 @@ class CachingSha2PasswordTests(tests.MySQLConnectorTests):
         for use_pure in self.use_pure_options:
             config = self.get_clean_mysql_config()
             config["use_pure"] = use_pure
+            server_host = config["host"]
 
             with mysql.connector.connect(**config) as cnx:
-                cnx.cmd_query("DROP USER IF EXISTS 'sham'@'%'")
+                cnx.cmd_query(f"DROP USER IF EXISTS 'sham'@'{server_host}'")
                 cnx.cmd_query(
-                    "CREATE USER 'sham'@'%' IDENTIFIED "
+                    f"CREATE USER 'sham'@'{server_host}' IDENTIFIED "
                     "WITH caching_sha2_password BY 'shapass'"
                 )
-                cnx.cmd_query("GRANT ALL ON *.* TO 'sham'@'%'")
+                cnx.cmd_query(f"GRANT ALL ON *.* TO 'sham'@'{server_host}'")
 
             config["user"] = "sham"
             config["password"] = "shapass"
@@ -79,7 +80,7 @@ class CachingSha2PasswordTests(tests.MySQLConnectorTests):
                     cur.execute("SELECT * FROM t1")
                     self.assertEqual(1, len(cur.fetchone()))
                     cur.execute("DROP TABLE IF EXISTS t1")
-                cnx.cmd_query("DROP USER IF EXISTS 'sham'@'%'")
+                cnx.cmd_query(f"DROP USER IF EXISTS 'sham'@'{server_host}'")
 
     def test_caching_sha2_password_test3(self):
         """Test full authentication with SSL after create user,
@@ -87,14 +88,15 @@ class CachingSha2PasswordTests(tests.MySQLConnectorTests):
         for use_pure in self.use_pure_options:
             config = self.get_clean_mysql_config()
             config["use_pure"] = use_pure
+            server_host = config['host']
 
             with mysql.connector.connect(**config) as cnx:
-                cnx.cmd_query("DROP USER IF EXISTS 'sham'@'%'")
+                cnx.cmd_query(f"DROP USER IF EXISTS 'sham'@'{server_host}'")
                 cnx.cmd_query(
-                    "CREATE USER 'sham'@'%' IDENTIFIED "
+                    f"CREATE USER 'sham'@'{server_host}' IDENTIFIED "
                     "WITH caching_sha2_password BY 'shapass'"
                 )
-                cnx.cmd_query("GRANT ALL ON *.* TO 'sham'@'%'")
+                cnx.cmd_query(f"GRANT ALL ON *.* TO 'sham'@'{server_host}'")
                 cnx.cmd_query("FLUSH PRIVILEGES")
 
             config["user"] = "sham"
@@ -117,7 +119,7 @@ class CachingSha2PasswordTests(tests.MySQLConnectorTests):
                     cur.execute("SELECT * FROM t2")
                     self.assertEqual(1, len(cur.fetchone()))
                     cur.execute("DROP TABLE IF EXISTS t2")
-                    cur.execute("SET PASSWORD FOR 'sham'@'%'='newshapass'")
+                    cur.execute(f"SET PASSWORD FOR 'sham'@'{server_host}'='newshapass'")
                     config["password"] = "newshapass"
                     mysql.connector.connect(**config)
-                cnx.cmd_query("DROP USER IF EXISTS 'sham'@'%'")
+                cnx.cmd_query(f"DROP USER IF EXISTS 'sham'@'{server_host}'")

@@ -371,10 +371,10 @@ class PythonWithGlobalInstSpanTests(tests.MySQLConnectorTests):
     new_user_password = "s3cr3t"
     new_database = "colors"
     new_user_stmt = (
-        f"CREATE USER '{new_user_name}'@'%' IDENTIFIED BY '{new_user_password}'"
+        "CREATE USER '{new_user_name}'@'{server_host}' IDENTIFIED BY '{new_user_password}'"
     )
     grant_stmt = (
-        f"GRANT ALL PRIVILEGES ON *.* TO '{new_user_name}'@'%' WITH GRANT OPTION"
+        "GRANT ALL PRIVILEGES ON *.* TO '{new_user_name}'@'{server_host}' WITH GRANT OPTION"
     )
     table_name = "employees"
     create_stmt = f"""CREATE TABLE {table_name} (
@@ -412,6 +412,7 @@ class PythonWithGlobalInstSpanTests(tests.MySQLConnectorTests):
         self.provider.add_span_processor(processor)
         self.tracer = trace.get_tracer(__name__, tracer_provider=self.provider)
         self.cnx_config = self.get_clean_mysql_config()
+        self.server_host = self.cnx_config['host']
         self.cnx_config["use_pure"] = self.pure_python
 
         # Instrumentor
@@ -569,9 +570,20 @@ class PythonWithGlobalInstSpanTests(tests.MySQLConnectorTests):
                 cur.execute(f"DROP TABLE IF EXISTS {self.table_name}")
 
                 # create a new user
-                cur.execute(f"DROP USER IF EXISTS '{self.new_user_name}'")
-                cur.execute(self.new_user_stmt)
-                cur.execute(self.grant_stmt)
+                cur.execute(f"DROP USER IF EXISTS '{self.new_user_name}'@'{self.server_host}'")
+                cur.execute(
+                    self.new_user_stmt.format(
+                        new_user_name=self.new_user_name,
+                        server_host=self.server_host,
+                        new_user_password=self.new_user_password,
+                    )
+                )
+                cur.execute(
+                    self.grant_stmt.format(
+                        new_user_name=self.new_user_name,
+                        server_host=self.server_host,
+                    )
+                )
                 cur.execute("FLUSH PRIVILEGES")
                 cur.execute(f"CREATE DATABASE IF NOT EXISTS {self.new_database}")
 

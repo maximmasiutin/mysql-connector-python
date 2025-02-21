@@ -1,6 +1,6 @@
 # -*- coding: utf-8 -*-
 
-# Copyright (c) 2014, 2024, Oracle and/or its affiliates.
+# Copyright (c) 2014, 2025, Oracle and/or its affiliates.
 #
 # This program is free software; you can redistribute it and/or modify
 # it under the terms of the GNU General Public License, version 2.0, as
@@ -1373,12 +1373,13 @@ class MySQLOpenIDConnectAuthPluginTests(tests.MySQLConnectorTests):
     """
 
     skip_reason = None
+    config = tests.get_mysql_config()
+    server_host = config['host']
 
     @classmethod
     def setUpClass(cls):
-        config = tests.get_mysql_config()
         plugin_ext = "dll" if os.name == "nt" else "so"
-        with mysql.connector.connect(**config) as cnx:
+        with mysql.connector.connect(**cls.config) as cnx:
             # Install the auth plugin `authentication_openid_connect`
             try:
                 cnx.cmd_query(
@@ -1410,18 +1411,17 @@ class MySQLOpenIDConnectAuthPluginTests(tests.MySQLConnectorTests):
                 f"SET GLOBAL authentication_openid_connect_configuration = '{jwk}'"
             )
             # Create the user configured with OpenID connect
-            cnx.cmd_query("DROP USER IF EXISTS 'openid-test'@'%'")
+            cnx.cmd_query(f"DROP USER IF EXISTS 'openid-test'@'{cls.server_host}'")
             cnx.cmd_query(
-                """CREATE USER 'openid-test'@'%' IDENTIFIED WITH 'authentication_openid_connect' AS
-                '{"identity_provider" : "myissuer", "user" : "mysubj"}'"""
+                f"""CREATE USER 'openid-test'@'{cls.server_host}' IDENTIFIED WITH 'authentication_openid_connect' AS
+                '{{"identity_provider" : "myissuer", "user" : "mysubj"}}'"""
             )
-            cnx.cmd_query("GRANT ALL ON *.* TO 'openid-test'")
+            cnx.cmd_query(f"GRANT ALL ON *.* TO 'openid-test'@'{cls.server_host}'")
 
     @classmethod
     def tearDownClass(cls):
-        config = tests.get_mysql_config()
-        with mysql.connector.connect(**config) as cnx:
-            cnx.cmd_query("DROP USER IF EXISTS 'openid-test'@'%'")
+        with mysql.connector.connect(**cls.config) as cnx:
+            cnx.cmd_query(f"DROP USER IF EXISTS 'openid-test'@'{cls.server_host}'")
             try:
                 cnx.cmd_query("UNINSTALL PLUGIN authentication_openid_connect")
             except ProgrammingError:

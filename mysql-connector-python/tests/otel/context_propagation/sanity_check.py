@@ -1,4 +1,4 @@
-# Copyright (c) 2023, 2024, Oracle and/or its affiliates.
+# Copyright (c) 2023, 2025, Oracle and/or its affiliates.
 #
 # This program is free software; you can redistribute it and/or modify
 # it under the terms of the GNU General Public License, version 2.0, as
@@ -209,12 +209,12 @@ class BaseContextPropagationTests:
         self._config = config.copy()
         self._tracer = None
         self._mysql_config = {
+            "host": config["mysql_host"],
             "username": config["mysql_user"],
             "password": config["mysql_password"],
             "port": config["mysql_port"],
             "use_pure": config["cpy_use_pure"],
         }
-
         self._init_otel()
 
     def _init_otel(self):
@@ -250,10 +250,10 @@ class TestContextPropagation(BaseContextPropagationTests):
         new_user_password = "s3cr3t"
         new_database = "colors"
         new_user_stmt = (
-            f"CREATE USER '{new_user_name}'@'%' IDENTIFIED BY '{new_user_password}'"
+            f"CREATE USER '{new_user_name}'@'{self._mysql_config['host']}' IDENTIFIED BY '{new_user_password}'"
         )
         grant_stmt = (
-            f"GRANT ALL PRIVILEGES ON *.* TO '{new_user_name}'@'%' WITH GRANT OPTION"
+            f"GRANT ALL PRIVILEGES ON *.* TO '{new_user_name}'@'{self._mysql_config['host']}' WITH GRANT OPTION"
         )
         table_name = "employees"
         create_stmt = f"""CREATE TABLE {table_name} (

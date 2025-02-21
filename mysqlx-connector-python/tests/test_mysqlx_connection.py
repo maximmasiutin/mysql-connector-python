@@ -1,6 +1,6 @@
 # -*- coding: utf-8 -*-
 
-# Copyright (c) 2016, 2024, Oracle and/or its affiliates.
+# Copyright (c) 2016, 2025, Oracle and/or its affiliates.
 #
 # This program is free software; you can redistribute it and/or modify
 # it under the terms of the GNU General Public License, version 2.0, as
@@ -503,6 +503,7 @@ class ServerProtocol(Protocol):
 class MySQLxSessionTests(tests.MySQLxTests):
     def setUp(self):
         self.connect_kwargs = tests.get_mysqlx_config()
+        self.server_host = self.connect_kwargs['host']
         self.schema_name = self.connect_kwargs["schema"]
         try:
             self.session = mysqlx.get_session(self.connect_kwargs)
@@ -668,11 +669,11 @@ class MySQLxSessionTests(tests.MySQLxTests):
         sess = mysqlx.get_session(self.connect_kwargs)
 
         try:
-            sess.sql("DROP USER 'native'@'%'").execute()
+            sess.sql(f"DROP USER 'native'@'{self.server_host}'").execute()
         except mysqlx.errors.OperationalError:
             pass
         try:
-            sess.sql("DROP USER 'sha256'@'%'").execute()
+            sess.sql(f"DROP USER 'sha256'@'{self.server_host}'").execute()
         except mysqlx.errors.OperationalError:
             pass
 
@@ -682,14 +683,14 @@ class MySQLxSessionTests(tests.MySQLxTests):
             else "caching_sha2_password"
         )
         sess.sql(
-            f"CREATE USER 'native'@'%' IDENTIFIED WITH {native_auth} BY 'test'"
+            f"CREATE USER 'native'@'{self.server_host}' IDENTIFIED WITH {native_auth} BY 'test'"
         ).execute()
         sess.sql(
-            "CREATE USER 'sha256'@'%' IDENTIFIED WITH sha256_password BY 'sha256'"
+            f"CREATE USER 'sha256'@'{self.server_host}' IDENTIFIED WITH sha256_password BY 'sha256'"
         ).execute()
 
         config = {
-            "host": self.connect_kwargs["host"],
+            "host": self.server_host,
             "port": self.connect_kwargs["port"],
         }
 
@@ -711,8 +712,8 @@ class MySQLxSessionTests(tests.MySQLxTests):
         config["auth"] = "mysql41"
         self.assertRaises(InterfaceError, mysqlx.get_session, config)
 
-        sess.sql("DROP USER 'native'@'%'").execute()
-        sess.sql("DROP USER 'sha256'@'%'").execute()
+        sess.sql(f"DROP USER 'native'@'{self.server_host}'").execute()
+        sess.sql(f"DROP USER 'sha256'@'{self.server_host}'").execute()
         sess.close()
 
     @unittest.skipIf(
@@ -722,7 +723,7 @@ class MySQLxSessionTests(tests.MySQLxTests):
     def test_auth_sha265_memory(self):
         sess = mysqlx.get_session(self.connect_kwargs)
         sess.sql(
-            "CREATE USER 'caching'@'%' IDENTIFIED WITH "
+            f"CREATE USER 'caching'@'{self.server_host}' IDENTIFIED WITH "
             "caching_sha2_password BY 'caching'"
         ).execute()
         config = {
@@ -750,7 +751,7 @@ class MySQLxSessionTests(tests.MySQLxTests):
         config["auth"] = mysqlx.Auth.SHA256_MEMORY
         mysqlx.get_session(config)
 
-        sess.sql("DROP USER 'caching'@'%'").execute()
+        sess.sql(f"DROP USER 'caching'@'{self.server_host}'").execute()
         sess.close()
 
     @unittest.skipIf(
@@ -1061,9 +1062,9 @@ class MySQLxSessionTests(tests.MySQLxTests):
 
         # Test BUG#28942938: 'ACCESS DENIED' error for unauthorized user tries
         # to use the default schema if not exists at get_session
-        self.session.sql("DROP USER IF EXISTS 'def_schema'@'%'").execute()
+        self.session.sql(f"DROP USER IF EXISTS 'def_schema'@'{self.server_host}'").execute()
         self.session.sql(
-            "CREATE USER 'def_schema'@'%' IDENTIFIED WITH "
+            f"CREATE USER 'def_schema'@'{self.server_host}' IDENTIFIED WITH "
             "caching_sha2_password BY 'test'"
         ).execute()
         settings = self.connect_kwargs.copy()
@@ -1078,7 +1079,7 @@ class MySQLxSessionTests(tests.MySQLxTests):
 
         # Grant privilege to one unrelated schema
         self.session.sql(
-            "GRANT ALL PRIVILEGES ON nonexistent.* TO 'def_schema'@'%'"
+            f"GRANT ALL PRIVILEGES ON nonexistent.* TO 'def_schema'@'{self.server_host}'"
         ).execute()
         with self.assertRaises(InterfaceError) as context:
             _ = mysqlx.get_session(settings)
@@ -2604,16 +2605,19 @@ class WL14852(tests.MySQLxTests):
     """WL#14852: Align TLS and SSL options checking and behavior"""
 
     def setUp(self):
-        session = mysqlx.get_session(tests.get_mysqlx_config())
+        config = tests.get_mysqlx_config()
+        session = mysqlx.get_session(config)
+        self.server_host = config['host']
+
         session.sql(
-            "CREATE USER 'native'@'%' IDENTIFIED WITH "
+            f"CREATE USER 'native'@'{self.server_host}' IDENTIFIED WITH "
             "mysql_native_password BY 'test'"
         ).execute()
-        session.sql("grant all privileges on *.* to 'native'@'%'").execute()
+        session.sql(f"grant all privileges on *.* to 'native'@'{self.server_host}'").execute()
 
     def tearDown(self):
         session = mysqlx.get_session(tests.get_mysqlx_config())
-        session.sql("DROP USER IF EXISTS 'native'@'%'").execute()
+        session.sql(f"DROP USER IF EXISTS 'native'@'{self.server_host}'").execute()
 
     def _test_giving_ssl_disable_does_not_raise_error(self, use_uri=False):
         """Verify no error with ssl-mode=disable and other TLS or SSL options."""
