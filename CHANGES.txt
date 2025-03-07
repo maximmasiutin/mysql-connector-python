@@ -15,6 +15,7 @@ v9.3.0
 - WL#16327: Remove Cursors Prepared Raw and Named Tuple
 - BUG#37541353: (Contribution) Fix typing annotation of MySQLConnectionAbstract's close function
 - BUG#37453587: Github links in PyPI project's pages do not work
+- BUG#37447394: Unable to escape a parameter marker (`%s`) used in a query that should not be treated as a parameter marker
 - BUG#37418436: Arbitrary File Read in MySQL Python Client library
 
 v9.2.0

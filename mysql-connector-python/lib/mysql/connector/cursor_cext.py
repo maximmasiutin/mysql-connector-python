@@ -334,6 +334,9 @@ class CMySQLCursor(MySQLCursorAbstract):
                         "Not all parameters were used in the SQL statement"
                     )
 
+        # final statement with `%%s` should be replaced as `%s`
+        stmt = stmt.replace(b"%%s", b"%s")
+
         self._stmt_partitions = split_multi_statement(
             sql_code=stmt, map_results=map_results
         )
@@ -1121,6 +1124,8 @@ class CMySQLCursorPrepared(CMySQLCursor):
             except UnicodeDecodeError as err:
                 raise ProgrammingError(str(err)) from err
 
+        # final statement with `%%s` should be replaced as `%s`
+        operation = operation.replace("%%s", "%s")
         if isinstance(params, dict):
             replacement_keys = re.findall(RE_SQL_PYTHON_CAPTURE_PARAM_NAME, operation)
             try:
