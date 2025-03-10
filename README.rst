@@ -38,11 +38,31 @@ Features
 Installation
 ------------
 
-The recommended way to install Connector/Python is via `pip <https://pip.pypa.io/>`_.
+Connector/Python contains the classic and XDevAPI connector APIs, which are
+installed separately. Any of these can be installed from a binary
+or source distribution.
 
-Make sure you have a recent `pip <https://pip.pypa.io/>`_ version installed
-on your system. If your system already has ``pip`` installed, you might need
-to update it. Or you can use the `standalone pip installer <https://pip.pypa.io/en/latest/installation/>`_.
+Binaries are distributed in the following package formats:
+
+* `RPM <https://docs.redhat.com/en/documentation/red_hat_enterprise_linux/8/html/packaging_and_distributing_software/introduction-to-rpm_packaging-and-distributing-software>`_
+* `WHEEL <https://packaging.python.org/en/latest/discussions/package-formats/#what-is-a-wheel>`_
+
+On the other hand, the source code is distributed as a compressed file
+from which a wheel package can be built.
+
+The recommended way to install Connector/Python is via `pip <https://pip.pypa.io/>`_,
+which relies on WHEEL packages. For such a reason, it is the installation procedure
+that is going to be described moving forward.
+
+Please, refer to the official MySQL documentation `Connector/Python Installation
+<https://dev.mysql.com/doc/connector-python/en/connector-python-installation.html>`_ to
+know more about installing from an RPM, or building and installing a WHEEL package from
+a source distribution.
+
+Before installing a package with `pip <https://pip.pypa.io/>`_, it is strongly suggested
+to have the most recent ``pip`` version installed on your system.
+If your system already has ``pip`` installed, you might need to update it. Or you can use
+the `standalone pip installer <https://pip.pypa.io/en/latest/installation/>`_.
 
 .. === <mysql> [repl("The *classic API* can be installed via pip as follows:", "")] ===
 The *classic API* can be installed via pip as follows:
