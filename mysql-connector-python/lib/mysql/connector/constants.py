@@ -120,6 +120,10 @@ CONN_ATTRS_DN: Tuple[str, ...] = (
     "_connector_version",
 )
 
+DEPRECATED_METHOD_WARNING: str = """
+    The property counterpart '{property_name}' should be used instead.
+"""
+
 TLS_VERSIONS: List[str] = APPROVED_TLS_VERSIONS + DEPRECATED_TLS_VERSIONS
 """Accepted TLS versions. A warning is raised when using a deprecated version."""
 
