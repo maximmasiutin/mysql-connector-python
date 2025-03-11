@@ -8973,3 +8973,32 @@ class BugOra37275524(tests.MySQLConnectorTests):
                         cur.execute(f"CREATE TABLE {self.table_name} (id INT PRIMARY KEY)")
                         cur.execute(f"INSERT INTO {self.table_name} (id) VALUES (1)")
                         cur.execute(f"INSERT INTO {self.table_name} (id) VALUES (1)")
+
+class BugOra37410052(tests.MySQLConnectorTests):
+    """BUG#37410052: Wrong exception message being shown when ConnectionRefusedError is raised
+    by the client
+
+    ConnectionRefusedError is not being correctly formatted when being raised by the
+    client while connecting with a MySQL server using pure-python implementation of
+    Connector/Python.
+
+    This patch fixes this issue by changing the error log message structure.
+    """
+
+    def test_incorrect_host_err_msg(self):
+        config = tests.get_mysql_config()
+        config["port"] = 4875
+        config["use_pure"] = True
+        config["unix_socket"] = None
+        cnx = MySQLConnection
+
+        self.assertRaises(errors.InterfaceError, cnx, **config)
+        try:
+            with cnx(**config) as _:
+                pass
+        except errors.InterfaceError as err:
+            self.assertNotIn(
+                "%-.100s",
+                str(err),
+                "Error message cannot contain unstructured bind address",
+            )

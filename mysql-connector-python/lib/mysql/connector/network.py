@@ -788,7 +788,7 @@ class MySQLTCPSocket(MySQLSocket):
 
         (self._family, socktype, proto, _, sockaddr) = addrinfo
 
-        # Instanciate the socket and connect
+        # Instantiate the socket and connect
         try:
             self.sock = socket.socket(self._family, socktype, proto)
             self.sock.settimeout(self._connection_timeout)
@@ -804,12 +804,8 @@ class MySQLTCPSocket(MySQLSocket):
             ) from err
         except IOError as err:
             raise InterfaceError(
-                errno=2002,
-                values=(
-                    self.server_host,
-                    self.server_port,
-                    _strioerror(err),
-                ),
+                errno=2003,
+                values=(self.server_host, self.server_port, _strioerror(err)),
             ) from err
         except Exception as err:
-            raise OperationalError(str(err)) from err
+            raise InterfaceError(str(err)) from err
