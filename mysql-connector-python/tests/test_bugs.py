@@ -8951,3 +8951,25 @@ class BugOra37447394_async(tests.MySQLConnectorAioTestCase):
                 self.assertEqual(await cur.fetchone(), self.params)
         except Exception as err:
             self.fail(err)
+
+class BugOra37275524(tests.MySQLConnectorTests):
+    """BUG#37275524: Exception is not interpreted properly on prepared statements when C extension is in use
+
+    InterfaceError instead of IntegrityError is being interpreted by the connector when a server-side exception
+    is being raised while working with prepared statements using C-Extension.
+
+    This patch fixes this issue by ensuring that correct exception structure is being maintained while forwarding
+    the exception from C-API to the connector interface.
+    """
+
+    table_name = "Bug37275524"
+
+    def test_bug37275524(self):
+        with mysql.connector.connect(**tests.get_mysql_config()) as cnx:
+            for is_prepared in (True, False):
+                with cnx.cursor(prepared=is_prepared) as cur:
+                    with self.assertRaises(errors.IntegrityError) as _:
+                        cur.execute(f"DROP TABLE IF EXISTS {self.table_name}")
+                        cur.execute(f"CREATE TABLE {self.table_name} (id INT PRIMARY KEY)")
+                        cur.execute(f"INSERT INTO {self.table_name} (id) VALUES (1)")
+                        cur.execute(f"INSERT INTO {self.table_name} (id) VALUES (1)")

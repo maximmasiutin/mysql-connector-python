@@ -3191,7 +3191,7 @@ error:
     Py_BEGIN_ALLOW_THREADS
     mysql_stmt_close(mysql_stmt);
     Py_END_ALLOW_THREADS
-    PyErr_SetString(MySQLInterfaceError, mysql_stmt_error(mysql_stmt));
+    raise_with_stmt(mysql_stmt, MySQLInterfaceError);
     return NULL;
 }
 
@@ -3485,8 +3485,7 @@ MySQLPrepStmt_execute(MySQLPrepStmt *self, PyObject *args, PyObject *kwds)
 
     if (params_bind_ans)
     {
-        retval = PyErr_Format(MySQLInterfaceError, (const char *)"Bind the parameters: %s",
-                              mysql_stmt_error(self->stmt));
+        raise_with_stmt(self->stmt, MySQLInterfaceError);
         goto cleanup;
     }
 
@@ -3495,9 +3494,7 @@ MySQLPrepStmt_execute(MySQLPrepStmt *self, PyObject *args, PyObject *kwds)
     Py_END_ALLOW_THREADS
 
     if (res) {
-        retval = PyErr_Format(MySQLInterfaceError,
-                              (const char *)"Error while executing statement: %s",
-                              mysql_stmt_error(self->stmt));
+        raise_with_stmt(self->stmt, MySQLInterfaceError);
         goto cleanup;
     }
 
@@ -3605,7 +3602,7 @@ MySQLPrepStmt_handle_result(MySQLPrepStmt *self)
         mysql_free_result(self->res);
         free(self->cols);
         free(self->bind);
-        PyErr_SetString(MySQLInterfaceError, mysql_stmt_error(self->stmt));
+        raise_with_stmt(self->stmt, MySQLInterfaceError);
         return NULL;
     }
 
@@ -3674,8 +3671,7 @@ MySQLPrepStmt_fetch_row(MySQLPrepStmt *self)
     Py_END_ALLOW_THREADS
 
     if (fetch == 1) {
-        PyErr_Format(MySQLInterfaceError, (const char *)"Error while fetching: %s",
-                     mysql_stmt_error(self->stmt));
+        raise_with_stmt(self->stmt, MySQLInterfaceError);
         goto cleanup;
     }
     else if (fetch == MYSQL_NO_DATA)
@@ -3739,7 +3735,7 @@ MySQLPrepStmt_fetch_row(MySQLPrepStmt *self)
                 Py_END_ALLOW_THREADS
 
                 if (self->cols[i].is_error) {
-                    PyErr_SetString(MySQLInterfaceError, mysql_stmt_error(self->stmt));
+                    raise_with_stmt(self->stmt, MySQLInterfaceError);
                     goto cleanup;
                 }
 
@@ -3789,7 +3785,7 @@ MySQLPrepStmt_fetch_row(MySQLPrepStmt *self)
                     Py_END_ALLOW_THREADS
 
                     if (self->cols[i].is_error) {
-                        PyErr_SetString(MySQLInterfaceError, mysql_stmt_error(self->stmt));
+                        raise_with_stmt(self->stmt, MySQLInterfaceError);
                         goto cleanup;
                     }
 
@@ -3812,7 +3808,7 @@ MySQLPrepStmt_fetch_row(MySQLPrepStmt *self)
                     Py_END_ALLOW_THREADS
 
                     if (self->cols[i].is_error) {
-                        PyErr_SetString(MySQLInterfaceError, mysql_stmt_error(self->stmt));
+                        raise_with_stmt(self->stmt, MySQLInterfaceError);
                         goto cleanup;
                     }
 
@@ -3828,7 +3824,7 @@ MySQLPrepStmt_fetch_row(MySQLPrepStmt *self)
                     Py_END_ALLOW_THREADS
 
                     if (self->cols[i].is_error) {
-                        PyErr_SetString(MySQLInterfaceError, mysql_stmt_error(self->stmt));
+                        raise_with_stmt(self->stmt, MySQLInterfaceError);
                         goto cleanup;
                     }
 
@@ -3876,7 +3872,7 @@ MySQLPrepStmt_fetch_fields(MySQLPrepStmt *self)
     unsigned int num_fields;
 
     if (!self->res) {
-        PyErr_SetString(MySQLInterfaceError, "No result");
+        raise_with_stmt(self->stmt, MySQLInterfaceError);
         return NULL;
     }
 
@@ -3912,7 +3908,7 @@ MySQLPrepStmt_reset(MySQLPrepStmt *self)
         res = mysql_stmt_reset(self->stmt);
         Py_END_ALLOW_THREADS
         if (res) {
-            PyErr_SetString(MySQLInterfaceError, mysql_stmt_error(self->stmt));
+            raise_with_stmt(self->stmt, MySQLInterfaceError);
             return NULL;
         }
     }
@@ -3934,7 +3930,7 @@ MySQLPrepStmt_close(MySQLPrepStmt *self)
     int res = 0;
 
     if (!self->stmt) {
-        PyErr_SetString(MySQLInterfaceError, mysql_stmt_error(self->stmt));
+        raise_with_stmt(self->stmt, MySQLInterfaceError);
         return NULL;
     }
 
@@ -3945,7 +3941,7 @@ MySQLPrepStmt_close(MySQLPrepStmt *self)
     Py_END_ALLOW_THREADS
 
     if (res) {
-        PyErr_SetString(MySQLInterfaceError, mysql_stmt_error(self->stmt));
+        raise_with_stmt(self->stmt, MySQLInterfaceError);
         return NULL;
     }
 

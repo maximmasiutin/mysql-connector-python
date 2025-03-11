@@ -238,9 +238,11 @@ class CMySQLCursor(MySQLCursorAbstract):
             warns = self._connection.get_rows(raw=self._raw)[0]
             self._connection.consume_results()
         except MySQLInterfaceError as err:
-            raise get_mysql_exception(
-                msg=err.msg, errno=err.errno, sqlstate=err.sqlstate
-            ) from err
+            if hasattr(err, "errno"):
+                raise get_mysql_exception(
+                    err.errno, msg=err.msg, sqlstate=err.sqlstate
+                ) from err
+            raise InterfaceError(str(err)) from err
         except Exception as err:
             raise InterfaceError(f"Failed getting warnings; {err}") from None
 
@@ -359,9 +361,11 @@ class CMySQLCursor(MySQLCursorAbstract):
                 )
             )
         except MySQLInterfaceError as err:
-            raise get_mysql_exception(
-                msg=err.msg, errno=err.errno, sqlstate=err.sqlstate
-            ) from err
+            if hasattr(err, "errno"):
+                raise get_mysql_exception(
+                    err.errno, msg=err.msg, sqlstate=err.sqlstate
+                ) from err
+            raise InterfaceError(str(err)) from err
         return None
 
     def _batch_insert(
@@ -648,9 +652,11 @@ class CMySQLCursor(MySQLCursorAbstract):
                         )
                     )
                 except MySQLInterfaceError as err:
-                    raise get_mysql_exception(
-                        msg=err.msg, errno=err.errno, sqlstate=err.sqlstate
-                    ) from err
+                    if hasattr(err, "errno"):
+                        raise get_mysql_exception(
+                            err.errno, msg=err.msg, sqlstate=err.sqlstate
+                        ) from err
+                    raise InterfaceError(str(err)) from err
                 return True
 
         self._reset_result(free=True)

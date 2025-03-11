@@ -19,6 +19,7 @@ v9.3.0
 - BUG#37447394: Unable to escape a parameter marker (`%s`) used in a query that should not be treated as a parameter marker
 - BUG#37418436: Arbitrary File Read in MySQL Python Client library
 - BUG#37399636: The C-extension has a memory leak when working with prepared statements
+- BUG#37275524: Exception is not interpreted properly on prepared statements when C extension is in use
 - BUG#36098290: mysql-connector-python is distributed without setup.py or pyproject.toml
 
 v9.2.0

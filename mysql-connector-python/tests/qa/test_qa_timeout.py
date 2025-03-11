@@ -522,7 +522,7 @@ class ReadWriteTimeoutTests(tests.MySQLConnectorTests):
         config["use_pure"] = False
         config["read_timeout"] = 2
         with mysql.connector.connect(**config) as cnx:
-            with self.assertRaises(InterfaceError) as err:
+            with self.assertRaises(OperationalError) as err:
                 with cnx.cursor(prepared=True) as cur:
                     prepared_stmt = "SELECT SLEEP(?)"
                     curr_time = datetime.now()

@@ -133,8 +133,7 @@ class WL6148Tests(tests.MySQLConnectorTests):
         pStmt = "SELECT * FROM customer WHERE i = ? ?"
         self.assertRaises(
             (
-                mysql.connector.errors.InterfaceError,
-                mysql.connector.errors.ProgrammingError,
+                mysql.connector.errors.DatabaseError,
             ),
             cursor.execute,
             pStmt,

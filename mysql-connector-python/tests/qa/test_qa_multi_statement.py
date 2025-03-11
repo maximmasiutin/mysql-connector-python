@@ -42,7 +42,7 @@ from mysql.connector._scripting import (
     get_local_infile_filenames,
 )
 from mysql.connector.aio import connect as aio_connect
-from mysql.connector.errors import InterfaceError, ProgrammingError, NotSupportedError
+from mysql.connector.errors import DatabaseError, InterfaceError, ProgrammingError, NotSupportedError
 
 
 class TestCaseItem(TypedDict):
@@ -673,7 +673,7 @@ class MySQLCursorTests(tests.MySQLConnectorTests):
 
                 # Multi statement is not supported for prepared statements
                 if "prepared" in flavor:
-                    with self.assertRaises((ProgrammingError, InterfaceError)):
+                    with self.assertRaises((DatabaseError,)):
                         cur.execute(script, map_results=map_results)
                     continue
 

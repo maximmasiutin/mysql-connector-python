@@ -214,9 +214,11 @@ class CMySQLConnection(MySQLConnectionAbstract):
             self._cmysql.autocommit(value)
             self._autocommit = value
         except MySQLInterfaceError as err:
-            raise get_mysql_exception(
-                msg=err.msg, errno=err.errno, sqlstate=err.sqlstate
-            ) from err
+            if hasattr(err, "errno"):
+                raise get_mysql_exception(
+                    err.errno, msg=err.msg, sqlstate=err.sqlstate
+                ) from err
+            raise InterfaceError(str(err)) from err
 
     @property
     def read_timeout(self) -> Optional[int]:
@@ -255,9 +257,11 @@ class CMySQLConnection(MySQLConnectionAbstract):
         try:
             self._cmysql.select_db(value)
         except MySQLInterfaceError as err:
-            raise get_mysql_exception(
-                msg=err.msg, errno=err.errno, sqlstate=err.sqlstate
-            ) from err
+            if hasattr(err, "errno"):
+                raise get_mysql_exception(
+                    err.errno, msg=err.msg, sqlstate=err.sqlstate
+                ) from err
+            raise InterfaceError(str(err)) from err
 
     @property
     def in_transaction(self) -> bool:
@@ -352,9 +356,11 @@ class CMySQLConnection(MySQLConnectionAbstract):
             if self.converter:
                 self.converter.str_fallback = self._converter_str_fallback
         except MySQLInterfaceError as err:
-            raise get_mysql_exception(
-                msg=err.msg, errno=err.errno, sqlstate=err.sqlstate
-            ) from err
+            if hasattr(err, "errno"):
+                raise get_mysql_exception(
+                    err.errno, msg=err.msg, sqlstate=err.sqlstate
+                ) from err
+            raise InterfaceError(str(err)) from err
 
         self._do_handshake()
 
@@ -386,9 +392,11 @@ class CMySQLConnection(MySQLConnectionAbstract):
         except MySQLInterfaceError as err:
             if OTEL_ENABLED:
                 record_exception_event(self._span, err)
-            raise get_mysql_exception(
-                msg=err.msg, errno=err.errno, sqlstate=err.sqlstate
-            ) from err
+            if hasattr(err, "errno"):
+                raise get_mysql_exception(
+                    err.errno, msg=err.msg, sqlstate=err.sqlstate
+                ) from err
+            raise InterfaceError(str(err)) from err
         finally:
             if OTEL_ENABLED:
                 end_span(self._span)
@@ -452,9 +460,11 @@ class CMySQLConnection(MySQLConnectionAbstract):
                     raise InterfaceError("Query should not return more than 1 row")
             self._cmysql.free_result()
         except MySQLInterfaceError as err:
-            raise get_mysql_exception(
-                msg=err.msg, errno=err.errno, sqlstate=err.sqlstate
-            ) from err
+            if hasattr(err, "errno"):
+                raise get_mysql_exception(
+                    err.errno, msg=err.msg, sqlstate=err.sqlstate
+                ) from err
+            raise InterfaceError(str(err)) from err
 
         return first_row
 
@@ -542,11 +552,13 @@ class CMySQLConnection(MySQLConnectionAbstract):
         except MySQLInterfaceError as err:
             if prep_stmt:
                 prep_stmt.free_result()
-                raise InterfaceError(str(err)) from err
-            self.free_result()
-            raise get_mysql_exception(
-                msg=err.msg, errno=err.errno, sqlstate=err.sqlstate
-            ) from err
+            else:
+                self.free_result()
+            if hasattr(err, "errno"):
+                raise get_mysql_exception(
+                    err.errno, msg=err.msg, sqlstate=err.sqlstate
+                ) from err
+            raise InterfaceError(str(err)) from err
 
         return rows, _eof
 
@@ -603,9 +615,11 @@ class CMySQLConnection(MySQLConnectionAbstract):
         try:
             self._cmysql.select_db(database)
         except MySQLInterfaceError as err:
-            raise get_mysql_exception(
-                msg=err.msg, errno=err.errno, sqlstate=err.sqlstate
-            ) from err
+            if hasattr(err, "errno"):
+                raise get_mysql_exception(
+                    err.errno, msg=err.msg, sqlstate=err.sqlstate
+                ) from err
+            raise InterfaceError(str(err)) from err
 
     def fetch_eof_columns(
         self, prep_stmt: Optional[CMySQLPrepStmt] = None
@@ -669,6 +683,10 @@ class CMySQLConnection(MySQLConnectionAbstract):
             stmt.converter_str_fallback = self._converter_str_fallback
             return CMySQLPrepStmt(stmt)
         except MySQLInterfaceError as err:
+            if hasattr(err, "errno"):
+                raise get_mysql_exception(
+                    err.errno, msg=err.msg, sqlstate=err.sqlstate
+                ) from err
             raise InterfaceError(str(err)) from err
 
     @with_context_propagation
@@ -682,6 +700,10 @@ class CMySQLConnection(MySQLConnectionAbstract):
         try:
             statement_id.stmt_execute(*args, query_attrs=self.query_attrs)
         except MySQLInterfaceError as err:
+            if hasattr(err, "errno"):
+                raise get_mysql_exception(
+                    err.errno, msg=err.msg, sqlstate=err.sqlstate
+                ) from err
             raise InterfaceError(str(err)) from err
 
         self._columns = []
@@ -704,9 +726,11 @@ class CMySQLConnection(MySQLConnectionAbstract):
         try:
             statement_id.stmt_close()
         except MySQLInterfaceError as err:
-            raise get_mysql_exception(
-                err.errno, msg=err.msg, sqlstate=err.sqlstate
-            ) from err
+            if hasattr(err, "errno"):
+                raise get_mysql_exception(
+                    err.errno, msg=err.msg, sqlstate=err.sqlstate
+                ) from err
+            raise InterfaceError(str(err)) from err
 
     def cmd_stmt_reset(
         self,
@@ -719,6 +743,10 @@ class CMySQLConnection(MySQLConnectionAbstract):
         try:
             statement_id.stmt_reset()
         except MySQLInterfaceError as err:
+            if hasattr(err, "errno"):
+                raise get_mysql_exception(
+                    err.errno, msg=err.msg, sqlstate=err.sqlstate
+                ) from err
             raise InterfaceError(str(err)) from err
 
     @with_context_propagation
@@ -749,9 +777,11 @@ class CMySQLConnection(MySQLConnectionAbstract):
                 query_attrs=self.query_attrs,
             )
         except MySQLInterfaceError as err:
-            raise get_mysql_exception(
-                err.errno, msg=err.msg, sqlstate=err.sqlstate
-            ) from err
+            if hasattr(err, "errno"):
+                raise get_mysql_exception(
+                    err.errno, msg=err.msg, sqlstate=err.sqlstate
+                ) from err
+            raise InterfaceError(str(err)) from err
         except AttributeError as err:
             addr = (
                 self._unix_socket if self._unix_socket else f"{self._host}:{self._port}"
@@ -966,9 +996,11 @@ class CMySQLConnection(MySQLConnectionAbstract):
             )
 
         except MySQLInterfaceError as err:
-            raise get_mysql_exception(
-                msg=err.msg, errno=err.errno, sqlstate=err.sqlstate
-            ) from err
+            if hasattr(err, "errno"):
+                raise get_mysql_exception(
+                    err.errno, msg=err.msg, sqlstate=err.sqlstate
+                ) from err
+            raise InterfaceError(str(err)) from err
 
         # If charset isn't defined, we use the same charset ID defined previously,
         # otherwise, we run a verification and update the charset ID.
@@ -1000,9 +1032,11 @@ class CMySQLConnection(MySQLConnectionAbstract):
             self.handle_unread_result()
             self._cmysql.refresh(options)
         except MySQLInterfaceError as err:
-            raise get_mysql_exception(
-                msg=err.msg, errno=err.errno, sqlstate=err.sqlstate
-            ) from err
+            if hasattr(err, "errno"):
+                raise get_mysql_exception(
+                    err.errno, msg=err.msg, sqlstate=err.sqlstate
+                ) from err
+            raise InterfaceError(str(err)) from err
 
         return self.fetch_eof_status()
 
@@ -1029,9 +1063,11 @@ class CMySQLConnection(MySQLConnectionAbstract):
         try:
             self._cmysql.shutdown(level)
         except MySQLInterfaceError as err:
-            raise get_mysql_exception(
-                msg=err.msg, errno=err.errno, sqlstate=err.sqlstate
-            ) from err
+            if hasattr(err, "errno"):
+                raise get_mysql_exception(
+                    err.errno, msg=err.msg, sqlstate=err.sqlstate
+                ) from err
+            raise InterfaceError(str(err)) from err
         self.close()
 
     def cmd_statistics(self) -> StatsPacketType:
@@ -1042,9 +1078,11 @@ class CMySQLConnection(MySQLConnectionAbstract):
             stat = self._cmysql.stat()
             return MySQLProtocol().parse_statistics(stat, with_header=False)
         except (MySQLInterfaceError, InterfaceError) as err:
-            raise get_mysql_exception(
-                msg=err.msg, errno=err.errno, sqlstate=err.sqlstate
-            ) from err
+            if hasattr(err, "errno"):
+                raise get_mysql_exception(
+                    err.errno, msg=err.msg, sqlstate=err.sqlstate
+                ) from err
+            raise InterfaceError(str(err)) from err
 
     def cmd_process_kill(self, mysql_pid: int) -> None:
         """Kill a MySQL process"""
