@@ -1,4 +1,4 @@
-# Copyright (c) 2015, 2024, Oracle and/or its affiliates.
+# Copyright (c) 2015, 2025, Oracle and/or its affiliates.
 #
 # This program is free software; you can redistribute it and/or modify
 # it under the terms of the GNU General Public License, version 2.0, as
@@ -42,7 +42,7 @@
 %{?extra_link_args: %global extra_link_args %{extra_link_args}}
 
 # set version if not defined through 'rpmbuild'
-%{!?version: %global version 9.2.0}
+%{!?version: %global version 9.3.0}
 
 
 # if true set byte_code_only to --byte_code_only
@@ -174,6 +174,9 @@ sed -i -e '/protobuf/d' %{buildroot}%{python3_sitearch}/mysqlx_connector_python-
 %{python3_sitearch}/_mysqlxpb.cpython*.so
 
 %changelog
+* Mon Mar 17 2025 Souma Kanti Ghosh <souma.kanti.ghosh@oracle.com> - 9.3.0-1
+- Updated for 9.3.0
+
 * Mon Oct 28 2024 Souma Kanti Ghosh <souma.kanti.ghosh@oracle.com> - 9.2.0-1
 - Updated for 9.2.0
 
