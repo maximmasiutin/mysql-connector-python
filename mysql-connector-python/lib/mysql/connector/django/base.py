@@ -143,7 +143,7 @@ class CursorWrapper:
 
     @staticmethod
     def _adapt_execute_args_dict(
-        args: Dict[str, MySQLConvertibleType]
+        args: Dict[str, MySQLConvertibleType],
     ) -> Dict[str, MySQLConvertibleType]:
         if not args:
             return args

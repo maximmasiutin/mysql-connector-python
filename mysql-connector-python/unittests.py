@@ -1,7 +1,7 @@
 #!/usr/bin/env python
 # -*- coding: utf-8 -*-
 
-# Copyright (c) 2009, 2024, Oracle and/or its affiliates.
+# Copyright (c) 2009, 2025, Oracle and/or its affiliates.
 #
 # This program is free software; you can redistribute it and/or modify
 # it under the terms of the GNU General Public License, version 2.0, as
@@ -149,7 +149,6 @@ log-error = mysqld_{name}.err
 log-bin = mysqld_{name}_bin
 local_infile = 1
 innodb_flush_log_at_trx_commit = 2
-innodb_log_file_size = 1Gb
 general_log_file = general_{name}.log
 {secure_file_priv}
 """
@@ -741,7 +740,13 @@ def init_mysql_server(port, options):
                     "::" if tests.IPV6_AVAILABLE else "0.0.0.0"
                 )
             },
-        }
+        },
+        {
+            "version": (8, 0, 30),
+            "options": {
+                "innodb_log_file_size": "1Gb",
+            },
+        },
     ]
 
     if options.secure_file_priv is not None:

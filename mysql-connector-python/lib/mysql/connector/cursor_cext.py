@@ -61,7 +61,7 @@ from .types import (
     ParamsSequenceType,
     RowItemType,
     RowType,
-    StrOrBytes,
+    StrOrBytesAny,
     WarningType,
 )
 
@@ -1090,7 +1090,7 @@ class CMySQLCursorPrepared(CMySQLCursor):
 
     def execute(
         self,
-        operation: StrOrBytes,
+        operation: StrOrBytesAny,
         params: Optional[ParamsSequenceOrDictType] = None,
         map_results: bool = False,
     ) -> None:

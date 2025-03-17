@@ -1,4 +1,4 @@
-# Copyright (c) 2023, 2024, Oracle and/or its affiliates.
+# Copyright (c) 2023, 2025, Oracle and/or its affiliates.
 #
 # This program is free software; you can redistribute it and/or modify
 # it under the terms of the GNU General Public License, version 2.0, as
@@ -36,6 +36,7 @@ from decimal import Decimal
 from time import struct_time
 from typing import (
     TYPE_CHECKING,
+    Any,
     Deque,
     Dict,
     List,
@@ -61,6 +62,9 @@ class MySQLScriptPartition(TypedDict):
 
 StrOrBytes = Union[str, bytes]
 """Shortcut to for `String or Bytes`."""
+
+StrOrBytesAny = Union[StrOrBytes, Any]
+"""Shortcut to for `String or Bytes or Any`."""
 
 StrOrBytesPath = Union[StrOrBytes, os.PathLike]
 """Shortcut to for `String or Bytes or os.PathLike` - this shortcut
