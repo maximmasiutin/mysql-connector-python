@@ -1,4 +1,4 @@
-# Copyright (c) 2016, 2024, Oracle and/or its affiliates.
+# Copyright (c) 2016, 2025, Oracle and/or its affiliates.
 #
 # This program is free software; you can redistribute it and/or modify
 # it under the terms of the GNU General Public License, version 2.0, as
@@ -83,7 +83,7 @@ def varint_from_protobuf_stream(payload: bytes) -> Tuple[int, bytes]:
     shift = 0
 
     for item in payload:
-        char = item if isinstance(item, int) else ord(item)  # type: ignore[arg-type]
+        char = item if isinstance(item, int) else ord(item)
         eos = (char & 0x80) == 0
         cur_bits = char & 0x7F
         cur_bits <<= shift
@@ -144,11 +144,11 @@ def set_from_protobuf(payload: bytes) -> List[bytes]:
 def decimal_from_protobuf(payload: bytes) -> decimal.Decimal:
     digits = []
     sign = None
-    scale = payload[0] if isinstance(payload[0], int) else ord(payload[0])  # type: ignore[arg-type]
+    scale = payload[0] if isinstance(payload[0], int) else ord(payload[0])
     payload = payload[1:]
 
     for item in payload:
-        char = item if isinstance(item, int) else ord(item)  # type: ignore[arg-type]
+        char = item if isinstance(item, int) else ord(item)
         high_bcd = (char & 0xF0) >> 4
         low_bcd = char & 0x0F
         if high_bcd < 0x0A:

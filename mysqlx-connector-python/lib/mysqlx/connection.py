@@ -1,4 +1,4 @@
-# Copyright (c) 2016, 2024, Oracle and/or its affiliates.
+# Copyright (c) 2016, 2025, Oracle and/or its affiliates.
 #
 # This program is free software; you can redistribute it and/or modify
 # it under the terms of the GNU General Public License, version 2.0, as
@@ -1785,7 +1785,7 @@ class PoolsManager:
 
     @staticmethod
     def _get_connections_settings(
-        settings: Dict[str, Any]
+        settings: Dict[str, Any],
     ) -> List[Tuple[str, Dict[str, Any]]]:
         """Generates a list of separated connection settings for each host.
 

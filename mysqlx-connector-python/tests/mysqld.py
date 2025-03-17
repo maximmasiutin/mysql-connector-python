@@ -1,4 +1,4 @@
-# Copyright (c) 2009, 2024, Oracle and/or its affiliates.
+# Copyright (c) 2009, 2025, Oracle and/or its affiliates.
 #
 # This program is free software; you can redistribute it and/or modify
 # it under the terms of the GNU General Public License, version 2.0, as
@@ -458,7 +458,6 @@ class MySQLServer(MySQLServerBase):
             "--default-storage-engine=myisam",
             "--net_buffer_length=16K",
             "--tmpdir=%s" % self._tmpdir,
-            "--innodb_log_file_size=1Gb",
         ]
 
         if self._version[0:2] >= (8, 0) or self._version >= (5, 7, 21):
@@ -468,6 +467,7 @@ class MySQLServer(MySQLServerBase):
             cmd.append("--bootstrap")
 
         if self._version < (8, 0, 3):
+            cmd.append("--innodb_log_file_size=1Gb")
             cmd.append("--log-warnings=0")
 
         if self._version[0:2] < (5, 5):
