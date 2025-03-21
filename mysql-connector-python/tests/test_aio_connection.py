@@ -2304,8 +2304,14 @@ class WL14110(tests.MySQLConnectorTests):
 
     async def asyncSetUp(self):
         self.server = tests.MYSQL_SERVERS[0]
-        if "com" not in self.server.license:
-            self.skipTest("Plugin not available in this version")
+        if not "com" in self.server.license:
+            self.skipTest("Plugin not available in GPL distributions")
+        if os.name == "nt" and tests.MYSQL_VERSION < (8, 1):
+            # see https://dev.mysql.com/doc/refman/8.4/en/ldap-pluggable-authentication.html#ldap-pluggable-authentication-installation
+            self.skipTest(
+                "On Microsoft Windows, the server plugin for SASL-based LDAP "
+                "authentication is not supported for MySQL Server 8.0.X"
+            )
         if not tests.is_host_reachable("10.172.166.126"):
             # Skip if remote ldap server is not reachable.
             self.skipTest("Remote ldap server is not reachable")
@@ -2636,8 +2642,14 @@ class WL14263(tests.MySQLConnectorTests):
 
     async def asyncSetUp(self):
         self.server = tests.MYSQL_SERVERS[0]
-        if "com" in self.server.license:
-            self.skipTest("Plugin not available in this version")
+        if not "com" in self.server.license:
+            self.skipTest("Plugin not available in GPL distributions")
+        if os.name == "nt" and tests.MYSQL_VERSION < (8, 1):
+            # see https://dev.mysql.com/doc/refman/8.4/en/ldap-pluggable-authentication.html#ldap-pluggable-authentication-installation
+            self.skipTest(
+                "On Microsoft Windows, the server plugin for SASL-based LDAP "
+                "authentication is not supported for MySQL Server 8.0.X"
+            )
         if not tests.is_host_reachable("100.103.19.5"):
             # Skip if remote ldap server is not reachable.
             self.skipTest("Remote ldap server is not reachable")
@@ -2781,8 +2793,14 @@ class WL14213(tests.MySQLConnectorTests):
 
     async def asyncSetUp(self):
         self.server = tests.MYSQL_SERVERS[0]
-        if "com" not in self.server.license:
-            self.skipTest("Plugin not available in this version")
+        if not "com" in self.server.license:
+            self.skipTest("Plugin not available in GPL distributions")
+        if os.name == "nt" and tests.MYSQL_VERSION < (8, 1):
+            # see https://dev.mysql.com/doc/refman/8.4/en/ldap-pluggable-authentication.html#ldap-pluggable-authentication-installation
+            self.skipTest(
+                "On Microsoft Windows, the server plugin for SASL-based LDAP "
+                "authentication is not supported for MySQL Server 8.0.X"
+            )
         if not tests.is_host_reachable("100.103.18.98"):
             # Skip if remote ldap server is not reachable.
             self.skipTest("Remote ldap server is not reachable")
