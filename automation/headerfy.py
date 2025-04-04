@@ -98,7 +98,7 @@ PATTERN_HEADER_PLAIN = re.compile(
 PATTERN_YEARS = r"Copyright\s+\(c\)\s+\d{4},\s*\d{4},\s+Oracle"
 
 TARGET_SRC_PY_EXTS = [".py", ".sh", ".spec", ".postinst", ".postrm", ".toml"]
-TARGET_SRC_C_EXTS = [".c", ".h", ".cpp", ".cc", ".proto"]
+TARGET_SRC_C_EXTS = [".c", ".h", ".cpp", ".cc", ".proto", ".rc"]
 TARGET_SRC_PLAIN_EXTS = [".rst"]
 
 TARGET_SRC_EXTS = TARGET_SRC_PY_EXTS + TARGET_SRC_C_EXTS + TARGET_SRC_PLAIN_EXTS
@@ -177,7 +177,6 @@ def update_header(root: Union[str, Path], filename: str) -> None:
         if two_years_snippet is not None
         else ""
     )
-
 
     logger.info("%s (%s)", path_to_file, creation_year if creation_year else "NULL")
 

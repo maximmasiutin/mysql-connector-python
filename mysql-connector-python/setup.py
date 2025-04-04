@@ -75,17 +75,22 @@ COMMAND_CLASSES = {
 if DistWheel is not None:
     COMMAND_CLASSES["bdist_wheel"] = DistWheel
 
+cext_src_files = [
+    "src/exceptions.c",
+    "src/mysql_capi.c",
+    "src/mysql_capi_conversion.c",
+    "src/mysql_connector.c",
+    "src/force_cpp_linkage.cc",
+]
+
+if os.name == "nt":
+    cext_src_files.append("src/version_info.rc")
+
 # C extensions
 EXTENSIONS = [
     Extension(
         "_mysql_connector",
-        sources=[
-            "src/exceptions.c",
-            "src/mysql_capi.c",
-            "src/mysql_capi_conversion.c",
-            "src/mysql_connector.c",
-            "src/force_cpp_linkage.cc",
-        ],
+        sources=cext_src_files,
         include_dirs=["src/include"],
     ),
 ]
