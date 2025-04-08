@@ -120,7 +120,7 @@ Options for the Classic connector:
 
 * dns-srv
 * gssapi
-* fido2
+* webauthn
 * telemetry
 
 .. === </mysql> ===

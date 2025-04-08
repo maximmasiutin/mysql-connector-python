@@ -8,6 +8,11 @@ Copyright (c) 2009, 2025, Oracle and/or its affiliates.
 Full release notes:
  http://dev.mysql.com/doc/relnotes/connector-python/en/
 
+v9.4.0
+======
+
+- BUG#37806057: Rename extra option (when installing wheel package) to install webauthn functionality dependencies
+
 v9.3.0
 ======
 

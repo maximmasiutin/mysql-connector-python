@@ -151,7 +151,7 @@ def main() -> None:
         extras_require={
             "dns-srv": ["dnspython==2.6.1"],
             "gssapi": ["gssapi==1.8.3"],
-            "fido2": ["fido2==1.1.2"],
+            "webauthn": ["fido2==1.1.2"],
             "telemetry": [
                 "opentelemetry-api==1.18.0",
                 "opentelemetry-sdk==1.18.0",
