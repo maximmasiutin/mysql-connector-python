@@ -815,8 +815,9 @@ MySQL_autocommit(MySQL *self, PyObject *mode)
 
     if (Py_TYPE(mode) == &PyBool_Type) {
         new_mode = (mode == Py_True) ? 1 : 0;
-
+        Py_BEGIN_ALLOW_THREADS
         res = (int)mysql_autocommit(&self->session, new_mode);
+        Py_END_ALLOW_THREADS
         if (res == -1 && mysql_errno(&self->session)) {
             raise_with_session(&self->session, NULL);
             return NULL;
@@ -1090,7 +1091,9 @@ MySQL_commit(MySQL *self)
 
     IS_CONNECTED(self);
 
+    Py_BEGIN_ALLOW_THREADS
     res = mysql_commit(&self->session);
+    Py_END_ALLOW_THREADS
     if (res) {
         raise_with_session(&self->session, NULL);
         return NULL;
@@ -1202,12 +1205,8 @@ MySQL_connect(MySQL *self, PyObject *args, PyObject *kwds)
         return NULL;
     }
 
+    MySQL_close(self);
     Py_BEGIN_ALLOW_THREADS
-    if (self->connected) {
-        self->connected = 0;
-        mysql_close(&self->session);
-    }
-
     mysql_init(&self->session);
     Py_END_ALLOW_THREADS
 
@@ -1941,7 +1940,9 @@ MySQL_ping(MySQL *self)
         Py_RETURN_FALSE;
     }
 
+    Py_BEGIN_ALLOW_THREADS
     res = mysql_ping(&self->session);
+    Py_END_ALLOW_THREADS
 
     if (!res) {
         Py_RETURN_TRUE;
@@ -2993,9 +2994,11 @@ MySQL_refresh(MySQL *self, PyObject *args)
 
     for (int i = 0; i < refresh_options_len; i++) {
         if (options & refresh_options[i].option) {
+            Py_BEGIN_ALLOW_THREADS
             res = mysql_real_query(&self->session,
                                    refresh_options[i].statement,
                                    strlen(refresh_options[i].statement));
+            Py_END_ALLOW_THREADS
             if (res) {
                 break;  /* stop processing if an error occurs */
             }
@@ -3030,7 +3033,9 @@ MySQL_reset_connection(MySQL *self)
         Py_RETURN_FALSE;
     }
 
+    Py_BEGIN_ALLOW_THREADS
     res = mysql_reset_connection(&self->session);
+    Py_END_ALLOW_THREADS
 
     if (!res) {
         Py_RETURN_TRUE;
