@@ -278,16 +278,14 @@ class DatabaseWrapper(BaseDatabaseWrapper):  # pylint: disable=abstract-method
     operators = {
         "exact": "= %s",
         "iexact": "LIKE %s",
-        "contains": "LIKE BINARY %s",
+        "contains": "LIKE CAST(%s AS BINARY)",
         "icontains": "LIKE %s",
-        "regex": "REGEXP BINARY %s",
-        "iregex": "REGEXP %s",
         "gt": "> %s",
         "gte": ">= %s",
         "lt": "< %s",
         "lte": "<= %s",
-        "startswith": "LIKE BINARY %s",
-        "endswith": "LIKE BINARY %s",
+        "startswith": "LIKE CAST(%s AS BINARY)",
+        "endswith": "LIKE CAST(%s AS BINARY)",
         "istartswith": "LIKE %s",
         "iendswith": "LIKE %s",
     }
@@ -302,11 +300,11 @@ class DatabaseWrapper(BaseDatabaseWrapper):  # pylint: disable=abstract-method
     # the LIKE operator.
     pattern_esc = r"REPLACE(REPLACE(REPLACE({}, '\\', '\\\\'), '%%', '\%%'), '_', '\_')"
     pattern_ops = {
-        "contains": "LIKE BINARY CONCAT('%%', {}, '%%')",
+        "contains": "LIKE CAST(CONCAT('%%', {}, '%%') AS BINARY)",
         "icontains": "LIKE CONCAT('%%', {}, '%%')",
-        "startswith": "LIKE BINARY CONCAT({}, '%%')",
+        "startswith": "LIKE CAST(CONCAT({}, '%%') AS BINARY)",
         "istartswith": "LIKE CONCAT({}, '%%')",
-        "endswith": "LIKE BINARY CONCAT('%%', {})",
+        "endswith": "LIKE CAST(CONCAT('%%', {}) AS BINARY)",
         "iendswith": "LIKE CONCAT('%%', {})",
     }
 
@@ -355,9 +353,6 @@ class DatabaseWrapper(BaseDatabaseWrapper):  # pylint: disable=abstract-method
 
     def get_connection_params(self) -> Dict[str, Any]:
         kwargs = {
-            "charset": "utf8",
-            "use_unicode": True,
-            "buffered": False,
             "consume_results": True,
         }
 
@@ -582,6 +577,8 @@ class DatabaseWrapper(BaseDatabaseWrapper):  # pylint: disable=abstract-method
     @cached_property
     def mysql_server_info(self) -> Any:
         """Return MySQL version."""
+        if self.connection:
+            return self.connection.server_info
         with self.temporary_connection() as cursor:
             cursor.execute("SELECT VERSION()")
             return cursor.fetchone()[0]
@@ -589,6 +586,8 @@ class DatabaseWrapper(BaseDatabaseWrapper):  # pylint: disable=abstract-method
     @cached_property
     def mysql_version(self) -> Tuple[int, ...]:
         """Return MySQL version."""
+        if self.connection:
+            return self.connection.server_version
         config = self.get_connection_params()
         with mysql.connector.connect(**config) as conn:
             server_version: Tuple[int, ...] = conn.server_version
@@ -597,6 +596,8 @@ class DatabaseWrapper(BaseDatabaseWrapper):  # pylint: disable=abstract-method
     @cached_property
     def sql_mode(self) -> Set[str]:
         """Return SQL mode."""
+        if self.connection:
+            return set(self.connection.sql_mode.split(","))
         with self.cursor() as cursor:
             cursor.execute("SELECT @@sql_mode")
             sql_mode = cursor.fetchone()

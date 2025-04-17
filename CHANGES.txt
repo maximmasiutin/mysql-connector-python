@@ -11,6 +11,7 @@ Full release notes:
 v9.4.0
 ======
 
+- BUG#37820231: Text based django ORM filters doesn't work with Connector/Python
 - BUG#37806057: Rename extra option (when installing wheel package) to install webauthn functionality dependencies
 - BUG#36452514: Missing version info resources
 - BUG#34950958: MySQL Python Connector doesn't work with ssh in the same process
