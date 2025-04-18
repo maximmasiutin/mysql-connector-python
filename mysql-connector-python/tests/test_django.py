@@ -105,7 +105,7 @@ FOREIGN KEY (id_t1) REFERENCES django_t1(id) ON DELETE CASCADE
 import django.db  # pylint: disable=W0611
 
 from django.core.exceptions import ImproperlyConfigured
-from django.db import connection
+from django.db import connection, models
 from django.db.backends.signals import connection_created
 from django.db.utils import DEFAULT_DB_ALIAS, load_backend
 from django.utils.safestring import SafeText
@@ -113,6 +113,7 @@ from django.utils.safestring import SafeText
 import mysql.connector
 
 from mysql.connector.conversion import MySQLConverter
+from mysql.connector.django.base import CursorWrapper
 from mysql.connector.django.introspection import FieldInfo
 from mysql.connector.errors import ProgrammingError
 
@@ -627,3 +628,58 @@ class BugOra35755852(tests.MySQLConnectorTests):
         cnx_params = cnx.get_connection_params()
         self.assertTrue(cnx_params["raise_on_warnings"])
         del settings.DATABASES["default"]["OPTIONS"]
+
+
+class BugOra37047789(tests.MySQLConnectorTests):
+    """BUG#37047789: Python connector does not support Django enum
+
+    Django Enumeration types are not getting converted into MySQLConvertibleType
+    thus, query execution via Django ORM using Connector/Python is failing when
+    a model field with enum choices are being used.
+
+    This patch fixes the issue by changing the Enum object being passed to the
+    conversation module to its underlying value before conversion to MySQL type
+    takes place using the built-in property `value`, which already exists in every
+    Enum objects.
+    """
+
+    table_name = "BugOra37047789"
+
+    class Priority(models.IntegerChoices):
+        LOW = 1, 'Low'
+        MEDIUM = 2, 'Medium'
+        HIGH = 3, 'High'
+
+    class Status(models.TextChoices):
+        DRAFT = 'draft', 'Draft'
+        PUBLISHED = 'published', 'Published'
+
+    dbconfig = tests.get_mysql_config()
+
+    def setUp(self):
+        with mysql.connector.connect(**self.dbconfig) as cnx:
+            cnx.cmd_query(f"""
+                CREATE TABLE {self.table_name} (
+                    priority INT NOT NULL DEFAULT 1,
+                    status varchar(10) NOT NULL DEFAULT 'draft'
+                )
+            """)
+            cnx.commit()
+
+    def tearDown(self):
+        with mysql.connector.connect(**self.dbconfig) as cnx:
+            cnx.cmd_query(f"DROP TABLE {self.table_name}")
+
+    @tests.foreach_cnx()
+    def test_django_enum_support(self):
+        cnx_cur = self.cnx.cursor()
+        django_cur = CursorWrapper(cnx_cur)
+        django_cur.execute(
+            f"INSERT INTO {self.table_name} VALUES (%s, %s)",
+            (self.Priority.HIGH, self.Status.PUBLISHED)
+        )
+        django_cur.execute(
+            f"INSERT INTO {self.table_name} VALUES (%(priority)s, %(status)s)",
+            {'priority': self.Priority.HIGH, 'status': self.Status.PUBLISHED}
+        )
+        cnx_cur.close()

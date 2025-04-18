@@ -35,6 +35,7 @@ import struct
 import time
 
 from decimal import Decimal
+from enum import Enum
 from typing import Any, Callable, Dict, List, Optional, Set, Tuple, Union
 
 from .constants import (
@@ -233,6 +234,8 @@ class MySQLConverter(MySQLConverterBase):
 
     def to_mysql(self, value: MySQLConvertibleType) -> MySQLProducedType:
         """Convert Python data type to MySQL"""
+        if isinstance(value, Enum):
+            value = value.value
         type_name = value.__class__.__name__.lower()
         try:
             converted: MySQLProducedType = getattr(self, f"_{type_name}_to_mysql")(

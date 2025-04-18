@@ -33,6 +33,7 @@ import os
 
 from datetime import date, datetime, time, timedelta
 from decimal import Decimal
+from enum import Enum
 from time import struct_time
 from typing import (
     TYPE_CHECKING,
@@ -105,7 +106,7 @@ converted to a MySQL type. It's a subset of `MySQLConvertibleType`.
 """
 
 # pylint: disable=invalid-name
-MySQLConvertibleType = Union[BinaryProtocolType, bool, struct_time]
+MySQLConvertibleType = Union[BinaryProtocolType, Enum, bool, struct_time]
 """
 MySQL convertible Python types - Python types consumed by the built-in converter that
 can be converted to MySQL. It's a superset of `BinaryProtocolType`.
