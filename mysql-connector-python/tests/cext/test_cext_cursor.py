@@ -37,9 +37,10 @@ import decimal
 import logging
 import sys
 import unittest
-import warnings
 
 import tests
+
+import mysql.connector
 
 from mysql.connector import errorcode, errors
 
@@ -1161,3 +1162,54 @@ class CMySQLCursorPreparedDictTests(CMySQLCursorPreparedTests):
         self.assertEqual(len(rows), 4)
         self.assertEqual(rows[0], dict(zip(self.column_names, self.exp)))
         self.assertEqual(rows[1], dict(zip(self.column_names, self.exp)))
+
+
+class BugOra37627508(tests.MySQLConnectorTests):
+    """BUG#37627508: mysql/connector python fetchmany() has an off by one bug when argument given as 1
+
+    While single result is being fetched using the c-extension based cursor module's fetchmany() method,
+    the application crashes into a infinite loop of same results being returned by the cursor.
+
+    This patch fixes the issue by flushing out the cached result (next row) after it is being used up.
+    """
+
+    table_name = "Bug37627508"
+
+    exp_fetchmany_result_1 = [[(1,)], [(2,)], [(3,)], [(4,)], [(5,)], []]
+    exp_fetchmany_result_2 = [[(1,), (2,)], [(3,), (4,)], [(5,)], []]
+
+    @classmethod
+    def setUpClass(cls):
+        with mysql.connector.connect(**tests.get_mysql_config()) as cnx:
+            cnx.cmd_query(f"CREATE TABLE IF NOT EXISTS {cls.table_name} (id INTEGER)")
+            cnx.cmd_query(f"INSERT INTO {cls.table_name} (id) VALUES (1), (2), (3), (4), (5)")
+            cnx.commit()
+
+    @classmethod
+    def tearDownClass(cls):
+        with mysql.connector.connect(**tests.get_mysql_config()) as cnx:
+            cnx.cmd_query(f"DROP TABLE IF EXISTS {cls.table_name}")
+
+    @tests.foreach_cnx()
+    def test_fetchmany_cext_resultsize_1(self):
+        with self.cnx.cursor() as cur:
+            cur.execute(f"SELECT * FROM {self.table_name}")
+            res = []
+            try:
+                for _ in range(6):
+                    res.append(cur.fetchmany(1))
+                self.assertEqual(res, self.exp_fetchmany_result_1)
+            except Exception as e:
+                self.fail(e)
+
+    @tests.foreach_cnx()
+    def test_fetchmany_cext_resultsize_2(self):
+        with self.cnx.cursor() as cur:
+            cur.execute(f"SELECT * FROM {self.table_name}")
+            res = []
+            try:
+                for _ in range(4):
+                    res.append(cur.fetchmany(2))
+                self.assertEqual(res, self.exp_fetchmany_result_2)
+            except Exception as e:
+                self.fail(e)

@@ -704,17 +704,16 @@ class CMySQLCursor(MySQLCursorAbstract):
         if size and self._connection.unread_result:
             rows.extend(self._connection.get_rows(size, raw=self._raw)[0])
 
-        if size:
-            if self._connection.unread_result:
-                self._nextrow = self._connection.get_row()
-                if (
-                    self._nextrow
-                    and not self._nextrow[0]
-                    and not self._connection.more_results
-                ):
-                    self._connection.free_result()
-            else:
-                self._nextrow = (None, None)
+        if self._connection.unread_result:
+            self._nextrow = self._connection.get_row()
+            if (
+                self._nextrow
+                and not self._nextrow[0]
+                and not self._connection.more_results
+            ):
+                self._connection.free_result()
+        else:
+            self._nextrow = (None, None)
 
         if not rows:
             self._handle_eof()

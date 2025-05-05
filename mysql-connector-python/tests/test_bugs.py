@@ -41,7 +41,6 @@ in tests/py2/bugs.py or tests/py3/bugs.py. It might be that these files need
 to be created first.
 """
 
-import asyncio
 import collections
 import gc
 import os
@@ -52,7 +51,7 @@ import tempfile
 import traceback
 import unittest
 
-from datetime import date, datetime, time, timedelta, timezone
+from datetime import date, datetime, timedelta, timezone
 from decimal import Decimal
 from threading import Thread
 from time import sleep
