@@ -95,7 +95,7 @@ RE_SQL_INSERT_STMT = re.compile(
     re.I | re.M | re.S,
 )
 RE_SQL_INSERT_VALUES = re.compile(r".*VALUES\s*(\(.+\)).*", re.I | re.M | re.S)
-RE_PY_PARAM = re.compile(b"((?<!%)%s)")
+RE_PY_PARAM = re.compile(b"(%s)")
 RE_PY_MAPPING_PARAM = re.compile(
     rb"""
     %
@@ -400,8 +400,6 @@ class MySQLCursor(MySQLCursorAbstract):
                     " it must be of type list, tuple or dict"
                 )
 
-        # final statement with `%%s` should be replaced as `%s`
-        stmt = stmt.replace(b"%%s", b"%s")
         self._stmt_partitions = split_multi_statement(
             sql_code=stmt, map_results=map_results
         )
@@ -1237,8 +1235,6 @@ class MySQLCursorPrepared(MySQLCursor):
             except UnicodeEncodeError as err:
                 raise ProgrammingError(str(err)) from err
 
-            # final statement with `%%s` should be replaced as `%s`
-            operation = operation.replace(b"%%s", b"%s")
             if b"%s" in operation:
                 # Convert %s to ? before sending it to MySQL
                 operation = re.sub(RE_SQL_FIND_PARAM, b"?", operation)

@@ -410,8 +410,6 @@ class MySQLCursor(MySQLCursorAbstract):
                     f"Could not process parameters: {type(params).__name__}({params}),"
                     " it must be of type list, tuple or dict"
                 )
-        # final statement with `%%s` should be replaced as `%s`
-        stmt = stmt.replace(b"%%s", b"%s")
 
         return stmt
 
@@ -1209,8 +1207,6 @@ class MySQLCursorPrepared(MySQLCursor):
             except UnicodeEncodeError as err:
                 raise ProgrammingError(str(err)) from err
 
-            # final statement with `%%s` should be replaced as `%s`
-            operation = operation.replace(b"%%s", b"%s")
             if b"%s" in operation:
                 # Convert %s to ? before sending it to MySQL
                 operation = re.sub(RE_SQL_FIND_PARAM, b"?", operation)

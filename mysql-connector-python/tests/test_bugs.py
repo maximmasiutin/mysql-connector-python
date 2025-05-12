@@ -8900,57 +8900,6 @@ class BugOra36922645(tests.MySQLConnectorTests):
             self.fail(err)
 
 
-class BugOra37447394(tests.MySQLConnectorTests):
-    """BUG#37447394: Unable to escape a parameter marker (`%s`) used in a query that should not be
-    treated as a parameter marker.
-
-    The `%s` parameter marker is not being escaped by using `%%s` in an SQL statement being passed
-    via the cursor's execute() method. This is required while passing a query like:
-    `select date_format(%s, "%Y-%m-%d %H:%i:%%s")`. Currently, the `%s` at the end of the query is
-    is not being escaped and is being treated like a parameter marker instead.
-
-    This patch fixes this issue by adding proper regular expression checks to escape the `%s` by
-    using `%%s`.
-    """
-
-    stmt = 'select date_format(%s, "%Y-%m-%d %H:%i:%%s")'
-    params = ("2017-06-15 12:20:23",)
-
-    @foreach_cnx()
-    def test_bug37447394(self):
-        try:
-            with self.cnx.cursor() as cur:
-                cur.execute(self.stmt, self.params)
-                self.assertEqual(cur.fetchone(), self.params)
-            with self.cnx.cursor(prepared=True) as cur:
-                cur.execute(self.stmt, self.params)
-                self.assertEqual(cur.fetchone(), self.params)
-        except Exception as err:
-            self.fail(err)
-
-
-class BugOra37447394_async(tests.MySQLConnectorAioTestCase):
-    """BUG#37447394: Unable to escape a parameter marker (`%s`) used in a query that should not be
-    treated as a parameter marker.
-
-    For more details check `test_bugs.BugOra37447394`.
-    """
-
-    stmt = 'select date_format(%s, "%Y-%m-%d %H:%i:%%s")'
-    params = ("2017-06-15 12:20:23", )
-
-    @foreach_cnx_aio()
-    async def test_bug37447394_async(self):
-        try:
-            async with await self.cnx.cursor() as cur:
-                await cur.execute(self.stmt, self.params)
-                self.assertEqual(await cur.fetchone(), self.params)
-            async with await self.cnx.cursor(prepared=True) as cur:
-                await cur.execute(self.stmt, self.params)
-                self.assertEqual(await cur.fetchone(), self.params)
-        except Exception as err:
-            self.fail(err)
-
 class BugOra37275524(tests.MySQLConnectorTests):
     """BUG#37275524: Exception is not interpreted properly on prepared statements when C extension is in use
 

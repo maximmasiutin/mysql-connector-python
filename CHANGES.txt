@@ -16,6 +16,7 @@ v9.4.0
 - WL#16962: Update the Python Protobuf version
 - BUG#37868219: RPM packages have incorrect copyright year in their metadata
 - BUG#37820231: Text based django ORM filters doesn't work with Connector/Python
+- BUG#37859771: mysql/connector python version 9.3.0 has a regression which cannot persist binary data with percent signs in it
 - BUG#37806057: Rename extra option (when installing wheel package) to install webauthn functionality dependencies
 - BUG#37642447: The license type is missing from RPM package
 - BUG#37627508: mysql/connector python fetchmany() has an off by one bug when argument given as 1
@@ -32,7 +33,6 @@ v9.3.0
 - WL#16327: Remove Cursors Prepared Raw and Named Tuple
 - BUG#37541353: (Contribution) Fix typing annotation of MySQLConnectionAbstract's close function
 - BUG#37453587: Github links in PyPI project's pages do not work
-- BUG#37447394: Unable to escape a parameter marker (`%s`) used in a query that should not be treated as a parameter marker
 - BUG#37418436: Arbitrary File Read in MySQL Python Client library
 - BUG#37410052: Bad formatting of exceptions when connecting with Unix sockets
 - BUG#37399636: The C-extension has a memory leak when working with prepared statements
