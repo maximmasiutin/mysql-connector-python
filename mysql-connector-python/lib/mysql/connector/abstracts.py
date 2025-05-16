@@ -90,7 +90,6 @@ from .errors import (
     Error,
     InterfaceError,
     NotSupportedError,
-    OperationalError,
     ProgrammingError,
 )
 from .opentelemetry.constants import (
@@ -1893,6 +1892,7 @@ class MySQLConnectionAbstract(ABC):
             query += " WITH CONSISTENT SNAPSHOT"
         self.cmd_query(query)
 
+    @abstractmethod
     def reset_session(
         self,
         user_variables: Optional[Dict[str, Any]] = None,
@@ -1923,33 +1923,6 @@ class MySQLConnectionAbstract(ABC):
             >>> cnx.reset_session(user_variables, session_variables)
             ```
         """
-        if not self.is_connected():
-            raise OperationalError("MySQL Connection not available")
-
-        try:
-            self.cmd_reset_connection()
-        except (NotSupportedError, NotImplementedError):
-            if self._compress:
-                raise NotSupportedError(
-                    "Reset session is not supported with compression for "
-                    "MySQL server version 5.7.2 or earlier"
-                ) from None
-            self.cmd_change_user(
-                self._user,
-                self._password,
-                self._database,
-                self._charset_id,
-            )
-
-        if user_variables or session_variables:
-            cur = self.cursor()
-            if user_variables:
-                for key, value in user_variables.items():
-                    cur.execute(f"SET @`{key}` = {value}")
-            if session_variables:
-                for key, value in session_variables.items():
-                    cur.execute(f"SET SESSION `{key}` = {value}")
-            cur.close()
 
     @deprecated(DEPRECATED_METHOD_WARNING.format(property_name="converter_class"))
     def set_converter_class(self, convclass: Optional[Type[MySQLConverter]]) -> None:

@@ -223,8 +223,10 @@ class NetworkBrokerPlain(NetworkBroker):
                     raise InterfaceError(errno=2013)
                 pkt += chunk
             return pkt
-        except (asyncio.CancelledError, asyncio.TimeoutError) as err:
+        except asyncio.TimeoutError as err:
             raise ReadTimeoutError(errno=3024) from err
+        except asyncio.CancelledError as err:
+            raise err
 
     async def write(
         self,
@@ -270,8 +272,10 @@ class NetworkBrokerPlain(NetworkBroker):
                 ),
                 write_timeout,
             )
-        except (asyncio.CancelledError, asyncio.TimeoutError) as err:
+        except asyncio.TimeoutError as err:
             raise WriteTimeoutError(errno=3024) from err
+        except asyncio.CancelledError as err:
+            raise err
 
     async def read(
         self,

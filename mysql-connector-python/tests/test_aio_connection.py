@@ -53,7 +53,7 @@ from tests import (
 )
 
 from mysql.connector.abstracts import DEFAULT_CONFIGURATION
-from mysql.connector.aio import HAVE_DNSPYTHON, connect
+from mysql.connector.aio import connect
 from mysql.connector.aio.charsets import charsets
 from mysql.connector.aio.connection import MySQLConnection
 from mysql.connector.aio.cursor import (
@@ -65,6 +65,7 @@ from mysql.connector.aio.cursor import (
     MySQLCursorPrepared,
     MySQLCursorRaw,
 )
+from mysql.connector.aio.pooling import HAVE_DNSPYTHON
 from mysql.connector.aio.network import MySQLTcpSocket, MySQLUnixSocket
 from mysql.connector.constants import (
     MYSQL_DEFAULT_CHARSET_ID_57,

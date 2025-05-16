@@ -1338,6 +1338,7 @@ class MySQLConnection(MySQLConnectionAbstract):
         if session_variables:
             for key, value in session_variables.items():
                 cur.execute(f"SET SESSION `{key}` = %s", (value,))
+        cur.close()
 
     def ping(self, reconnect: bool = False, attempts: int = 1, delay: int = 0) -> None:
         """Check availability of the MySQL server
