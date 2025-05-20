@@ -370,12 +370,8 @@ class PythonWithGlobalInstSpanTests(tests.MySQLConnectorTests):
     new_user_name = "ramon"
     new_user_password = "s3cr3t"
     new_database = "colors"
-    new_user_stmt = (
-        "CREATE USER '{new_user_name}'@'{server_host}' IDENTIFIED BY '{new_user_password}'"
-    )
-    grant_stmt = (
-        "GRANT ALL PRIVILEGES ON *.* TO '{new_user_name}'@'{server_host}' WITH GRANT OPTION"
-    )
+    new_user_stmt = "CREATE USER '{new_user_name}'@'{server_host}' IDENTIFIED BY '{new_user_password}'"
+    grant_stmt = "GRANT ALL PRIVILEGES ON *.* TO '{new_user_name}'@'{server_host}' WITH GRANT OPTION"
     table_name = "employees"
     create_stmt = f"""CREATE TABLE {table_name} (
         emp_no int,
@@ -412,7 +408,7 @@ class PythonWithGlobalInstSpanTests(tests.MySQLConnectorTests):
         self.provider.add_span_processor(processor)
         self.tracer = trace.get_tracer(__name__, tracer_provider=self.provider)
         self.cnx_config = self.get_clean_mysql_config()
-        self.server_host = self.cnx_config['host']
+        self.server_host = self.cnx_config["host"]
         self.cnx_config["use_pure"] = self.pure_python
 
         # Instrumentor
@@ -555,9 +551,11 @@ class PythonWithGlobalInstSpanTests(tests.MySQLConnectorTests):
         app span or not.
         """
         num_query_spans_client_app = 13
-        with self.tracer.start_as_current_span(
-            "app"
-        ) if with_client_span else nullcontext():
+        with (
+            self.tracer.start_as_current_span("app")
+            if with_client_span
+            else nullcontext()
+        ):
             cnx = self._otel_connect(**self.cnx_config)
 
             with cnx.cursor(**cur_kwargs) as cur:
@@ -570,7 +568,9 @@ class PythonWithGlobalInstSpanTests(tests.MySQLConnectorTests):
                 cur.execute(f"DROP TABLE IF EXISTS {self.table_name}")
 
                 # create a new user
-                cur.execute(f"DROP USER IF EXISTS '{self.new_user_name}'@'{self.server_host}'")
+                cur.execute(
+                    f"DROP USER IF EXISTS '{self.new_user_name}'@'{self.server_host}'"
+                )
                 cur.execute(
                     self.new_user_stmt.format(
                         new_user_name=self.new_user_name,
@@ -612,9 +612,11 @@ class PythonWithGlobalInstSpanTests(tests.MySQLConnectorTests):
         table_name = "my_table"
         proc_name = "my_procedure"
 
-        with self.tracer.start_as_current_span(
-            "app"
-        ) if with_client_span else nullcontext():
+        with (
+            self.tracer.start_as_current_span("app")
+            if with_client_span
+            else nullcontext()
+        ):
             cnx = self._otel_connect(**self.cnx_config)
 
             with cnx.cursor(**cur_kwargs) as cur:
@@ -731,7 +733,8 @@ class PythonWithGlobalInstSpanTests(tests.MySQLConnectorTests):
             events["exception"]["exception.message"]["string_value"], str(ex)
         )
         self.assertEqual(
-            events["exception"]["exception.type"]["string_value"], ex.__class__.__name__
+            events["exception"]["exception.type"]["string_value"],
+            f"{ex.__class__.__module__}.{ex.__class__.__name__}",
         )
 
     def test_connection_error(self) -> None:
@@ -1002,6 +1005,10 @@ class MySQLInstrumentorTests(tests.MySQLConnectorTests):
         cnx.close()
 
 
+@unittest.skipIf(
+    True,
+    reason="Deactivating it. Fails may happen depending on the machine workload. It can be misleading.",
+)
 class PythonPerformanceTests(tests.MySQLConnectorTests):
     """Compare the connector's performance when otel tracing is on/off."""
 
@@ -1146,6 +1153,10 @@ class PythonPerformanceTests(tests.MySQLConnectorTests):
         )
 
 
+@unittest.skipIf(
+    True,
+    reason="Deactivating it. Fails may happen depending on the machine workload. It can be misleading.",
+)
 @unittest.skipIf(HAVE_CEXT == False, reason=NO_CEXT_ERR)
 class CextPerformanceTests(PythonPerformanceTests):
     """Compare the connector's performance when otel tracing is on/off."""

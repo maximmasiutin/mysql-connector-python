@@ -158,9 +158,9 @@ def main() -> None:
             "gssapi": ["gssapi==1.8.3"],
             "webauthn": ["fido2==1.1.2"],
             "telemetry": [
-                "opentelemetry-api==1.18.0",
-                "opentelemetry-sdk==1.18.0",
-                "opentelemetry-exporter-otlp-proto-http==1.18.0",
+                "opentelemetry-api==1.33.1",
+                "opentelemetry-sdk==1.33.1",
+                "opentelemetry-exporter-otlp-proto-http==1.33.1",
             ],
         },
     )
