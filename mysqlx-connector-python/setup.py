@@ -163,7 +163,7 @@ def main() -> None:
         install_requires=["protobuf==5.29.4"],
         extras_require={
             "dns-srv": ["dnspython==2.6.1"],
-            "compression": ["lz4>=2.1.6,<=4.3.2", "zstandard==0.23.0"],
+            "compression": ["lz4==4.4.4", "zstandard==0.23.0"],
         },
     )
 

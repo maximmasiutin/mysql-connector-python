@@ -11,6 +11,7 @@ Full release notes:
 v9.4.0
 ======
 
+- WL#16966: Upgrade Python lz4 version
 - WL#16963: Update the OpenTelemetry version
 - WL#16962: Update the Python Protobuf version
 - BUG#37820231: Text based django ORM filters doesn't work with Connector/Python
