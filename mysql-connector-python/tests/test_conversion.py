@@ -77,6 +77,33 @@ class DummyConverter(conversion.MySQLConverter):
 
     ...
 
+"""Data types inherited from the native ones supported by the default MySQLConverter.
+These are used in the unittest and integration tests of MySQLConverter for every connector types.
+"""
+class MyInt(int): ...
+class MyFloat(float): ...
+class MyStr(str): ...
+class MyBytes(bytes): ...
+class MyByteArray(bytearray): ...
+class MyDateTime(datetime.datetime):  ...
+class MyDate(datetime.date):   ...
+class MyTime(datetime.time):  ...
+class MyTimeDelta(datetime.timedelta):    ...
+class MyDecimal(Decimal): ...
+
+inherited_datatypes = (
+    MyInt(123),
+    MyFloat(123.321),
+    MyStr("abcd"),
+    MyBytes([1,2,3]),
+    MyByteArray([14,32,24,6]),
+    MyDateTime(2025, 5, 28, 16, 36, 6),
+    MyDate(day=16, month=6, year=1999),
+    MyTime(hour=10, minute=35, second=6),
+    MyTimeDelta(hours=12, minutes=13, seconds=14, days=1),
+    MyDecimal('12.145'),
+)
+
 
 class MySQLConverterBaseTests(tests.MySQLConnectorTests):
     def test_init(self):
@@ -267,6 +294,7 @@ class MySQLConverterTests(tests.MySQLConnectorTests):
             st_now,
             datetime.timedelta(hours=40, minutes=30, seconds=12),
             Decimal("3.14"),
+            *inherited_datatypes,
         )
         exp = (
             data[0],
@@ -281,6 +309,16 @@ class MySQLConverterTests(tests.MySQLConnectorTests):
             time.strftime("%Y-%m-%d %H:%M:%S", st_now).encode("ascii"),
             b"40:30:12",
             b"3.14",
+            123,
+            123.321,
+            b"abcd",
+            b"\x01\x02\x03",
+            b"\x0e \x18\x06",
+            b"2025-05-28 16:36:06",
+            b"1999-06-16",
+            b"10:35:06",
+            b"36:13:14",
+            b"12.145",
         )
 
         res = tuple([self.cnv.to_mysql(value) for value in data])
@@ -694,124 +732,356 @@ class MySQLConverterTests(tests.MySQLConnectorTests):
 
 
 class MySQLConverterIntegrationTests(tests.MySQLConnectorTests):
-    """Test the class converter integration."""
+    """Test the class converter integration.
 
-    table_name = "converter_table"
+    Work Logs:
+        -
 
-    create_table_stmt = (
-        "CREATE TABLE {} ("
-        "id INT PRIMARY KEY, "
-        "my_null INT, "
-        "my_bit BIT(7), "
-        "my_tinyint TINYINT, "
-        "my_smallint SMALLINT, "
-        "my_mediumint MEDIUMINT, "
-        "my_int INT, "
-        "my_bigint BIGINT, "
-        "my_decimal DECIMAL(20,10), "
-        "my_float FLOAT, "
-        "my_float_nan FLOAT, "
-        "my_double DOUBLE, "
-        "my_date DATE, "
-        "my_time TIME, "
-        "my_datetime DATETIME, "
-        "my_year YEAR, "
-        "my_char CHAR(100), "
-        "my_varchar VARCHAR(100), "
-        "my_enum ENUM('x-small', 'small', 'medium', 'large', 'x-large'), "
-        "my_geometry POINT, "
-        "my_blob BLOB)"
-    )
+    Bugs:
+        - BUG#33409819: Fix failure when using a conversion class in CMySQLConnection
+        - BUG#37774513: Inconsistent conversion to_sql for cext vs pure python
+    """
 
-    insert_stmt = (
-        "INSERT INTO {} ("
-        "id, "
-        "my_null, "
-        "my_bit, "
-        "my_tinyint, "
-        "my_smallint, "
-        "my_mediumint, "
-        "my_int, "
-        "my_bigint, "
-        "my_decimal, "
-        "my_float, "
-        "my_float_nan, "
-        "my_double, "
-        "my_date, "
-        "my_time, "
-        "my_datetime, "
-        "my_year, "
-        "my_char, "
-        "my_varchar, "
-        "my_enum, "
-        "my_geometry, "
-        "my_blob) "
-        "VALUES (%s, %s, B'1111100', %s, %s, %s, %s, %s, %s, %s, %s, %s, %s, "
-        "%s, %s, %s, %s, %s, %s, "
-        "POINT(21.2, 34.2), %s)"
-    )
+    table_name = "converter_table_integration"
 
-    data = (
-        1,
-        None,
-        127,
-        32767,
-        8388607,
-        2147483647,
-        4294967295 if ARCH_64BIT else 2147483647,
-        Decimal("1.2"),
-        3.14,
-        float("NaN"),
-        4.28,
-        datetime.date(2018, 12, 31),
-        datetime.time(12, 13, 14),
-        datetime.datetime(2019, 2, 4, 10, 36, 00),
-        2019,
-        "abc",
-        "MySQL 🐬",
-        "x-large",
-        b"random blob data",
-    )
-
-    exp = (
-        1,
-        None,
-        124,
-        127,
-        32767,
-        8388607,
-        2147483647,
-        4294967295 if ARCH_64BIT else 2147483647,
-        Decimal("1.2000000000"),
-        3.14,
-        None,
-        4.28,
-        datetime.date(2018, 12, 31),
-        datetime.timedelta(0, 43994),
-        datetime.datetime(2019, 2, 4, 10, 36),
-        2019,
-        "abc",
-        "MySQL \U0001f42c",
-        "x-large",
-        bytearray(
-            b"\x00\x00\x00\x00\x01\x01\x00\x00\x003333335"
-            b"@\x9a\x99\x99\x99\x99\x19A@"
-        ),
-        bytearray(b"random blob data"),
-    )
 
     @tests.foreach_cnx()
     def test_converter_class_integration(self):
+        create_table_stmt = (
+            "CREATE TABLE {} ("
+            "id INT PRIMARY KEY, "
+            "my_null INT, "
+            "my_bit BIT(7), "
+            "my_tinyint TINYINT, "
+            "my_smallint SMALLINT, "
+            "my_mediumint MEDIUMINT, "
+            "my_int INT, "
+            "my_bigint BIGINT, "
+            "my_decimal DECIMAL(20,10), "
+            "my_float FLOAT, "
+            "my_float_nan FLOAT, "
+            "my_double DOUBLE, "
+            "my_date DATE, "
+            "my_time TIME, "
+            "my_datetime DATETIME, "
+            "my_year YEAR, "
+            "my_char CHAR(100), "
+            "my_varchar VARCHAR(100), "
+            "my_enum ENUM('x-small', 'small', 'medium', 'large', 'x-large'), "
+            "my_geometry POINT, "
+            "my_blob BLOB)"
+        )
+
+        insert_stmt = (
+            "INSERT INTO {} ("
+            "id, "
+            "my_null, "
+            "my_bit, "
+            "my_tinyint, "
+            "my_smallint, "
+            "my_mediumint, "
+            "my_int, "
+            "my_bigint, "
+            "my_decimal, "
+            "my_float, "
+            "my_float_nan, "
+            "my_double, "
+            "my_date, "
+            "my_time, "
+            "my_datetime, "
+            "my_year, "
+            "my_char, "
+            "my_varchar, "
+            "my_enum, "
+            "my_geometry, "
+            "my_blob) "
+            "VALUES (%s, %s, B'1111100', %s, %s, %s, %s, %s, %s, %s, %s, %s, %s, "
+            "%s, %s, %s, %s, %s, %s, "
+            "POINT(21.2, 34.2), %s)"
+        )
+
+        data = (
+            1,
+            None,
+            127,
+            32767,
+            8388607,
+            2147483647,
+            4294967295 if ARCH_64BIT else 2147483647,
+            Decimal("1.2"),
+            3.14,
+            float("NaN"),
+            4.28,
+            datetime.date(2018, 12, 31),
+            datetime.time(12, 13, 14),
+            datetime.datetime(2019, 2, 4, 10, 36, 00),
+            2019,
+            "abc",
+            "MySQL 🐬",
+            "x-large",
+            b"random blob data",
+        )
+
+        exp = (
+            1,
+            None,
+            124,
+            127,
+            32767,
+            8388607,
+            2147483647,
+            4294967295 if ARCH_64BIT else 2147483647,
+            Decimal("1.2000000000"),
+            3.14,
+            None,
+            4.28,
+            datetime.date(2018, 12, 31),
+            datetime.timedelta(0, 43994),
+            datetime.datetime(2019, 2, 4, 10, 36),
+            2019,
+            "abc",
+            "MySQL \U0001f42c",
+            "x-large",
+            bytearray(
+                b"\x00\x00\x00\x00\x01\x01\x00\x00\x003333335"
+                b"@\x9a\x99\x99\x99\x99\x19A@"
+            ),
+            bytearray(b"random blob data"),
+        )
+
         self.cnx.converter_class = conversion.MySQLConverter
         with self.cnx.cursor() as cur:
             cur.execute(f"DROP TABLE IF EXISTS {self.table_name}")
-            cur.execute(self.create_table_stmt.format(self.table_name))
-            cur.execute(self.insert_stmt.format(self.table_name), self.data)
+            cur.execute(create_table_stmt.format(self.table_name))
+            cur.execute(insert_stmt.format(self.table_name), data)
             cur.execute(f"SELECT * FROM {self.table_name}")
             rows = cur.fetchall()
             self.assertEqual(len(rows), 1)
-            self.assertEqual(rows[0], self.exp)
+            self.assertEqual(rows[0], exp)
+
+    @tests.foreach_cnx()
+    def test_bug37774513(self):
+        """BUG#37774513: Inconsistent conversion to_sql for cext vs pure python
+
+        Custom data types inheriting from the native built-in ones are not being
+        supported by the default data converter of pure-python based connector.
+
+        This patch fixes the issue by verifying if the value passed to the converter is
+        an instance of the native supported type classes.
+        """
+
+        exp = (
+            123,
+            123.321,
+            "abcd",
+            b'\x01\x02\x03',
+            b'\x0e \x18\x06',
+            datetime.datetime(2025, 5, 28, 16, 36, 6),
+            datetime.date(1999, 6, 16),
+            datetime.timedelta(seconds=38106),
+            datetime.timedelta(days=1, seconds=43994),
+            Decimal('12.145'),
+        )
+
+        with self.cnx.cursor() as cur:
             cur.execute(f"DROP TABLE IF EXISTS {self.table_name}")
+            cur.execute(
+                f"CREATE TABLE IF NOT EXISTS {self.table_name}("
+                "mock_int INTEGER, "
+                "mock_float DOUBLE, "
+                "mock_str VARCHAR(50), "
+                "mock_bytes BINARY(3), "
+                "mock_bytearr VARBINARY(10), "
+                "mock_datetime DATETIME, "
+                "mock_date DATE, "
+                "mock_time TIME, "
+                "mock_timedelta TIME, "
+                "mock_decimal DECIMAL(5,3))"
+            )
+            cur.execute(
+                f"INSERT INTO {self.table_name} VALUES (%s, %s, %s, %s, %s, %s, %s, %s, %s, %s)",
+                inherited_datatypes,
+            )
+            cur.execute(f"SELECT * FROM {self.table_name}")
+            # even though the data types are not the same
+            # the values should be equal
+            self.assertEqual(cur.fetchone(), exp)
+
+
+class MySQLConverterAioIntegrationTests(tests.MySQLConnectorAioTestCase):
+    """Test the class converter integration.
+
+    Work Logs:
+        -
+
+    Bugs:
+        - BUG#37774513: Inconsistent conversion to_sql for cext vs pure python
+    """
+
+    table_name = "converter_table_integration_aio"
+
+
+    @tests.foreach_cnx_aio()
+    async def test_converter_class_integration(self):
+        create_table_stmt = (
+            "CREATE TABLE {} ("
+            "id INT PRIMARY KEY, "
+            "my_null INT, "
+            "my_bit BIT(7), "
+            "my_tinyint TINYINT, "
+            "my_smallint SMALLINT, "
+            "my_mediumint MEDIUMINT, "
+            "my_int INT, "
+            "my_bigint BIGINT, "
+            "my_decimal DECIMAL(20,10), "
+            "my_float FLOAT, "
+            "my_float_nan FLOAT, "
+            "my_double DOUBLE, "
+            "my_date DATE, "
+            "my_time TIME, "
+            "my_datetime DATETIME, "
+            "my_year YEAR, "
+            "my_char CHAR(100), "
+            "my_varchar VARCHAR(100), "
+            "my_enum ENUM('x-small', 'small', 'medium', 'large', 'x-large'), "
+            "my_geometry POINT, "
+            "my_blob BLOB)"
+        )
+
+        insert_stmt = (
+            "INSERT INTO {} ("
+            "id, "
+            "my_null, "
+            "my_bit, "
+            "my_tinyint, "
+            "my_smallint, "
+            "my_mediumint, "
+            "my_int, "
+            "my_bigint, "
+            "my_decimal, "
+            "my_float, "
+            "my_float_nan, "
+            "my_double, "
+            "my_date, "
+            "my_time, "
+            "my_datetime, "
+            "my_year, "
+            "my_char, "
+            "my_varchar, "
+            "my_enum, "
+            "my_geometry, "
+            "my_blob) "
+            "VALUES (%s, %s, B'1111100', %s, %s, %s, %s, %s, %s, %s, %s, %s, %s, "
+            "%s, %s, %s, %s, %s, %s, "
+            "POINT(21.2, 34.2), %s)"
+        )
+
+        data = (
+            1,
+            None,
+            127,
+            32767,
+            8388607,
+            2147483647,
+            4294967295 if ARCH_64BIT else 2147483647,
+            Decimal("1.2"),
+            3.14,
+            float("NaN"),
+            4.28,
+            datetime.date(2018, 12, 31),
+            datetime.time(12, 13, 14),
+            datetime.datetime(2019, 2, 4, 10, 36, 00),
+            2019,
+            "abc",
+            "MySQL 🐬",
+            "x-large",
+            b"random blob data",
+        )
+
+        exp = (
+            1,
+            None,
+            124,
+            127,
+            32767,
+            8388607,
+            2147483647,
+            4294967295 if ARCH_64BIT else 2147483647,
+            Decimal("1.2000000000"),
+            3.14,
+            None,
+            4.28,
+            datetime.date(2018, 12, 31),
+            datetime.timedelta(0, 43994),
+            datetime.datetime(2019, 2, 4, 10, 36),
+            2019,
+            "abc",
+            "MySQL \U0001f42c",
+            "x-large",
+            bytearray(
+                b"\x00\x00\x00\x00\x01\x01\x00\x00\x003333335"
+                b"@\x9a\x99\x99\x99\x99\x19A@"
+            ),
+            bytearray(b"random blob data"),
+        )
+
+        self.cnx.converter_class = conversion.MySQLConverter
+        async with await self.cnx.cursor() as cur:
+            await cur.execute(f"DROP TABLE IF EXISTS {self.table_name}")
+            await cur.execute(create_table_stmt.format(self.table_name))
+            await cur.execute(insert_stmt.format(self.table_name), data)
+            await cur.execute(f"SELECT * FROM {self.table_name}")
+            rows = await cur.fetchall()
+            self.assertEqual(len(rows), 1)
+            self.assertEqual(rows[0], exp)
+
+    @tests.foreach_cnx_aio()
+    async def test_bug37774513(self):
+        """BUG#37774513: Inconsistent conversion to_sql for cext vs pure python
+
+        Custom data types inheriting from the native built-in ones are not being
+        supported by the default data converter of pure-python based connector.
+
+        This patch fixes the issue by verifying if the value passed to the converter is
+        an instance of the native supported type classes.
+        """
+
+        exp = (
+            123,
+            123.321,
+            "abcd",
+            b'\x01\x02\x03',
+            b'\x0e \x18\x06',
+            datetime.datetime(2025, 5, 28, 16, 36, 6),
+            datetime.date(1999, 6, 16),
+            datetime.timedelta(seconds=38106),
+            datetime.timedelta(days=1, seconds=43994),
+            Decimal('12.145'),
+        )
+
+        async with await self.cnx.cursor() as cur:
+            await cur.execute(f"DROP TABLE IF EXISTS {self.table_name}")
+            await cur.execute(
+                f"CREATE TABLE IF NOT EXISTS {self.table_name}("
+                "mock_int INTEGER, "
+                "mock_float DOUBLE, "
+                "mock_str VARCHAR(50), "
+                "mock_bytes BINARY(3), "
+                "mock_bytearr VARBINARY(10), "
+                "mock_datetime DATETIME, "
+                "mock_date DATE, "
+                "mock_time TIME, "
+                "mock_timedelta TIME, "
+                "mock_decimal DECIMAL(5,3))"
+            )
+            await cur.execute(
+                f"INSERT INTO {self.table_name} VALUES (%s, %s, %s, %s, %s, %s, %s, %s, %s, %s)",
+                inherited_datatypes,
+            )
+            await cur.execute(f"SELECT * FROM {self.table_name}")
+            # even though the data types are not the same
+            # the values should be equal
+            self.assertEqual(await cur.fetchone(), exp)
 
 
 class MySQLConverterStrFallbackTests(tests.MySQLConnectorTests):
@@ -895,3 +1165,4 @@ class MySQLConverterStrFallbackTests(tests.MySQLConnectorTests):
         _run_test(prepared=True)
         _run_test(prepared=False, converter_class=DummyConverter)
         _run_test(prepared=True, converter_class=DummyConverter)
+

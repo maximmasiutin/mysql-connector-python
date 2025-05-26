@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2014, 2024, Oracle and/or its affiliates.
+ * Copyright (c) 2014, 2025, Oracle and/or its affiliates.
  *
  * This program is free software; you can redistribute it and/or modify
  * it under the terms of the GNU General Public License, version 2.0, as
@@ -2010,16 +2010,16 @@ MySQL_convert_to_mysql(MySQL *self, PyObject *args)
             // datetime is handled first
             new_value = pytomy_datetime(value);
         }
-        else if (PyDate_CheckExact(value)) {
+        else if (PyDate_Check(value)) {
             new_value = pytomy_date(value);
         }
         else if (PyTime_Check(value)) {
             new_value = pytomy_time(value);
         }
-        else if (PyDelta_CheckExact(value)) {
+        else if (PyDelta_Check(value)) {
             new_value = pytomy_timedelta(value);
         }
-        else if (strcmp((value)->ob_type->tp_name, "decimal.Decimal") == 0) {
+        else if (is_decimal_instance(value)) {
             new_value = pytomy_decimal(value);
         }
         else if (self->converter_str_fallback == Py_True) {
@@ -2194,7 +2194,7 @@ MySQL_query(MySQL *self, PyObject *args, PyObject *kwds)
                 continue;
             }
             /* DATE */
-            else if (PyDate_CheckExact(value)) {
+            else if (PyDate_Check(value)) {
                 MYSQL_TIME *date = &pbind->buffer.t;
                 date->year = PyDateTime_GET_YEAR(value);
                 date->month = PyDateTime_GET_MONTH(value);
@@ -2225,7 +2225,7 @@ MySQL_query(MySQL *self, PyObject *args, PyObject *kwds)
                 continue;
             }
             /* datetime.timedelta is TIME */
-            else if (PyDelta_CheckExact(value)) {
+            else if (PyDelta_Check(value)) {
                 MYSQL_TIME *time = &pbind->buffer.t;
                 time->hour = PyDateTime_TIME_GET_HOUR(value);
                 time->minute = PyDateTime_TIME_GET_MINUTE(value);
@@ -2244,7 +2244,7 @@ MySQL_query(MySQL *self, PyObject *args, PyObject *kwds)
                 continue;
             }
             /* DECIMAL */
-            else if (strcmp((value)->ob_type->tp_name, "decimal.Decimal") == 0) {
+            else if (is_decimal_instance(value)) {
                 pbind->str_value = pytomy_decimal(value);
                 mbind[i].buffer_type = MYSQL_TYPE_DECIMAL;
             }
@@ -3383,7 +3383,7 @@ MySQLPrepStmt_execute(MySQLPrepStmt *self, PyObject *args, PyObject *kwds)
             continue;
         }
         /* DATE */
-        else if (PyDate_CheckExact(value)) {
+        else if (PyDate_Check(value)) {
             MYSQL_TIME *date = &pbind->buffer.t;
             date->year = PyDateTime_GET_YEAR(value);
             date->month = PyDateTime_GET_MONTH(value);
@@ -3414,7 +3414,7 @@ MySQLPrepStmt_execute(MySQLPrepStmt *self, PyObject *args, PyObject *kwds)
             continue;
         }
         /* datetime.timedelta is TIME */
-        else if (PyDelta_CheckExact(value)) {
+        else if (PyDelta_Check(value)) {
             MYSQL_TIME *time = &pbind->buffer.t;
             time->hour = PyDateTime_TIME_GET_HOUR(value);
             time->minute = PyDateTime_TIME_GET_MINUTE(value);
@@ -3433,7 +3433,7 @@ MySQLPrepStmt_execute(MySQLPrepStmt *self, PyObject *args, PyObject *kwds)
             continue;
         }
         /* DECIMAL */
-        else if (strcmp((value)->ob_type->tp_name, "decimal.Decimal") == 0) {
+        else if (is_decimal_instance(value)) {
             pbind->str_value = pytomy_decimal(value);
             mbind[i].buffer_type = MYSQL_TYPE_DECIMAL;
         }

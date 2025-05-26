@@ -31,6 +31,9 @@
 import warnings
 
 from abc import ABC, ABCMeta
+from datetime import date, datetime, time, timedelta
+from decimal import Decimal
+from time import struct_time
 from typing import Any, Dict, List, Optional, Sequence, Tuple, Union, ValuesView
 
 from .charsets import MYSQL_CHARACTER_SETS, MYSQL_CHARACTER_SETS_57
@@ -283,6 +286,26 @@ OPENSSL_CS_NAMES: Dict[str, ValuesView[str]] = {
     "TLSv1.2": TLSV1_2_CIPHER_SUITES.values(),
     "TLSv1.3": TLSV1_3_CIPHER_SUITES.values(),
 }
+
+NATIVE_SUPPORTED_CONVERSION_TYPES = {
+    int: "int",
+    float: "float",
+    str: "str",
+    bytes: "bytes",
+    bytearray: "bytearray",
+    bool: "bool",
+    type(None): "nonetype",
+    datetime: "datetime",
+    date: "date",
+    time: "time",
+    struct_time: "struct_time",
+    timedelta: "timedelta",
+    Decimal: "decimal",
+}
+"""Dictionary of the supported data types of the default MySQLConverter class
+and the corresponding tag names used to map against their respective methods
+'_{tag_name}_to_mysql(...)'. These converter methods are then used to convert
+the matched data type to mysql recognizable type."""
 
 
 def flag_is_set(flag: int, flags: int) -> bool:

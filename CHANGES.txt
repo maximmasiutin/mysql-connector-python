@@ -15,9 +15,10 @@ v9.4.0
 - WL#16963: Update the OpenTelemetry version
 - WL#16962: Update the Python Protobuf version
 - BUG#37868219: RPM packages have incorrect copyright year in their metadata
-- BUG#37820231: Text based django ORM filters doesn't work with Connector/Python
 - BUG#37859771: mysql/connector python version 9.3.0 has a regression which cannot persist binary data with percent signs in it
+- BUG#37820231: Text based django ORM filters doesn't work with Connector/Python
 - BUG#37806057: Rename extra option (when installing wheel package) to install webauthn functionality dependencies
+- BUG#37774513: Inconsistent conversion to_sql for cext vs pure python
 - BUG#37642447: The license type is missing from RPM package
 - BUG#37627508: mysql/connector python fetchmany() has an off by one bug when argument given as 1
 - BUG#37047789: Python connector does not support Django enum

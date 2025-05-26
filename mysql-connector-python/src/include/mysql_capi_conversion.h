@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2014, 2024, Oracle and/or its affiliates.
+ * Copyright (c) 2014, 2025, Oracle and/or its affiliates.
  *
  * This program is free software; you can redistribute it and/or modify
  * it under the terms of the GNU General Public License, version 2.0, as
@@ -32,6 +32,9 @@
 #define MYCONNPY_MYSQL_CAPI_CONVERSION_H
 
 #include <Python.h>
+
+int
+is_decimal_instance(PyObject *obj);
 
 PyObject *
 pytomy_date(PyObject *obj);

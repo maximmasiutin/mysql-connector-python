@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2014, 2024, Oracle and/or its affiliates.
+ * Copyright (c) 2014, 2025, Oracle and/or its affiliates.
  *
  * This program is free software; you can redistribute it and/or modify
  * it under the terms of the GNU General Public License, version 2.0, as
@@ -43,6 +43,34 @@
 
 #define MINYEAR 1
 #define MAXYEAR 9999
+
+
+// Decimal module needs to be loaded at runtime
+static PyObject *decimal_class = NULL;
+
+/**
+  Check whether the type of object is a decimal.
+
+  Check whether the object passed via parameter is an instance of decimal class.
+
+  @param    obj     the PyObject to be checked
+
+  @return   1 if obj is an instance of decimal class, 0 otherwise.
+    @retval 1   Instance of the decimal class
+    @retval 0   Not an instance of the decimal class
+*/
+int is_decimal_instance(PyObject *obj)
+{
+    if (!decimal_class) {
+        PyObject *decimal_module = PyImport_ImportModule("decimal");
+        if (decimal_module) {
+            decimal_class = PyObject_GetAttrString(decimal_module, "Decimal");
+        }
+    }
+    return (decimal_class)
+        ? PyObject_IsInstance(obj, decimal_class)
+        : strcmp((obj)->ob_type->tp_name, "decimal.Decimal") == 0;
+}
 
 /**
   Check whether a year is a leap year.

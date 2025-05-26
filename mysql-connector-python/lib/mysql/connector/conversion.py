@@ -40,6 +40,7 @@ from typing import Any, Callable, Dict, List, Optional, Set, Tuple, Union
 
 from .constants import (
     MYSQL_VECTOR_TYPE_CODE,
+    NATIVE_SUPPORTED_CONVERSION_TYPES,
     CharacterSet,
     FieldFlag,
     FieldType,
@@ -236,13 +237,26 @@ class MySQLConverter(MySQLConverterBase):
         """Convert Python data type to MySQL"""
         if isinstance(value, Enum):
             value = value.value
-        type_name = value.__class__.__name__.lower()
+        # check if type of value object matches any one of the native supported conversion types
+        # most of the types will match the condition below
+        type_name: str = NATIVE_SUPPORTED_CONVERSION_TYPES.get(type(value), "")
+        if not type_name:
+            # check if the value object inherits from one of the native supported conversion types
+            type_name = next(
+                (
+                    name
+                    for data_type, name in NATIVE_SUPPORTED_CONVERSION_TYPES.items()
+                    if isinstance(value, data_type)
+                ),
+                value.__class__.__name__.lower(),
+            )
         try:
             converted: MySQLProducedType = getattr(self, f"_{type_name}_to_mysql")(
                 value
             )
             return converted
         except AttributeError:
+            # Value type is not a native one, nor a subclass of a native one
             if self.str_fallback:
                 return str(value).encode()
             raise TypeError(
