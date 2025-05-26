@@ -173,12 +173,19 @@ def copy_metadata_files() -> None:
     parent directory to the current directory.
     """
     for filename in METADATA_FILES:
-        shutil.copy(pathlib.Path(os.getcwd(), f"../{filename}"), pathlib.Path(f"./"))
+        # if file is not in current directory, then try to load it from one level above
+        if not os.path.exists(
+            pathlib.Path(os.getcwd(), f"./{filename}")
+        ) and os.path.exists(pathlib.Path(os.getcwd(), f"../{filename}")):
+            shutil.copy(
+                pathlib.Path(os.getcwd(), f"../{filename}"), pathlib.Path(f"./")
+            )
 
 
 def get_long_description() -> str:
-    """Extracts a long description from the README.rst file that is suited for this specific package."""
-    with open(pathlib.Path(os.getcwd(), "../README.rst")) as file_handle:
+    """Extracts a long description from the README.rst file that is suited for this specific package.
+    """
+    with open(pathlib.Path(os.getcwd(), "./README.rst")) as file_handle:
         # The README.rst text is meant to be shared by both mysql and mysqlx packages, so after getting it we need to
         # parse it in order to remove the bits of text that are not meaningful for this package (mysqlx)
         long_description = file_handle.read()
@@ -229,10 +236,4 @@ def remove_metadata_files() -> None:
 
 if __name__ == "__main__":
     copy_metadata_files()
-
-    try:
-        main()
-    except Exception as err:
-        raise err
-    finally:
-        remove_metadata_files()
+    main()

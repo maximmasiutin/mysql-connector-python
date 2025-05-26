@@ -4,6 +4,7 @@ include LICENSE.txt
 include CONTRIBUTING.md
 include SECURITY.md
 include CHANGES.txt
+include src/version_info.rc
 include setup.py
 include unittests.py
 include MANIFEST.in

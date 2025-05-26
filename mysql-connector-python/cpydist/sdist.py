@@ -108,11 +108,13 @@ class DistSource(sdist):
         """Finalize the options."""
 
         def _get_fullname():
-            name = self.distribution.get_name()
-            label = f"-{self.label if self.label else ''}"
+            # Comply with [PEP 625](https://peps.python.org/pep-0625/).
+            # Use the normalized project name 'mysql_connector_python'.
+            distribution = self.distribution.get_name().replace("-", "_")
+            label = f"-{self.label}" if self.label else ""
             version = self.distribution.get_version()
             edition = self.edition or ""
-            return f"{name}{label}-{version}{edition}"
+            return f"{distribution}{label}-{version}{edition}"
 
         self.distribution.get_fullname = _get_fullname
         sdist.finalize_options(self)
