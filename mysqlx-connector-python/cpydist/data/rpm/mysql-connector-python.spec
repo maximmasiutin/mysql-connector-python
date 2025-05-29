@@ -29,6 +29,7 @@
 %global wants_py_dnspython_version 2.6.1
 
 %undefine _package_note_file
+%define current_year %(date +%Y)
 
 %if 0%{?rhel} == 8
 %{!?__python3: %global __python3 /usr/bin/python3.9}
@@ -66,7 +67,7 @@ Summary:       Standardized MySQL database driver for Python
 Name:          mysqlx-connector-python%{?product_suffix}
 Version:       %{version}
 Release:       1%{?version_extra:.%{version_extra}}%{?byte_code_only:.1}%{?dist}
-License:       Copyright (c) 2015, 2024, Oracle and/or its affiliates. Under %{?license_type} license as shown in the Description field.
+License:       Copyright (c) 2015, %{current_year}, Oracle and/or its affiliates. Under %{?lic_type} license as shown in the Description field.
 URL:           https://dev.mysql.com/downloads/connector/python/
 Source0:       https://cdn.mysql.com/Downloads/Connector-Python/mysql-connector-python%{?product_suffix}-%{version}-src.tar.gz
 
@@ -174,6 +175,10 @@ sed -i -e '/protobuf/d' %{buildroot}%{python3_sitearch}/mysqlx_connector_python-
 %{python3_sitearch}/_mysqlxpb.cpython*.so
 
 %changelog
+* Fri May 30 2025 Souma Kanti Ghosh <souma.kanti.ghosh@oracle.com> - 9.4.0-1
+- Fixed missing license type in license metadata
+- Added current year macro to be used in license metadata
+
 * Mon Mar 17 2025 Souma Kanti Ghosh <souma.kanti.ghosh@oracle.com> - 9.3.0-1
 - Updated for 9.3.0
 
