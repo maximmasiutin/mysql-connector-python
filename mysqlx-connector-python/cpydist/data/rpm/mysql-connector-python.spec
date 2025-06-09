@@ -43,7 +43,7 @@
 %{?extra_link_args: %global extra_link_args %{extra_link_args}}
 
 # set version if not defined through 'rpmbuild'
-%{!?version: %global version 9.3.0}
+%{!?version: %global version 9.4.0}
 
 
 # if true set byte_code_only to --byte_code_only
@@ -175,6 +175,9 @@ sed -i -e '/protobuf/d' %{buildroot}%{python3_sitearch}/mysqlx_connector_python-
 %{python3_sitearch}/_mysqlxpb.cpython*.so
 
 %changelog
+* Mon Jun 9 2025 Oscar Pacheco <oscar.p.pacheco@oracle.com> - 9.4.0-1
+- Updated for 9.4.0
+
 * Fri May 30 2025 Souma Kanti Ghosh <souma.kanti.ghosh@oracle.com> - 9.4.0-1
 - Fixed missing license type in license metadata
 - Added current year macro to be used in license metadata
