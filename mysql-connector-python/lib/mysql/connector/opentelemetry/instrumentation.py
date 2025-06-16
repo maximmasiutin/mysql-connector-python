@@ -547,6 +547,7 @@ def _instrument_connect(
         kwargs[OPTION_CNX_TRACER] = tracer
 
         # attach connection span
+        # pylint: disable=not-context-manager
         with trace.use_span(kwargs[OPTION_CNX_SPAN], end_on_exit=False) as cnx_span:
             # Add basic net information.
             set_connection_span_attrs(None, cnx_span, kwargs)

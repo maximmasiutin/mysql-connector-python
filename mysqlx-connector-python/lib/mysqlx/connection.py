@@ -728,7 +728,7 @@ class Connection:
 
         if "host" in settings and settings["host"]:
             self._routers.append(
-                {  # type: ignore[arg-type]
+                {
                     "host": settings.get("host"),
                     "port": settings.get("port", None),
                 }
@@ -1288,7 +1288,7 @@ class Connection:
         result.fetch_all()
         if result.count == 0:
             raise InterfaceError("No data found")
-        return result[0][0]  # type: ignore[index]
+        return result[0][0]
 
     @catch_network_exception
     def get_row_result(self, cmd: str, fields: Dict[str, Any]) -> RowResult:
@@ -1645,7 +1645,7 @@ class ConnectionPool(queue.Queue):
                 raise PoolError("Connection instance not subclass of PooledSession")
             if cnx.is_server_disconnected():
                 self.remove_connections()
-                cnx.close()  # type: ignore[attr-defined]
+                cnx.close()
 
         self.queue_connection(cnx)
 
@@ -2362,7 +2362,7 @@ class Session:
                 .fetch_all()
             )
             try:
-                if res[0][0] == schema:  # type: ignore[index]
+                if res[0][0] == schema:
                     return Schema(self, schema)
             except IndexError:
                 raise ProgrammingError(

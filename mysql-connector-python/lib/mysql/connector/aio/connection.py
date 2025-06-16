@@ -891,7 +891,7 @@ class MySQLConnection(MySQLConnectionAbstract):
         if not self.unread_result:
             raise InternalError("No result set available")
 
-        rows: Tuple[List[Tuple[Any, ...]], Optional[EofPacketType]] = ([], None)
+        rows = ([], None)  # type: ignore[var-annotated]
         try:
             read_timeout = kwargs.get("read_timeout", None)
             if binary:

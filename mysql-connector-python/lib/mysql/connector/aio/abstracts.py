@@ -212,6 +212,8 @@ class MySQLConnectionAbstract(ABC):
         tls_versions: Optional[List[str]] = None,
         tls_ciphersuites: Optional[List[str]] = None,
         loop: Optional[asyncio.AbstractEventLoop] = None,
+        oci_config_file: Optional[str] = None,
+        oci_config_profile: Optional[str] = None,
     ):
         # private (shouldn't be manipulated directly internally)
         self.__charset: Optional[Charset] = None
@@ -283,8 +285,10 @@ class MySQLConnectionAbstract(ABC):
         self._have_next_result: bool = False
         self._unread_result: bool = False
         self._in_transaction: bool = False
-        self._oci_config_file: Optional[str] = None
-        self._oci_config_profile: Optional[str] = None
+        self._oci_config_file: Optional[str] = oci_config_file
+        """Path to the configuration file."""
+        self._oci_config_profile: Optional[str] = oci_config_profile
+        """Profile name."""
         self._webauthn_callback: Optional[Union[str, Callable[[str], None]]] = (
             webauthn_callback
         )

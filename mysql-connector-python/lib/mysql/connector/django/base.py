@@ -352,7 +352,7 @@ class DatabaseWrapper(BaseDatabaseWrapper):  # pylint: disable=abstract-method
         raise AttributeError
 
     def get_connection_params(self) -> Dict[str, Any]:
-        kwargs = {
+        kwargs: dict = {
             "consume_results": True,
         }
 

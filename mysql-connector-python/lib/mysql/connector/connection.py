@@ -815,7 +815,7 @@ class MySQLConnection(MySQLConnectionAbstract):
         if not self.unread_result:
             raise InternalError("No result set available")
 
-        rows: Tuple[List[Tuple], Optional[EofPacketType]] = ([], None)
+        rows = ([], None)  # type: ignore[var-annotated]
         try:
             read_timeout = kwargs.get("read_timeout", None)
             if binary:
@@ -1285,7 +1285,7 @@ class MySQLConnection(MySQLConnectionAbstract):
         """
         self._allow_local_infile_in_path = path
 
-    @MySQLConnectionAbstract.use_unicode.setter  # type: ignore
+    @MySQLConnectionAbstract.use_unicode.setter
     def use_unicode(self, value: bool) -> None:
         self._use_unicode = value
         if self.converter:

@@ -195,7 +195,7 @@ class MySQLWebAuthnAuthPlugin(MySQLAuthPlugin):
         if device is not None:
             logger.debug("WebAuthn - Use USB HID channel")
         elif CTAP_PCSC_DEVICE_AVAILABLE:
-            device = next(CtapPcscDevice.list_devices(), None)  # type: ignore[arg-type]
+            device = next(CtapPcscDevice.list_devices(), None)
 
         if device is None:
             raise errors.InterfaceError("No FIDO device found")
