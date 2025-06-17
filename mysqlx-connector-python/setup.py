@@ -160,7 +160,7 @@ def main() -> None:
         ext_modules=EXTENSIONS,
         cmdclass=COMMAND_CLASSES,
         python_requires=">=3.9",
-        install_requires=["protobuf==4.25.3"],
+        install_requires=["protobuf==4.25.8"],
         extras_require={
             "dns-srv": ["dnspython==2.6.1"],
             "compression": ["lz4>=2.1.6,<=4.3.2", "zstandard==0.23.0"],
