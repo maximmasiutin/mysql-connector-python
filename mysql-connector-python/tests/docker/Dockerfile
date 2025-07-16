@@ -1,4 +1,4 @@
-# Copyright (c) 2009, 2024, Oracle and/or its affiliates.
+# Copyright (c) 2009, 2025, Oracle and/or its affiliates.
 #
 # This program is free software; you can redistribute it and/or modify
 # it under the terms of the GNU General Public License, version 2.0, as
@@ -26,10 +26,10 @@
 # along with this program; if not, write to the Free Software Foundation, Inc.,
 # 51 Franklin St, Fifth Floor, Boston, MA 02110-1301  USA
 
-# By default the container will use oracle linux 9 from OCR.
+# By default the container will use oracle linux 10 from OCR.
 # The BASE_IMAGE environment variable can be used to pull
 # any other Oracle Linux image from any other Docker registry.
-ARG BASE_IMAGE=container-registry.oracle.com/os/oraclelinux:9-slim
+ARG BASE_IMAGE=container-registry.oracle.com/os/oraclelinux:10-slim
 
 
 FROM ${BASE_IMAGE} as pure_python
@@ -58,16 +58,16 @@ ENV PIP_INDEX_URL=${PYPI_REPOSITORY:-https://pypi.org/simple}
 COPY . .
 RUN cd mysql-connector-python \
     && pip install -r tests/requirements.txt \
-    && pip install --use-feature=in-tree-build .
+    && pip install .
 
 
 FROM pure_python AS c_extension
 RUN dnf install -y yum wget
 # Install MySQL including dev files to compile the C Extension
-ENV MYSQL_ENDPOINT="mysql80-community-release-el9-1.noarch.rpm"
+ENV MYSQL_ENDPOINT="mysql84-community-release-el10-2.noarch.rpm"
 RUN wget https://dev.mysql.com/get/${MYSQL_ENDPOINT} \
     && yum install -y ${MYSQL_ENDPOINT} \
     && dnf install -y mysql-community-server mysql-community-devel
 # Build mysql cext
 RUN cd mysql-connector-python \
-    && python setup.py install --with-mysql-capi=/usr/bin/mysql_config
+    && python setup.py install --with-mysql-capi=/usr

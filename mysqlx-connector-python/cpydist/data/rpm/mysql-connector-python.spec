@@ -31,10 +31,8 @@
 %undefine _package_note_file
 %define current_year %(date +%Y)
 
-%if 0%{?rhel} == 8
-%{!?__python3: %global __python3 /usr/bin/python3.9}
-%{!?python3_pkgversion: %global python3_pkgversion 39}
-%endif
+%{!?__python3: %global __python3 /usr/bin/python3.12}
+%{!?python3_pkgversion: %global python3_pkgversion 3.12}
 
 %{?protobuf_include_dir: %global with_protobuf_include_dir %{protobuf_include_dir}}
 %{?protobuf_lib_dir: %global with_protobuf_lib_dir %{protobuf_lib_dir}}
@@ -107,10 +105,7 @@ Obsoletes:     mysqlx-connector-python3-cext < %{version}-%{release}
 Provides:      mysqlx-connector-python3-cext = %{version}-%{release}
 %endif
 
-%if 0%{?rhel} == 8
-Requires:      python39
-%endif
-
+Requires:      python3.12
 
 %description -n mysqlx-connector-python3%{?product_suffix}
 MySQL Connector/Python enables Python programs to access MySQL
@@ -180,6 +175,10 @@ sed -i -e '/Requires-Dist: protobuf/d' %{buildroot}%{python3_sitearch}/mysqlx_co
 %changelog
 * Mon Jul 23 2025 Souma Kanti Ghosh <souma.kanti.ghosh@oracle.com> - 9.5.0-1
 - Updated for 9.5.0
+
+* Wed Jul 16 2025 Oscar Pacheco <oscar.p.pacheco@oracle.com> - 9.5.0-1
+- Removed Python 3.9 support
+- Added Python 3.12 support for EL 8 and 9
 
 * Mon Jun 9 2025 Oscar Pacheco <oscar.p.pacheco@oracle.com> - 9.4.0-1
 - Updated for 9.4.0

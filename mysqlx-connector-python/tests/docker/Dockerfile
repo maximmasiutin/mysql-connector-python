@@ -1,4 +1,4 @@
-# Copyright (c) 2009, 2024, Oracle and/or its affiliates.
+# Copyright (c) 2009, 2025, Oracle and/or its affiliates.
 #
 # This program is free software; you can redistribute it and/or modify
 # it under the terms of the GNU General Public License, version 2.0, as
@@ -26,10 +26,10 @@
 # along with this program; if not, write to the Free Software Foundation, Inc.,
 # 51 Franklin St, Fifth Floor, Boston, MA 02110-1301  USA
 
-# By default the container will use oracle linux 9 from OCR.
+# By default the container will use oracle linux 10 from OCR.
 # The BASE_IMAGE environment variable can be used to pull
 # any other Oracle Linux image from any other Docker registry.
-ARG BASE_IMAGE=container-registry.oracle.com/os/oraclelinux:9-slim
+ARG BASE_IMAGE=container-registry.oracle.com/os/oraclelinux:10-slim
 
 
 FROM ${BASE_IMAGE} as pure_python
@@ -58,27 +58,37 @@ ENV PIP_INDEX_URL=${PYPI_REPOSITORY:-https://pypi.org/simple}
 COPY . .
 RUN cd mysqlx-connector-python \
     && pip install -r tests/requirements.txt \
-    && pip install --use-feature=in-tree-build .
+    && pip install .
 
 
 FROM pure_python AS c_extension
-RUN dnf install -y wget gzip
+RUN dnf install -y git cmake
+RUN mkdir /tools /install
+ENV DIR_CONNECTOR=/connector-python
+ENV DIR_TOOLS=/tools
+ENV DIR_INSTALL=/install
+# Abseil: https://github.com/abseil/abseil-cpp
 # Install Protobuf C++: https://github.com/protocolbuffers/protobuf
-ENV PROTO_VERSION="3.19.6"
-ENV PROTO_ENDPOINT="protobuf-cpp-${PROTO_VERSION}.tar.gz"
-ENV PROTO_URI="https://github.com/protocolbuffers/protobuf/releases/download"
-RUN wget ${PROTO_URI}/v${PROTO_VERSION}/${PROTO_ENDPOINT} \
-    && tar xvf ${PROTO_ENDPOINT} \
-    && cd protobuf-${PROTO_VERSION} \
-    && ./configure --disable-shared --with-pic \
-    && make \
-    && make install \
+ENV ABSEIL_VERSION="20230802.1"
+ENV PROTOBUF_VERSION="v5.29.4"
+RUN cd $DIR_TOOLS \
+    && git clone --branch ${PROTOBUF_VERSION} https://github.com/protocolbuffers/protobuf.git \
+    && cd protobuf/third_party \
+    && git clone --branch ${ABSEIL_VERSION} https://github.com/abseil/abseil-cpp.git \
     && cd .. \
-    && rm -f ${PROTO_ENDPOINT} \
-    && rm -rf protobuf-${PROTO_VERSION}
-# Build mysqlx cext
-RUN cd mysqlx-connector-python \
-    && python setup.py install \
-    --with-protobuf-include-dir=/usr/local/include \
-    --with-protobuf-lib-dir=/usr/local/lib \
-    --with-protoc=/usr/local/bin/protoc
+    && cmake . -DCMAKE_CXX_STANDARD=14 \
+                -Dprotobuf_BUILD_TESTS=OFF \
+                -Dprotobuf_ABSL_PROVIDER=module \
+                -DCMAKE_PREFIX_PATH=${DIR_TOOLS}/protobuf \
+                -DCMAKE_INSTALL_PREFIX=${DIR_INSTALL}/protobuf \
+                -DCMAKE_POSITION_INDEPENDENT_CODE=ON \
+                -Dprotobuf_MSVC_STATIC_RUNTIME=OFF \
+    && make -j$(nproc) \
+    && make install
+# Build protobuf cext
+RUN rm -rf ${DIR_TOOLS} \
+    && cd ${DIR_CONNECTOR} \
+    && cd mysqlx-connector-python \
+    && python setup.py install --with-protobuf-include-dir=${DIR_INSTALL}/protobuf/include \
+                               --with-protobuf-lib-dir=${DIR_INSTALL}/protobuf/lib64 \
+                               --with-protoc=${DIR_INSTALL}/protobuf/bin/protoc

@@ -39,7 +39,6 @@ sys.path.insert(0, ".")
 
 from cpydist import BuildExt, Install, InstallLib
 from cpydist.bdist import DistBinary
-from cpydist.bdist_solaris import DistSolaris
 from cpydist.sdist import DistSource
 from setuptools import Extension, find_packages, setup
 
@@ -67,7 +66,6 @@ with open(version_py, "rb") as fp:
 
 COMMAND_CLASSES = {
     "bdist": DistBinary,
-    "bdist_solaris": DistSolaris,
     "build_ext": BuildExt,
     "install": Install,
     "install_lib": InstallLib,
@@ -147,7 +145,6 @@ def main() -> None:
             "Operating System :: POSIX :: Linux",
             "Operating System :: Unix",
             "Programming Language :: Python :: 3",
-            "Programming Language :: Python :: 3.9",
             "Programming Language :: Python :: 3.10",
             "Programming Language :: Python :: 3.11",
             "Programming Language :: Python :: 3.12",
@@ -159,7 +156,7 @@ def main() -> None:
         ],
         ext_modules=EXTENSIONS,
         cmdclass=COMMAND_CLASSES,
-        python_requires=">=3.9",
+        python_requires=">=3.10",
         install_requires=["protobuf==5.29.4"],
         extras_require={
             "dns-srv": ["dnspython==2.6.1"],
