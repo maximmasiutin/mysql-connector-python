@@ -203,7 +203,7 @@ class CExtMySQLCursorTests(tests.CMySQLCursorTests):
             [(1,), (2,)],
         )
 
-        cur.executemany("SELECT SHA1(%s)", [("foo",), ("bar",)])
+        cur.executemany("SELECT SHA2(%s, 224)", [("foo",), ("bar",)])
 
     def test_executemany(self):
         tbl = "myconnpy_cursor"
@@ -519,7 +519,7 @@ class CExtMySQLCursorTests(tests.CMySQLCursorTests):
         cur.execute("SELECT VERSION()")
         cur.fetchone()
         self.assertEqual("CMySQLCursor: SELECT VERSION()", cur.__str__())
-        stmt = "SELECT VERSION(),USER(),CURRENT_TIME(),NOW(),SHA1('myconnpy')"
+        stmt = "SELECT VERSION(),USER(),CURRENT_TIME(),NOW(),SHA2('myconnpy', 224)"
         cur.execute(stmt)
         cur.fetchone()
         self.assertEqual("CMySQLCursor: {0}..".format(stmt[:40]), cur.__str__())

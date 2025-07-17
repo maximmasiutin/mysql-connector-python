@@ -225,8 +225,8 @@ class MySQLCursorTestsMixin:
             with self.assertRaises(ProgrammingError):
                 await cur.executemany("INSERT INTO t1 1 %s", [(1,), (2,)])
 
-            # TODO: Fix
-            # await cur.executemany("SELECT SHA1(%s) AS res", [("foo",), ("bar",)])
+            # TODO: Fix BUG#38229142
+            # await cur.executemany("SELECT SHA2(%s, 224) AS res", [("foo",), ("bar",)])
             # self.assertEqual(None, await cur.fetchone())
 
             tbl = "myconnpy_cursor"

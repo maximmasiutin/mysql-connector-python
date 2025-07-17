@@ -570,7 +570,7 @@ class MySQLCursorTests(tests.TestsCursor):
             [(1,), (2,)],
         )
 
-        self.cur.executemany("SELECT SHA1(%s)", [("foo",), ("bar",)])
+        self.cur.executemany("SELECT SHA2(%s, 224)", [("foo",), ("bar",)])
         self.assertEqual(None, self.cur.fetchone())
         self.cur.close()
 
@@ -900,7 +900,7 @@ class MySQLCursorTests(tests.TestsCursor):
         self.cur.execute("SELECT VERSION()")
         self.cur.fetchone()
         self.assertEqual("MySQLCursor: SELECT VERSION()", self.cur.__str__())
-        stmt = "SELECT VERSION(),USER(),CURRENT_TIME(),NOW(),SHA1('myconnpy')"
+        stmt = "SELECT VERSION(),USER(),CURRENT_TIME(),NOW(),SHA2('myconnpy',224)"
         self.cur.execute(stmt)
         self.cur.fetchone()
         self.assertEqual("MySQLCursor: {0}..".format(stmt[:40]), self.cur.__str__())
@@ -1229,7 +1229,7 @@ class MySQLCursorPreparedTests(tests.TestsCursor):
         self.assertEqual(None, cur.executemany("ham", []))
         self.assertRaises(errors.ProgrammingError, cur.executemany, "ham", ["ham"])
 
-        cur.executemany("SELECT SHA1(%s)", [("ham",), ("bar",)])
+        cur.executemany("SELECT SHA2(%s, 224)", [("ham",), ("bar",)])
         self.assertEqual(None, cur.fetchone())
         cur.close()
 

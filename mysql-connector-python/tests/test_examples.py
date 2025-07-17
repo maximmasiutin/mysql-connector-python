@@ -34,7 +34,7 @@
 import sys
 import unittest
 
-from hashlib import md5
+from hashlib import sha256
 
 import tests
 
@@ -64,11 +64,11 @@ class TestExamples(tests.MySQLConnectorTests):
         except Exception as err:
             self.fail(err)
 
-        md5_result = md5()
+        sha256_result = sha256()
         output = "\n".join(result)
-        md5_result.update(output.encode("utf-8"))
+        sha256_result.update(output.encode("utf-8"))
 
-        self.assertEqual(exp, md5_result.hexdigest(), "Output was not correct")
+        self.assertEqual(exp, sha256_result.hexdigest(), "Output was not correct")
 
     def test_dates(self):
         """examples/dates.py"""
@@ -119,7 +119,7 @@ class TestExamples(tests.MySQLConnectorTests):
             import examples.inserts as example
         except Exception as err:
             self.fail(err)
-        exp = "077dcd0139015c0aa6fb82ed932f053e"
+        exp = "0ec627a23de574747d0aa850534d0029f58b395c2f93970fdfd832f4f5d491d5"
         self._exec_main(example, exp)
 
         sys.modules.pop("examples.inserts", None)
