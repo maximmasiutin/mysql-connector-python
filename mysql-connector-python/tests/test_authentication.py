@@ -41,14 +41,13 @@ import subprocess
 import time
 import unittest
 
-from mysql.connector.connection import MySQLConnection
-
 import tests
 
 import mysql.connector
 import mysql.connector.plugins as plugins
 
 from mysql.connector import authentication
+from mysql.connector.connection import MySQLConnection
 from mysql.connector.errors import (
     DatabaseError,
     InterfaceError,
@@ -1437,6 +1436,9 @@ class MySQLOpenIDConnectAuthPluginTests(tests.MySQLConnectorTests):
         self.assertIsInstance(res, tuple)
         self.assertTrue(expected_user in res[0][0][0])
 
+    @unittest.skipIf(
+        tests.MYSQL_ML_ENABLED, "Assumed permissions incompatible with MySQL AI"
+    )
     @tests.foreach_cnx()
     def test_openid_identity_token_file_valid(self):
         """Checks whether an user is able to authenticate with a path to a valid

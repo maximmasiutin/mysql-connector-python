@@ -1014,6 +1014,15 @@ def main():
                     if res:
                         mysql_server.mysqlx_unix_socket = res[1]
 
+                    cur.execute(
+                        """
+                        SELECT 1 FROM information_schema.ROUTINES
+                        WHERE ROUTINE_SCHEMA=%s AND ROUTINE_NAME=%s AND ROUTINE_TYPE='PROCEDURE' LIMIT 1
+                        """,
+                        ("sys", "ML_TRAIN"),
+                    )
+                    tests.MYSQL_ML_ENABLED = cur.fetchone() is not None
+
             tests.MYSQL_VERSION = mysql_server.version
             tests.MYSQL_LICENSE = mysql_server.license
             tests.MYSQL_VERSION_TXT = ".".join(map(str, mysql_server.version))

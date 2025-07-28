@@ -56,6 +56,9 @@ LOGGER = logging.getLogger(tests.LOGGER_NAME)
 
 
 def setUpModule() -> None:
+    if not CEXT_MYSQL_AVAILABLE:
+        return
+
     with CMySQLConnection(**tests.get_mysql_config()) as cnx:
         global NATIVE_PASSWORD_INSTALLED
 

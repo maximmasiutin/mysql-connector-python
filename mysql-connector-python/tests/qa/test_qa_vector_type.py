@@ -36,6 +36,7 @@ import struct
 import unittest
 
 from array import array
+from contextlib import nullcontext
 
 import tests
 
