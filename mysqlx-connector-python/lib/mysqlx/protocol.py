@@ -29,6 +29,7 @@
 """Implementation of the X protocol for MySQL servers."""
 
 import struct
+import sys
 import zlib
 
 from io import BytesIO
@@ -42,7 +43,10 @@ except ImportError:
     HAVE_LZ4 = False
 
 try:
-    import zstandard as zstd
+    if sys.version_info.major >= 3 and sys.version_info.minor >= 14:
+        from compression import zstd
+    else:
+        import zstandard as zstd
 
     HAVE_ZSTD = True
 except ImportError:

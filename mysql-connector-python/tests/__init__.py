@@ -1,4 +1,4 @@
-# Copyright (c) 2013, 2024, Oracle and/or its affiliates.
+# Copyright (c) 2013, 2025, Oracle and/or its affiliates.
 #
 # This program is free software; you can redistribute it and/or modify
 # it under the terms of the GNU General Public License, version 2.0, as
@@ -46,7 +46,7 @@ import sys
 import traceback
 import unittest
 
-from distutils.dist import Distribution
+from setuptools.dist import Distribution
 from functools import lru_cache, wraps
 from pkgutil import walk_packages
 from time import sleep

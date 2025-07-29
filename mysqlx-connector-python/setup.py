@@ -149,6 +149,7 @@ def main() -> None:
             "Programming Language :: Python :: 3.11",
             "Programming Language :: Python :: 3.12",
             "Programming Language :: Python :: 3.13",
+            "Programming Language :: Python :: 3.14",
             "Topic :: Database",
             "Topic :: Software Development",
             "Topic :: Software Development :: Libraries :: Python Modules",
@@ -160,7 +161,11 @@ def main() -> None:
         install_requires=["protobuf==5.29.4"],
         extras_require={
             "dns-srv": ["dnspython==2.6.1"],
-            "compression": ["lz4==4.4.4", "zstandard==0.23.0"],
+            "compression": (
+                ["lz4==4.4.4"] + ["zstandard==0.23.0"]
+                if not (sys.version_info.major >= 3 and sys.version_info.minor >= 14)
+                else []
+            ),
         },
     )
 
@@ -180,8 +185,7 @@ def copy_metadata_files() -> None:
 
 
 def get_long_description() -> str:
-    """Extracts a long description from the README.rst file that is suited for this specific package.
-    """
+    """Extracts a long description from the README.rst file that is suited for this specific package."""
     with open(pathlib.Path(os.getcwd(), "./README.rst")) as file_handle:
         # The README.rst text is meant to be shared by both mysql and mysqlx packages, so after getting it we need to
         # parse it in order to remove the bits of text that are not meaningful for this package (mysqlx)
