@@ -1,3 +1,31 @@
+REM Copyright (c) 2017, 2025, Oracle and/or its affiliates.
+REM
+REM This program is free software; you can redistribute it and/or modify
+REM it under the terms of the GNU General Public License, version 2.0, as
+REM published by the Free Software Foundation.
+REM
+REM This program is designed to work with certain software (including
+REM but not limited to OpenSSL) that is licensed under separate terms,
+REM as designated in a particular file or component or in included license
+REM documentation. The authors of MySQL hereby grant you an
+REM additional permission to link the program and your derivative works
+REM with the separately licensed software that they have either included with
+REM the program or referenced in the documentation.
+REM
+REM Without limiting anything contained in the foregoing, this file,
+REM which is part of MySQL Connector/Python, is also subject to the
+REM Universal FOSS Exception, version 1.0, a copy of which can be found at
+REM http://oss.oracle.com/licenses/universal-foss-exception.
+REM
+REM This program is distributed in the hope that it will be useful, but
+REM WITHOUT ANY WARRANTY; without even the implied warranty of
+REM MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.
+REM See the GNU General Public License, version 2.0, for more details.
+REM
+REM You should have received a copy of the GNU General Public License
+REM along with this program; if not, write to the Free Software Foundation, Inc.,
+REM 51 Franklin St, Fifth Floor, Boston, MA 02110-1301  USA
+
 @ECHO OFF
 
 REM Command file for Sphinx documentation
