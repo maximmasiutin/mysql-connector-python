@@ -12,6 +12,7 @@ v9.5.0
 ======
 
 - WL#17049: Remove usage of SQL functions MD5() and SHA1()
+- WL#17088: MySQL Connector Python HeatWave GenAI and ML SDK
 
 v9.4.0
 ======
