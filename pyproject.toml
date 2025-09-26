@@ -132,7 +132,7 @@ disable = [
 ]
 
 [tool.pylint.format]
-good-names = ["i", "f", "db", "dt", "ca", "hi", "pw"]
+good-names = ["i", "f", "db", "dt", "ca", "hi", "pw", "X"]
 
 [tool.mypy]
 # https://mypy.readthedocs.io/en/stable/command_line.html
@@ -191,3 +191,12 @@ module = [
   'lib.mysql.opentelemetry.*',
 ]
 ignore_errors = true
+
+[tool.pylint.typecheck]
+ignored-modules = [
+  'numpy*',
+  'pandas*',
+  'sklearn*',
+  'pydantic*',
+  'langchain*',
+]

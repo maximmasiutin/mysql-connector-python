@@ -26,15 +26,19 @@
 # along with this program; if not, write to the Free Software Foundation, Inc.,
 # 51 Franklin St, Fifth Floor, Boston, MA 02110-1301  USA
 
+"""Base classes for MySQL HeatWave ML estimators for Connector/Python.
+
+Implements a scikit-learn-compatible base estimator wrapping server-side ML.
+"""
 from typing import Optional, Union
 
 import pandas as pd
 
-from mysql.ai.ml.model import ML_TASK, MyModel
-from mysql.ai.utils import copy_dict
 from sklearn.base import BaseEstimator
 
 from mysql.connector.abstracts import MySQLConnectionAbstract
+from mysql.ai.ml.model import ML_TASK, MyModel
+from mysql.ai.utils import copy_dict
 
 
 class MyBaseMLModel(BaseEstimator):
@@ -80,7 +84,11 @@ class MyBaseMLModel(BaseEstimator):
         self._model = MyModel(db_connection, task=task, model_name=model_name)
         self.fit_extra_options = copy_dict(fit_extra_options)
 
-    def fit(self, X: pd.DataFrame, y: Optional[pd.DataFrame] = None) -> "MyBaseMLModel":
+    def fit(
+        self,
+        X: pd.DataFrame,  # pylint: disable=invalid-name
+        y: Optional[pd.DataFrame] = None,
+    ) -> "MyBaseMLModel":
         """
         Fit the underlying ML model using pandas DataFrames.
         Delegates to MyMLModelPandasHelper.fit.
@@ -120,7 +128,8 @@ class MyBaseMLModel(BaseEstimator):
 
     def get_model_info(self) -> Optional[dict]:
         """
-        Checks if the model name is available. Model info will only be present in the catalog if the model has previously been fitted.
+        Checks if the model name is available. Model info will only be present in the
+        catalog if the model has previously been fitted.
 
         Returns:
             True if the model name is not part of the model catalog

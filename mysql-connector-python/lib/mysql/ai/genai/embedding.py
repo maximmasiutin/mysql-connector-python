@@ -26,11 +26,19 @@
 # along with this program; if not, write to the Free Software Foundation, Inc.,
 # 51 Franklin St, Fifth Floor, Boston, MA 02110-1301  USA
 
+"""Embeddings integration utilities for MySQL Connector/Python.
+
+Provides MyEmbeddings class to generate embeddings via MySQL HeatWave
+using ML_EMBED_TABLE and ML_EMBED_ROW.
+"""
+
 from typing import Dict, List, Optional
 
 import pandas as pd
 
 from langchain_core.embeddings import Embeddings
+from pydantic import PrivateAttr
+
 from mysql.ai.utils import (
     atomic_transaction,
     execute_sql,
@@ -40,8 +48,6 @@ from mysql.ai.utils import (
     sql_table_to_df,
     temporary_sql_tables,
 )
-from pydantic import PrivateAttr
-
 from mysql.connector.abstracts import MySQLConnectionAbstract
 
 
@@ -134,7 +140,13 @@ class MyEmbeddings(Embeddings):
             temporary_tables.append((self.schema_name, table_name))
 
             # ML_EMBED_TABLE expects input/output columns and options as parameters
-            embed_query = f"CALL sys.ML_EMBED_TABLE('{qualified_table_name}.text', '{qualified_table_name}.embeddings', {self.options_placeholder})"
+            embed_query = (
+                "CALL sys.ML_EMBED_TABLE("
+                f"'{qualified_table_name}.text', "
+                f"'{qualified_table_name}.embeddings', "
+                f"{self.options_placeholder}"
+                ")"
+            )
             execute_sql(cursor, embed_query, params=self.options_params)
 
             # Read back all columns, including "embeddings"

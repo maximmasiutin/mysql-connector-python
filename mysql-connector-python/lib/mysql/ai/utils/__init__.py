@@ -26,6 +26,16 @@
 # along with this program; if not, write to the Free Software Foundation, Inc.,
 # 51 Franklin St, Fifth Floor, Boston, MA 02110-1301  USA
 
+"""Utilities for AI-related helpers in MySQL Connector/Python.
+
+This package exposes:
+- check_dependencies(): runtime dependency guard for optional AI features
+- atomic_transaction(): context manager ensuring atomic DB transactions
+- utils: general-purpose helpers used by AI integrations
+
+Importing this package validates base dependencies required for AI utilities.
+"""
+
 from .dependencies import check_dependencies
 
 check_dependencies(["BASE"])

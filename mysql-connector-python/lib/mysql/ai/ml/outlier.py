@@ -26,15 +26,19 @@
 # along with this program; if not, write to the Free Software Foundation, Inc.,
 # 51 Franklin St, Fifth Floor, Boston, MA 02110-1301  USA
 
+"""Outlier/anomaly detection utilities for MySQL Connector/Python.
+
+Provides a scikit-learn compatible wrapper using HeatWave to score anomalies.
+"""
 from typing import Optional, Union
 
 import numpy as np
 import pandas as pd
+from sklearn.base import OutlierMixin
 
 from mysql.ai.ml.base import MyBaseMLModel
 from mysql.ai.ml.model import ML_TASK
 from mysql.ai.utils import copy_dict
-from sklearn.base import OutlierMixin
 
 from mysql.connector.abstracts import MySQLConnectionAbstract
 
@@ -59,8 +63,10 @@ class MyAnomalyDetector(MyBaseMLModel, OutlierMixin):
     """
     MySQL HeatWave scikit-learn compatible anomaly/outlier detector.
 
-    Flags samples as outliers when the probability of being an anomaly exceeds a user-tunable threshold.
-    Includes helper functions to obtain decision scores and anomaly probabilities for ranking.
+    Flags samples as outliers when the probability of being an anomaly
+    exceeds a user-tunable threshold.
+    Includes helpers to obtain decision scores and anomaly probabilities
+    for ranking.
 
     Args:
         db_connection (MySQLConnectionAbstract): Active MySQL DB connection.
@@ -69,7 +75,8 @@ class MyAnomalyDetector(MyBaseMLModel, OutlierMixin):
         score_extra_options (dict, optional): Extra options for scoring/prediction.
 
     Attributes:
-        boundary: Decision threshold boundary in logit space. Derived from trained model's catalog info
+        boundary: Decision threshold boundary in logit space. Derived from
+            trained model's catalog info
 
     Methods:
         predict(X): Predict outlier/inlier labels.
@@ -107,9 +114,12 @@ class MyAnomalyDetector(MyBaseMLModel, OutlierMixin):
             fit_extra_options=fit_extra_options,
         )
         self.score_extra_options = copy_dict(score_extra_options)
-        self.boundary = None
+        self.boundary: Optional[float] = None
 
-    def predict(self, X: Union[pd.DataFrame, np.ndarray]) -> np.ndarray:
+    def predict(
+        self,
+        X: Union[pd.DataFrame, np.ndarray],  # pylint: disable=invalid-name
+    ) -> np.ndarray:
         """
         Predict outlier/inlier binary labels for input samples.
 
@@ -121,13 +131,24 @@ class MyAnomalyDetector(MyBaseMLModel, OutlierMixin):
 
         Raises:
             DatabaseError:
-                If provided options are invalid or unsupported, or if the model is not initialized, i.e., fit or import has not been called
+                If provided options are invalid or unsupported,
+                or if the model is not initialized, i.e., fit or import has not
+                been called
+                If a database connection issue occurs.
+                If an operational error occurs during execution.
+            DatabaseError:
+                If provided options are invalid or unsupported,
+                or if the model is not initialized, i.e., fit or import has not
+                been called
                 If a database connection issue occurs.
                 If an operational error occurs during execution.
         """
         return np.where(self.decision_function(X) < 0.0, -1, 1)
 
-    def decision_function(self, X: Union[pd.DataFrame, np.ndarray]) -> np.ndarray:
+    def decision_function(
+        self,
+        X: Union[pd.DataFrame, np.ndarray],  # pylint: disable=invalid-name
+    ) -> np.ndarray:
         """
         Compute signed distance to the outlier threshold.
 
@@ -139,7 +160,9 @@ class MyAnomalyDetector(MyBaseMLModel, OutlierMixin):
 
         Raises:
             DatabaseError:
-                If provided options are invalid or unsupported, or if the model is not initialized, i.e., fit or import has not been called
+                If provided options are invalid or unsupported,
+                or if the model is not initialized, i.e., fit or import has not
+                been called
                 If a database connection issue occurs.
                 If an operational error occurs during execution.
             ValueError:
@@ -157,7 +180,8 @@ class MyAnomalyDetector(MyBaseMLModel, OutlierMixin):
             )
             if threshold is None:
                 raise ValueError(
-                    "Trained model is outdated and does not support threshold. Try retraining or using existing, trained model with MyModel."
+                    "Trained model is outdated and does not support threshold. "
+                    "Try retraining or using an existing, trained model with MyModel."
                 )
 
             # scikit-learn uses large positive values as inlier
@@ -166,7 +190,10 @@ class MyAnomalyDetector(MyBaseMLModel, OutlierMixin):
 
         return sample_scores - self.boundary
 
-    def score_samples(self, X: Union[pd.DataFrame, np.ndarray]) -> np.ndarray:
+    def score_samples(
+        self,
+        X: Union[pd.DataFrame, np.ndarray],  # pylint: disable=invalid-name
+    ) -> np.ndarray:
         """
         Compute normal probability logit score for each sample.
         Used for ranking, thresholding.
@@ -179,7 +206,9 @@ class MyAnomalyDetector(MyBaseMLModel, OutlierMixin):
 
         Raises:
             DatabaseError:
-                If provided options are invalid or unsupported, or if the model is not initialized, i.e., fit or import has not been called
+                If provided options are invalid or unsupported,
+                or if the model is not initialized, i.e., fit or import has not
+                been called
                 If a database connection issue occurs.
                 If an operational error occurs during execution.
         """

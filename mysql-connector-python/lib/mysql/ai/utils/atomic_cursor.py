@@ -26,6 +26,12 @@
 # along with this program; if not, write to the Free Software Foundation, Inc.,
 # 51 Franklin St, Fifth Floor, Boston, MA 02110-1301  USA
 
+"""Atomic transaction context manager utilities for MySQL Connector/Python.
+
+Provides context manager atomic_transaction() that ensures commit on success
+and rollback on error without obscuring the original exception.
+"""
+
 from contextlib import contextmanager
 from typing import Iterator
 
@@ -67,11 +73,11 @@ def atomic_transaction(
         yield cursor  # provide cursor to block
 
         conn.commit()
-    except Exception:
+    except Exception:  # pylint: disable=broad-exception-caught
         exception_raised = True
         try:
             conn.rollback()
-        except:
+        except Exception:  # pylint: disable=broad-exception-caught
             # Don't obscure original exception
             pass
 
@@ -82,7 +88,7 @@ def atomic_transaction(
 
         try:
             cursor.close()
-        except:
+        except Exception:  # pylint: disable=broad-exception-caught
             # don't obscure original exception if exists
             if not exception_raised:
                 raise

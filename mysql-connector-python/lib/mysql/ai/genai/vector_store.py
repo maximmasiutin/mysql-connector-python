@@ -26,6 +26,12 @@
 # along with this program; if not, write to the Free Software Foundation, Inc.,
 # 51 Franklin St, Fifth Floor, Boston, MA 02110-1301  USA
 
+"""MySQL-backed vector store for embeddings and semantic document retrieval.
+
+Provides a VectorStore implementation persisting documents, metadata, and
+embeddings in MySQL, plus similarity search utilities.
+"""
+
 import json
 
 from typing import Any, Iterable, List, Optional, Sequence, Union
@@ -35,6 +41,8 @@ import pandas as pd
 from langchain_core.documents import Document
 from langchain_core.embeddings import Embeddings
 from langchain_core.vectorstores import VectorStore
+from pydantic import PrivateAttr
+
 from mysql.ai.genai.embedding import MyEmbeddings
 from mysql.ai.utils import (
     VAR_NAME_SPACE,
@@ -48,9 +56,7 @@ from mysql.ai.utils import (
     source_schema,
     table_exists,
 )
-
 from mysql.connector.abstracts import MySQLConnectionAbstract
-from pydantic import PrivateAttr
 
 BASIC_EMBEDDING_QUERY = "Hello world!"
 EMBEDDING_SOURCE = "external_source"
@@ -78,7 +84,8 @@ class MyVectorStore(VectorStore):
         db_connection (MySQLConnectionAbstract): Active MySQL database connection.
         embedder (Embeddings): Embeddings generator for computing vector representations.
         schema_name (str): SQL schema for table storage.
-        table_name (Optional[str]): Name of the active table backing the store (or None until created).
+        table_name (Optional[str]): Name of the active table backing the store
+            (or None until created).
         embedding_dimension (int): Size of embedding vectors stored.
         next_id (int): Internal counter for unique document ID generation.
     """
@@ -116,8 +123,11 @@ class MyVectorStore(VectorStore):
         self._db_connection = db_connection
         self._table_name: Optional[str] = None
 
-        # Embedding dimension determined using an example call. Assumes embeddings have fixed length.
-        self._embedding_dimension = len(self._embedder.embed_query(BASIC_EMBEDDING_QUERY))
+        # Embedding dimension determined using an example call.
+        # Assumes embeddings have fixed length.
+        self._embedding_dimension = len(
+            self._embedder.embed_query(BASIC_EMBEDDING_QUERY)
+        )
 
     def _get_ids(self, num_ids: int) -> list[str]:
         """
@@ -174,7 +184,7 @@ class MyVectorStore(VectorStore):
 
                 self._table_name = table_name
 
-    def delete(self, ids: Optional[Sequence[str]] = None, **kwargs: Any) -> None:
+    def delete(self, ids: Optional[Sequence[str]] = None, **_: Any) -> None:
         """
         Delete documents by ID. Optionally deletes the vector table if empty after deletions.
 
@@ -190,7 +200,8 @@ class MyVectorStore(VectorStore):
                 If an operational error occurs during execution.
 
         Notes:
-            If the backing table is empty after deletions, the table is dropped and table_name is set to None.
+            If the backing table is empty after deletions, the table is dropped and
+            table_name is set to None.
         """
         with atomic_transaction(self._db_connection) as cursor:
             if ids:
@@ -221,7 +232,7 @@ class MyVectorStore(VectorStore):
         texts: Iterable[str],
         metadatas: Optional[list[dict]] = None,
         ids: Optional[List[str]] = None,
-        **kwargs: dict,
+        **_: dict,
     ) -> List[str]:
         """
         Add a batch of text strings and corresponding metadata to the vector store.
@@ -312,7 +323,7 @@ class MyVectorStore(VectorStore):
         """
         if ids and len(ids) != len(documents):
             msg = (
-                f"ids must be the same length as documents. "
+                "ids must be the same length as documents. "
                 f"Got {len(ids)} ids and {len(documents)} documents."
             )
             raise ValueError(msg)
@@ -357,7 +368,8 @@ class MyVectorStore(VectorStore):
         Args:
             query: String query to embed and use for similarity search.
             k: Number of top documents to return.
-            kwargs: options to pass to ML_SIMILARITY_SEARCH. Currently supports distance_metric, max_distance, percentage_distance, and segment_overlap
+            kwargs: options to pass to ML_SIMILARITY_SEARCH. Currently supports
+                distance_metric, max_distance, percentage_distance, and segment_overlap
 
         Returns:
             List of Document objects, ordered from most to least similar.
@@ -399,8 +411,14 @@ class MyVectorStore(VectorStore):
             similarity_search_query = f"""
             CALL sys.ML_SIMILARITY_SEARCH(
                 @{VAR_EMBEDDING},
-                JSON_ARRAY('{self._schema_name}.{self._table_name}'),
-                JSON_OBJECT("segment", "content", "segment_embedding", "embed", "document_name", "id"),
+                JSON_ARRAY(
+                    '{self._schema_name}.{self._table_name}'
+                ),
+                JSON_OBJECT(
+                    "segment", "content",
+                    "segment_embedding", "embed",
+                    "document_name", "id"
+                ),
                 {k},
                 %s,
                 NULL,
@@ -425,13 +443,17 @@ class MyVectorStore(VectorStore):
             for context in context_maps:
                 execute_sql(
                     cursor,
-                    f"SELECT id, content, metadata FROM {self._schema_name}.{self._table_name} WHERE id =%s",
+                    (
+                        "SELECT id, content, metadata "
+                        f"FROM {self._schema_name}.{self._table_name} "
+                        "WHERE id = %s"
+                    ),
                     params=(context["document_name"],),
                 )
-                id, content, metadata = cursor.fetchone()
+                doc_id, content, metadata = cursor.fetchone()
 
                 doc_args = {
-                    "id": id,
+                    "id": doc_id,
                     "page_content": content,
                 }
                 if metadata is not None:
@@ -450,8 +472,10 @@ class MyVectorStore(VectorStore):
             The current MyVectorStore object, allowing use within a `with` statement block.
 
         Usage Notes:
-            - Intended for use in a `with` statement to ensure automatic cleanup of resources.
-            - No special initialization occurs during context entry, but enables proper context-managed lifecycle.
+            - Intended for use in a `with` statement to ensure automatic
+              cleanup of resources.
+            - No special initialization occurs during context entry, but enables
+              proper context-managed lifecycle.
 
         Example:
             with MyVectorStore(db_connection, embedder) as vectorstore:
@@ -468,7 +492,8 @@ class MyVectorStore(VectorStore):
         exc_tb: Union[object, None],
     ) -> None:
         """
-        Exit the runtime context for the vector store, ensuring all storage resources are cleaned up.
+        Exit the runtime context for the vector store, ensuring all storage
+        resources are cleaned up.
 
         Args:
             exc_type: The exception type, if any exception occurred in the context block.

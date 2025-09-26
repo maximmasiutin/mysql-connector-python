@@ -25,6 +25,11 @@
 # You should have received a copy of the GNU General Public License
 # along with this program; if not, write to the Free Software Foundation, Inc.,
 # 51 Franklin St, Fifth Floor, Boston, MA 02110-1301  USA
+"""HeatWave ML model utilities for MySQL Connector/Python.
+
+Provides classes to manage training, prediction, scoring, and explanations
+via MySQL HeatWave stored procedures.
+"""
 import copy
 import json
 
@@ -49,11 +54,12 @@ from mysql.ai.utils import (
     temporary_sql_tables,
     validate_name,
 )
-
 from mysql.connector.abstracts import MySQLConnectionAbstract
 
 
-class ML_TASK(Enum):
+class ML_TASK(Enum):  # pylint: disable=invalid-name
+    """Enumeration of supported ML tasks for HeatWave."""
+
     CLASSIFICATION = "classification"
     REGRESSION = "regression"
     FORECASTING = "forecasting"
@@ -131,9 +137,7 @@ class _MyModelCommon:
             execute_sql(cursor, "CALL sys.ML_CREATE_OR_UPGRADE_CATALOG();")
 
         if model_name is None:
-            model_name = get_random_name(
-                lambda name: self._is_model_name_available(name)
-            )
+            model_name = get_random_name(self._is_model_name_available)
 
         self.model_var = f"{VAR_NAME_SPACE}.{model_name}"
         self.model_var_score = f"{self.model_var}.score"
@@ -159,7 +163,10 @@ class _MyModelCommon:
         current_user = self._get_user()
 
         qualified_model_catalog = f"ML_SCHEMA_{current_user}.MODEL_CATALOG"
-        delete_model = f"DELETE FROM {qualified_model_catalog} WHERE model_handle = @{self.model_var}"
+        delete_model = (
+            f"DELETE FROM {qualified_model_catalog} "
+            f"WHERE model_handle = @{self.model_var}"
+        )
 
         with atomic_transaction(self.db_connection) as cursor:
             execute_sql(cursor, delete_model)
@@ -185,7 +192,7 @@ class _MyModelCommon:
             if isinstance(elem, str):
                 try:
                     elem = json.loads(elem)
-                except:
+                except json.JSONDecodeError:
                     pass
             return elem
 
@@ -214,7 +221,8 @@ class _MyModelCommon:
 
     def get_model_info(self) -> Optional[dict]:
         """
-        Checks if the model name is available. Model info will only be present in the catalog if the model has previously been fitted.
+        Checks if the model name is available.
+        Model info is present in the catalog only if the model was previously fitted.
 
         Returns:
             True if the model name is not part of the model catalog
@@ -296,14 +304,18 @@ class _MyModelCommon:
                 If a database connection issue occurs.
                 If an operational error occurs during execution.
             ValueError:
-                If the model does not exist in the model catalog. Should only occur if model was not fitted or was deleted.
+                If the model does not exist in the model catalog.
+                Should only occur if model was not fitted or was deleted.
         """
         self._load_model()
         with atomic_transaction(self.db_connection) as cursor:
             current_user = self._get_user()
 
             qualified_model_catalog = f"ML_SCHEMA_{current_user}.MODEL_CATALOG"
-            explain_query = f"SELECT model_explanation FROM {qualified_model_catalog} WHERE model_handle = @{self.model_var}"
+            explain_query = (
+                f"SELECT model_explanation FROM {qualified_model_catalog} "
+                f"WHERE model_handle = @{self.model_var}"
+            )
 
             execute_sql(cursor, explain_query)
             df = sql_response_to_df(cursor)
@@ -356,7 +368,14 @@ class _MyModelCommon:
             placeholders, parameters = format_value_sql(options)
             execute_sql(
                 cursor,
-                f"CALL sys.ML_TRAIN('{self.schema_name}.{table_name}', {target_col_string}, {placeholders}, @{self.model_var})",
+                (
+                    "CALL sys.ML_TRAIN("
+                    f"'{self.schema_name}.{table_name}', "
+                    f"{target_col_string}, "
+                    f"{placeholders}, "
+                    f"@{self.model_var}"
+                    ")"
+                ),
                 params=parameters,
             )
 
@@ -380,7 +399,9 @@ class _MyModelCommon:
 
         Raises:
             DatabaseError:
-                If provided options are invalid or unsupported, or if the model is not initialized, i.e., fit or import has not been called
+                If provided options are invalid or unsupported,
+                or if the model is not initialized, i.e., fit or import has not
+                been called
                 If a database connection issue occurs.
                 If an operational error occurs during execution.
             ValueError: If the table or output_table name is not valid
@@ -393,7 +414,14 @@ class _MyModelCommon:
             placeholders, parameters = format_value_sql(options)
             execute_sql(
                 cursor,
-                f"CALL sys.ML_PREDICT_TABLE('{self.schema_name}.{table_name}', @{self.model_var}, '{self.schema_name}.{output_table_name}', {placeholders})",
+                (
+                    "CALL sys.ML_PREDICT_TABLE("
+                    f"'{self.schema_name}.{table_name}', "
+                    f"@{self.model_var}, "
+                    f"'{self.schema_name}.{output_table_name}', "
+                    f"{placeholders}"
+                    ")"
+                ),
                 params=parameters,
             )
 
@@ -409,7 +437,9 @@ class _MyModelCommon:
 
         References:
             https://dev.mysql.com/doc/heatwave/en/mys-hwaml-ml-score.html
-                A full list of supported options can be found under "Options for Recommendation Models" and "Options for Anomaly Detection Models"
+                A full list of supported options can be found under
+                "Options for Recommendation Models" and
+                "Options for Anomaly Detection Models"
 
         Args:
             table_name: Table with features and ground truth.
@@ -422,7 +452,9 @@ class _MyModelCommon:
 
         Raises:
             DatabaseError:
-                If provided options are invalid or unsupported, or if the model is not initialized, i.e., fit or import has not been called
+                If provided options are invalid or unsupported,
+                or if the model is not initialized, i.e., fit or import has not
+                been called
                 If a database connection issue occurs.
                 If an operational error occurs during execution.
             ValueError: If the table or target_column name or metric is not valid
@@ -436,7 +468,16 @@ class _MyModelCommon:
             placeholders, parameters = format_value_sql(options)
             execute_sql(
                 cursor,
-                f"CALL sys.ML_SCORE('{self.schema_name}.{table_name}', '{target_column_name}', @{self.model_var}, %s, @{self.model_var_score}, {placeholders})",
+                (
+                    "CALL sys.ML_SCORE("
+                    f"'{self.schema_name}.{table_name}', "
+                    f"'{target_column_name}', "
+                    f"@{self.model_var}, "
+                    "%s, "
+                    f"@{self.model_var_score}, "
+                    f"{placeholders}"
+                    ")"
+                ),
                 params=[metric, *parameters],
             )
             execute_sql(cursor, f"SELECT @{self.model_var_score}")
@@ -457,14 +498,17 @@ class _MyModelCommon:
         Args:
             table_name: Name of the SQL table with input data.
             output_table_name: Name for the SQL table to store explanations.
-            options: Optional dictionary (default: {"prediction_explainer": "permutation_importance"}).
+            options: Optional dictionary (default:
+                {"prediction_explainer": "permutation_importance"}).
 
         Returns:
             DataFrame: Prediction explanations from the output SQL table.
 
         Raises:
             DatabaseError:
-                If provided options are invalid or unsupported, or if the model is not initialized, i.e., fit or import has not been called
+                If provided options are invalid or unsupported,
+                or if the model is not initialized, i.e., fit or import has not
+                been called
                 If a database connection issue occurs.
                 If an operational error occurs during execution.
             ValueError: If the table or output_table name is not valid
@@ -481,7 +525,14 @@ class _MyModelCommon:
             placeholders, parameters = format_value_sql(options)
             execute_sql(
                 cursor,
-                f"CALL sys.ML_EXPLAIN_TABLE('{self.schema_name}.{table_name}', @{self.model_var}, '{self.schema_name}.{output_table_name}', {placeholders})",
+                (
+                    "CALL sys.ML_EXPLAIN_TABLE("
+                    f"'{self.schema_name}.{table_name}', "
+                    f"@{self.model_var}, "
+                    f"'{self.schema_name}.{output_table_name}', "
+                    f"{placeholders}"
+                    ")"
+                ),
                 params=parameters,
             )
             execute_sql(cursor, f"SELECT * FROM {self.schema_name}.{output_table_name}")
@@ -500,7 +551,7 @@ class MyModel(_MyModelCommon):
 
     def fit(
         self,
-        X: Union[pd.DataFrame, np.ndarray],
+        X: Union[pd.DataFrame, np.ndarray],  # pylint: disable=invalid-name
         y: Optional[Union[pd.DataFrame, np.ndarray]],
         options: Optional[dict] = None,
     ) -> None:
@@ -548,7 +599,8 @@ class MyModel(_MyModelCommon):
 
                 if target_column_name in X.columns:
                     raise ValueError(
-                        f"Target column y with name {target_column_name} already present in feature dataframe X"
+                        f"Target column y with name {target_column_name} already present "
+                        "in feature dataframe X"
                     )
 
                 df_combined = X.copy()
@@ -564,7 +616,9 @@ class MyModel(_MyModelCommon):
             self._fit(table_name, target_column_name, options)
 
     def predict(
-        self, X: Union[pd.DataFrame, np.ndarray], options: Optional[dict] = None
+        self,
+        X: Union[pd.DataFrame, np.ndarray],  # pylint: disable=invalid-name
+        options: Optional[dict] = None,
     ) -> pd.DataFrame:
         """
         Generate model predictions using DataFrame input.
@@ -584,7 +638,9 @@ class MyModel(_MyModelCommon):
 
         Raises:
             DatabaseError:
-                If provided options are invalid or unsupported, or if the model is not initialized, i.e., fit or import has not been called
+                If provided options are invalid or unsupported,
+                or if the model is not initialized, i.e., fit or import has not
+                been called
                 If a database connection issue occurs.
                 If an operational error occurs during execution.
 
@@ -617,7 +673,7 @@ class MyModel(_MyModelCommon):
 
     def score(
         self,
-        X: Union[pd.DataFrame, np.ndarray],
+        X: Union[pd.DataFrame, np.ndarray],  # pylint: disable=invalid-name
         y: Union[pd.DataFrame, np.ndarray],
         metric: str,
         options: Optional[dict] = None,
@@ -629,7 +685,9 @@ class MyModel(_MyModelCommon):
 
         References:
             https://dev.mysql.com/doc/heatwave/en/mys-hwaml-ml-score.html
-                A full list of supported options can be found under "Options for Recommendation Models" and "Options for Anomaly Detection Models"
+                A full list of supported options can be found under
+                "Options for Recommendation Models" and
+                "Options for Anomaly Detection Models"
 
         Args:
             X: DataFrame of features.
@@ -639,7 +697,9 @@ class MyModel(_MyModelCommon):
 
         Raises:
             DatabaseError:
-                If provided options are invalid or unsupported, or if the model is not initialized, i.e., fit or import has not been called
+                If provided options are invalid or unsupported,
+                or if the model is not initialized, i.e., fit or import has not
+                been called
                 If a database connection issue occurs.
                 If an operational error occurs during execution.
 
@@ -665,7 +725,9 @@ class MyModel(_MyModelCommon):
             return score
 
     def explain_predictions(
-        self, X: Union[pd.DataFrame, np.ndarray], options: Dict = None
+        self,
+        X: Union[pd.DataFrame, np.ndarray],  # pylint: disable=invalid-name
+        options: Dict = None,
     ) -> pd.DataFrame:
         """
         Explain model predictions using provided data.
@@ -674,7 +736,8 @@ class MyModel(_MyModelCommon):
 
         References:
             https://dev.mysql.com/doc/heatwave/en/mys-hwaml-ml-explain-table.html
-                A full list of supported options can be found under "ML_EXPLAIN_TABLE Options"
+                A full list of supported options can be found under
+                "ML_EXPLAIN_TABLE Options"
 
         Args:
             X: DataFrame for which predictions should be explained.
@@ -685,7 +748,8 @@ class MyModel(_MyModelCommon):
 
         Raises:
             DatabaseError:
-                If provided options are invalid or unsupported, or if the model is not initialized, i.e., fit or import has not been called
+                If provided options are invalid or unsupported, or if the model is not initialized,
+                i.e., fit or import has not been called
                 If a database connection issue occurs.
                 If an operational error occurs during execution.
 

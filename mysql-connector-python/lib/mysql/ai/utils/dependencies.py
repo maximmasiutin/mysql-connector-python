@@ -26,6 +26,12 @@
 # along with this program; if not, write to the Free Software Foundation, Inc.,
 # 51 Franklin St, Fifth Floor, Boston, MA 02110-1301  USA
 
+"""Dependency checking utilities for AI features in MySQL Connector/Python.
+
+Provides check_dependencies() to assert required optional packages are present
+with acceptable minimum versions at runtime.
+"""
+
 import importlib.metadata
 
 from typing import List
@@ -33,16 +39,19 @@ from typing import List
 
 def check_dependencies(tasks: List[str]) -> None:
     """
-    Check for required runtime dependencies and minimum versions; raise an error if any are missing or version-incompatible.
+    Check required runtime dependencies and minimum versions; raise an error
+    if any are missing or version-incompatible.
 
-    This function verifies the presence and minimum version of essential Python packages.
-    Missing or insufficiently versioned dependencies cause an ImportError listing the packages and a suggested install command.
+    This verifies the presence and minimum version of essential Python packages.
+    Missing or insufficient versions cause an ImportError listing the packages
+    and a suggested install command.
 
     Args:
-        tasks (List[str]): A list of task types to check requirements for
+        tasks (List[str]): Task types to check requirements for.
 
     Raises:
-        ImportError: If any required dependencies are not installed or version does not meet the minimum.
+        ImportError: If any required dependencies are missing or below the
+            minimum version.
     """
     task_set = set(tasks)
     task_set.add("BASE")
@@ -66,9 +75,10 @@ def check_dependencies(tasks: List[str]) -> None:
     for name, min_version in requirements_set:
         try:
             installed_version = importlib.metadata.version(name)
-            """
-            Does a string comparison on versions. This is the 'best' that we can do without introducing any new dependencies. This comparison is valid for the current dependencies that we define above, but this should be carefully considered when adding new dependencies to the list.
-            """
+            # Version comparison uses simple string comparison to avoid extra
+            # dependencies. This is valid for the dependencies defined above;
+            # reconsider if adding packages with version schemes that do not
+            # compare correctly as strings.
             error = installed_version < min_version
         except importlib.metadata.PackageNotFoundError:
             error = True

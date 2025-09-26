@@ -26,6 +26,13 @@
 # along with this program; if not, write to the Free Software Foundation, Inc.,
 # 51 Franklin St, Fifth Floor, Boston, MA 02110-1301  USA
 
+"""ML package for MySQL Connector/Python.
+
+Performs optional dependency checks and exposes ML utilities:
+- ML_TASK, MyModel
+- MyClassifier, MyRegressor, MyGenericTransformer
+- MyAnomalyDetector
+"""
 from mysql.ai.utils import check_dependencies as _check_dependencies
 
 _check_dependencies(["ML"])

@@ -26,15 +26,19 @@
 # along with this program; if not, write to the Free Software Foundation, Inc.,
 # 51 Franklin St, Fifth Floor, Boston, MA 02110-1301  USA
 
+"""Regressor utilities for MySQL Connector/Python.
+
+Provides a scikit-learn compatible regressor backed by HeatWave ML.
+"""
 from typing import Optional, Union
 
 import numpy as np
 import pandas as pd
+from sklearn.base import RegressorMixin
 
 from mysql.ai.ml.base import MyBaseMLModel
 from mysql.ai.ml.model import ML_TASK
 from mysql.ai.utils import copy_dict
-from sklearn.base import RegressorMixin
 
 from mysql.connector.abstracts import MySQLConnectionAbstract
 
@@ -97,7 +101,9 @@ class MyRegressor(MyBaseMLModel, RegressorMixin):
         self.predict_extra_options = copy_dict(predict_extra_options)
         self.explain_extra_options = copy_dict(explain_extra_options)
 
-    def predict(self, X: Union[pd.DataFrame, np.ndarray]) -> np.ndarray:
+    def predict(
+        self, X: Union[pd.DataFrame, np.ndarray]
+    ) -> np.ndarray:  # pylint: disable=invalid-name
         """
         Predict a continuous target for the input features using the MySQL model.
 
@@ -109,14 +115,18 @@ class MyRegressor(MyBaseMLModel, RegressorMixin):
 
         Raises:
             DatabaseError:
-                If provided options are invalid or unsupported, or if the model is not initialized, i.e., fit or import has not been called
+                If provided options are invalid or unsupported,
+                or if the model is not initialized, i.e., fit or import has not
+                been called
                 If a database connection issue occurs.
                 If an operational error occurs during execution.
         """
         result = self._model.predict(X, options=self.predict_extra_options)
         return result["Prediction"].to_numpy()
 
-    def explain_predictions(self, X: Union[pd.DataFrame, np.ndarray]) -> pd.DataFrame:
+    def explain_predictions(
+        self, X: Union[pd.DataFrame, np.ndarray]
+    ) -> pd.DataFrame:  # pylint: disable=invalid-name
         """
         Explain model predictions using provided data.
 
@@ -132,7 +142,9 @@ class MyRegressor(MyBaseMLModel, RegressorMixin):
 
         Raises:
             DatabaseError:
-                If provided options are invalid or unsupported, or if the model is not initialized, i.e., fit or import has not been called
+                If provided options are invalid or unsupported,
+                or if the model is not initialized, i.e., fit or import has not
+                been called
                 If a database connection issue occurs.
                 If an operational error occurs during execution.
 

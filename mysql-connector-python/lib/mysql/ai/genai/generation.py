@@ -26,6 +26,11 @@
 # along with this program; if not, write to the Free Software Foundation, Inc.,
 # 51 Franklin St, Fifth Floor, Boston, MA 02110-1301  USA
 
+"""GenAI LLM integration utilities for MySQL Connector/Python.
+
+Provides MyLLM wrapper that issues ML_GENERATE calls via SQL.
+"""
+
 import json
 
 from typing import Any, List, Optional
@@ -34,9 +39,9 @@ try:
     from langchain_core.language_models.llms import LLM
 except ImportError:
     from langchain.llms.base import LLM
-from mysql.ai.utils import atomic_transaction, execute_sql, format_value_sql
 from pydantic import PrivateAttr
 
+from mysql.ai.utils import atomic_transaction, execute_sql, format_value_sql
 from mysql.connector.abstracts import MySQLConnectionAbstract
 
 
@@ -50,7 +55,8 @@ class MyLLM(LLM):
     agentic queries.
 
     Attributes:
-        _db_connection (MySQLConnectionAbstract): The underlying MySQL connector database connection.
+        _db_connection (MySQLConnectionAbstract):
+            Underlying MySQL connector database connection.
     """
 
     _db_connection: MySQLConnectionAbstract = PrivateAttr()
@@ -138,7 +144,8 @@ class MyLLM(LLM):
         Return a dictionary of params that uniquely identify this LLM instance.
 
         Returns:
-            dict: Dictionary of identifier parameters (should include model_name for tracing/caching).
+            dict: Dictionary of identifier parameters (should include
+                model_name for tracing/caching).
         """
         return {
             "model_name": "mysql_heatwave_llm",

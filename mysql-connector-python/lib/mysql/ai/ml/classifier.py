@@ -26,15 +26,19 @@
 # along with this program; if not, write to the Free Software Foundation, Inc.,
 # 51 Franklin St, Fifth Floor, Boston, MA 02110-1301  USA
 
+"""Classifier utilities for MySQL Connector/Python.
+
+Provides a scikit-learn compatible classifier backed by HeatWave ML.
+"""
 from typing import Optional, Union
 
 import numpy as np
 import pandas as pd
+from sklearn.base import ClassifierMixin
 
 from mysql.ai.ml.base import MyBaseMLModel
 from mysql.ai.ml.model import ML_TASK
 from mysql.ai.utils import copy_dict
-from sklearn.base import ClassifierMixin
 
 from mysql.connector.abstracts import MySQLConnectionAbstract
 
@@ -97,7 +101,9 @@ class MyClassifier(MyBaseMLModel, ClassifierMixin):
         self.predict_extra_options = copy_dict(predict_extra_options)
         self.explain_extra_options = copy_dict(explain_extra_options)
 
-    def predict(self, X: Union[pd.DataFrame, np.ndarray]) -> np.ndarray:
+    def predict(
+        self, X: Union[pd.DataFrame, np.ndarray]
+    ) -> np.ndarray:  # pylint: disable=invalid-name
         """
         Predict class labels for the input features using the MySQL model.
 
@@ -113,14 +119,18 @@ class MyClassifier(MyBaseMLModel, ClassifierMixin):
 
         Raises:
             DatabaseError:
-                If provided options are invalid or unsupported, or if the model is not initialized, i.e., fit or import has not been called
+                If provided options are invalid or unsupported,
+                or if the model is not initialized, i.e., fit or import has not
+                been called
                 If a database connection issue occurs.
                 If an operational error occurs during execution.
         """
         result = self._model.predict(X, options=self.predict_extra_options)
         return result["Prediction"].to_numpy()
 
-    def predict_proba(self, X: Union[pd.DataFrame, np.ndarray]) -> np.ndarray:
+    def predict_proba(
+        self, X: Union[pd.DataFrame, np.ndarray]
+    ) -> np.ndarray:  # pylint: disable=invalid-name
         """
         Predict class probabilities for the input features using the MySQL model.
 
@@ -136,7 +146,9 @@ class MyClassifier(MyBaseMLModel, ClassifierMixin):
 
         Raises:
             DatabaseError:
-                If provided options are invalid or unsupported, or if the model is not initialized, i.e., fit or import has not been called
+                If provided options are invalid or unsupported,
+                or if the model is not initialized, i.e., fit or import has not
+                been called
                 If a database connection issue occurs.
                 If an operational error occurs during execution.
         """
@@ -152,7 +164,9 @@ class MyClassifier(MyBaseMLModel, ClassifierMixin):
             )
         )
 
-    def explain_predictions(self, X: Union[pd.DataFrame, np.ndarray]) -> pd.DataFrame:
+    def explain_predictions(
+        self, X: Union[pd.DataFrame, np.ndarray]
+    ) -> pd.DataFrame:  # pylint: disable=invalid-name
         """
         Explain model predictions using provided data.
 
@@ -168,7 +182,9 @@ class MyClassifier(MyBaseMLModel, ClassifierMixin):
 
         Raises:
             DatabaseError:
-                If provided options are invalid or unsupported, or if the model is not initialized, i.e., fit or import has not been called
+                If provided options are invalid or unsupported,
+                or if the model is not initialized, i.e., fit or import has not
+                been called
                 If a database connection issue occurs.
                 If an operational error occurs during execution.
 

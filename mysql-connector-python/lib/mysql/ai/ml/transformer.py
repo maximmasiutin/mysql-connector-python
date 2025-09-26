@@ -25,16 +25,20 @@
 # You should have received a copy of the GNU General Public License
 # along with this program; if not, write to the Free Software Foundation, Inc.,
 # 51 Franklin St, Fifth Floor, Boston, MA 02110-1301  USA
+"""Generic transformer utilities for MySQL Connector/Python.
+
+Provides a scikit-learn compatible Transformer using HeatWave for fit/transform
+and scoring operations.
+"""
 from typing import Optional, Union
 
 import numpy as np
 import pandas as pd
+from sklearn.base import TransformerMixin
 
 from mysql.ai.ml.base import MyBaseMLModel
 from mysql.ai.ml.model import ML_TASK
 from mysql.ai.utils import copy_dict
-from sklearn.base import TransformerMixin
-
 from mysql.connector.abstracts import MySQLConnectionAbstract
 
 
@@ -55,9 +59,12 @@ class MyGenericTransformer(MyBaseMLModel, TransformerMixin):
         score_extra_options (dict, optional): Extra options for scoring.
 
     Attributes:
-        score_metric (str): Name of the backend metric to use for scoring (e.g. "balanced_accuracy").
-        score_extra_options (dict): Dictionary of optional scoring parameters; passed to backend score.
-        transform_extra_options (dict): Dictionary of inference (/predict) parameters for the backend.
+        score_metric (str): Name of the backend metric to use for scoring
+            (e.g. "balanced_accuracy").
+        score_extra_options (dict): Dictionary of optional scoring parameters;
+            passed to backend score.
+        transform_extra_options (dict): Dictionary of inference (/predict)
+            parameters for the backend.
         fit_extra_options (dict): See MyBaseMLModel.
         _model (MyModel): Underlying interface for database model operations.
 
@@ -107,7 +114,9 @@ class MyGenericTransformer(MyBaseMLModel, TransformerMixin):
 
         self.transform_extra_options = copy_dict(transform_extra_options)
 
-    def transform(self, X: pd.DataFrame) -> pd.DataFrame:
+    def transform(
+        self, X: pd.DataFrame
+    ) -> pd.DataFrame:  # pylint: disable=invalid-name
         """
         Transform input data to model predictions using the underlying helper.
 
@@ -119,7 +128,9 @@ class MyGenericTransformer(MyBaseMLModel, TransformerMixin):
 
         Raises:
             DatabaseError:
-                If provided options are invalid or unsupported, or if the model is not initialized, i.e., fit or import has not been called
+                If provided options are invalid or unsupported,
+                or if the model is not initialized, i.e., fit or import has not
+                been called
                 If a database connection issue occurs.
                 If an operational error occurs during execution.
         """
@@ -127,7 +138,7 @@ class MyGenericTransformer(MyBaseMLModel, TransformerMixin):
 
     def score(
         self,
-        X: Union[pd.DataFrame, np.ndarray],
+        X: Union[pd.DataFrame, np.ndarray],  # pylint: disable=invalid-name
         y: Union[pd.DataFrame, np.ndarray],
     ) -> float:
         """
@@ -142,7 +153,9 @@ class MyGenericTransformer(MyBaseMLModel, TransformerMixin):
 
         Raises:
             DatabaseError:
-                If provided options are invalid or unsupported, or if the model is not initialized, i.e., fit or import has not been called
+                If provided options are invalid or unsupported,
+                or if the model is not initialized, i.e., fit or import has not
+                been called
                 If a database connection issue occurs.
                 If an operational error occurs during execution.
         """

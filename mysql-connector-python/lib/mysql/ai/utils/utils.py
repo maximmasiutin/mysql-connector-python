@@ -25,6 +25,17 @@
 # You should have received a copy of the GNU General Public License
 # along with this program; if not, write to the Free Software Foundation, Inc.,
 # 51 Franklin St, Fifth Floor, Boston, MA 02110-1301  USA
+"""General utilities for AI features in MySQL Connector/Python.
+
+Includes helpers for:
+- defensive dict copying
+- temporary table lifecycle management
+- SQL execution and result conversions
+- DataFrame to/from SQL table utilities
+- schema/table/column name validation
+- array-like to DataFrame conversion
+"""
+
 import copy
 import json
 import random
@@ -49,16 +60,14 @@ RANDOM_TABLE_NAME_LENGTH = 32
 PD_TO_SQL_DTYPE_MAPPING = {
     "int64": "BIGINT",
     "float64": "DOUBLE",
-    "object": f"LONGTEXT",
+    "object": "LONGTEXT",
     "bool": "BOOLEAN",
     "datetime64[ns]": "DATETIME",
 }
 
 DEFAULT_SCHEMA = "mysql_ai"
 
-"""
-Misc Utilities
-"""
+# Misc Utilities
 
 
 def copy_dict(options: Optional[dict]) -> dict:
@@ -96,8 +105,8 @@ def temporary_sql_tables(
             If an operational error occurs during execution.
 
     Yields:
-        temporary_tables: List to which (schema_name, table_name) tuples are appended as tables are created.
-                   All tables in this list will be deleted upon exiting the context.
+        temporary_tables: List of (schema_name, table_name) tuples created during the
+            context. All tables in this list are deleted on context exit.
     """
     temporary_tables: List[Tuple[str, str]] = []
     try:
@@ -160,16 +169,11 @@ def get_random_name(condition: Callable[[str], bool], max_calls: int = 100) -> s
     for _ in range(max_calls):
         if condition(name := _get_name()):
             return name
-    else:
-        # condition never met
-        raise RuntimeError(
-            "Reached max tries without successfully finding a unique name"
-        )
+    # condition never met
+    raise RuntimeError("Reached max tries without successfully finding a unique name")
 
 
-"""
-Format conversions
-"""
+# Format conversions
 
 
 def format_value_sql(value: Any) -> Tuple[str, List[Any]]:
@@ -184,13 +188,11 @@ def format_value_sql(value: Any) -> Tuple[str, List[Any]]:
             - A string for substitution into a SQL query.
             - A list of parameters to be bound into the query.
     """
-    if isinstance(value, dict) or isinstance(value, list):
+    if isinstance(value, (dict, list)):
         if len(value) == 0:
             return "%s", [None]
-
         return "CAST(%s as JSON)", [json.dumps(value)]
-    else:
-        return "%s", [value]
+    return "%s", [value]
 
 
 def sql_response_to_df(cursor: MySQLCursorAbstract) -> pd.DataFrame:
@@ -267,9 +269,7 @@ def sql_table_to_df(
     return sql_response_to_df(cursor)
 
 
-"""
-Table operations
-"""
+# Table operations
 
 
 def table_exists(
@@ -348,7 +348,9 @@ def extend_sql_table(
         schema_name: Name of the database schema.
         table_name: Table to insert new rows into.
         df: DataFrame containing the rows to insert.
-        col_name_to_placeholder_string: Optional mapping of column names to custom SQL value/placeholder strings.
+        col_name_to_placeholder_string:
+            Optional mapping of column names to custom SQL value/placeholder
+            strings.
 
     Returns:
         None
@@ -386,7 +388,12 @@ def extend_sql_table(
             placeholders.append(elem_placeholder)
             params.extend(elem_params)
 
-        insert_sql = f"INSERT INTO {qualified_table_name} ({', '.join([f'{col}' for col in df.columns])}) VALUES ({', '.join(placeholders)})"
+        cols_sql = ", ".join([str(col) for col in df.columns])
+        placeholders_sql = ", ".join(placeholders)
+        insert_sql = (
+            f"INSERT INTO {qualified_table_name} "
+            f"({cols_sql}) VALUES ({placeholders_sql})"
+        )
         execute_sql(cursor, insert_sql, params=params)
 
 
@@ -404,7 +411,8 @@ def sql_table_from_df(
         df: DataFrame containing the data to be inserted.
 
     Returns:
-        Tuple (qualified_table_name, table_name): The schema-qualified and unqualified table names.
+        Tuple (qualified_table_name, table_name): The schema-qualified and
+        unqualified table names.
 
     Raises:
         RuntimeError: If a random available table name could not be found.
@@ -426,7 +434,7 @@ def sql_table_from_df(
     columns_sql = []
     for col, dtype in df.dtypes.items():
         # Map pandas dtype to SQL type, fallback is VARCHAR
-        sql_type = PD_TO_SQL_DTYPE_MAPPING.get(str(dtype), f"LONGTEXT")
+        sql_type = PD_TO_SQL_DTYPE_MAPPING.get(str(dtype), "LONGTEXT")
         validate_name(str(col))
         columns_sql.append(f"{col} {sql_type}")
 
@@ -443,7 +451,7 @@ def sql_table_from_df(
     try:
         # Insert provided data into new table
         extend_sql_table(cursor, schema_name, table_name, df)
-    except:
+    except Exception:  # pylint: disable=broad-exception-caught
         # Delete table before we lose access to it
         delete_sql_table(cursor, schema_name, table_name)
         raise
@@ -539,12 +547,16 @@ def convert_to_df(
 
     Returns:
         If the input is None, returns None.
-        Otherwise, returns a DataFrame backed by the same underlying data whenever possible (except in cases where pandas or NumPy must copy, such as for certain views or non-contiguous arrays).
+        Otherwise, returns a DataFrame backed by the same underlying data whenever
+        possible (except in cases where pandas or NumPy must copy, such as for
+        certain views or non-contiguous arrays).
 
     Notes:
         - If an ndarray is passed, column names will be integer indices (0, 1, ...).
         - If a DataFrame is passed, column names and indices are preserved.
-        - The returned DataFrame is a shallow copy and shares data with the original input when possible; however, copies may still occur for certain input types or memory layouts.
+        - The returned DataFrame is a shallow copy and shares data with the original
+          input when possible; however, copies may still occur for certain input
+          types or memory layouts.
     """
     if arr is None:
         return None

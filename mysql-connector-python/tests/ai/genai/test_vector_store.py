@@ -81,6 +81,8 @@ class TestVectorStore(MyAITest):
     def setUp(self):
         super().setUp()
 
+        self.maxDiff = None
+
         # Patch both vector_store/utils execute_sql and patch random name generator for deterministic and verifiable testing.
         self.mock_exec = MagicMock(wraps=mysql.ai.utils.execute_sql)
         self.embed_execute_patcher = patch(
@@ -161,8 +163,14 @@ class TestVectorStore(MyAITest):
                 f"""
                 CALL sys.ML_SIMILARITY_SEARCH(
                     @mysql_ai.embedding,
-                    JSON_ARRAY('{qualified_table_name}'),
-                    JSON_OBJECT("segment", "content", "segment_embedding", "embed", "document_name", "id"),
+                    JSON_ARRAY(
+                        '{qualified_table_name}'
+                    ),
+                    JSON_OBJECT(
+                        "segment", "content",
+                        "segment_embedding", "embed",
+                        "document_name", "id"
+                    ),
                     2,
                     %s,
                     NULL,
@@ -186,11 +194,11 @@ class TestVectorStore(MyAITest):
             ),
             ("SELECT @mysql_ai.context_map", None),
             (
-                f"SELECT id, content, metadata FROM {qualified_table_name} WHERE id =%s",
+                f"SELECT id, content, metadata FROM {qualified_table_name} WHERE id = %s",
                 ["internal_ai_id_1"],
             ),
             (
-                f"SELECT id, content, metadata FROM {qualified_table_name} WHERE id =%s",
+                f"SELECT id, content, metadata FROM {qualified_table_name} WHERE id = %s",
                 ["internal_ai_id_2"],
             ),
             (f"DROP TABLE IF EXISTS {qualified_table_name}", None),
@@ -245,8 +253,14 @@ class TestVectorStore(MyAITest):
                 f"""
                 CALL sys.ML_SIMILARITY_SEARCH(
                     @mysql_ai.embedding,
-                    JSON_ARRAY('{qualified_table_name}'),
-                    JSON_OBJECT("segment", "content", "segment_embedding", "embed", "document_name", "id"),
+                    JSON_ARRAY(
+                        '{qualified_table_name}'
+                    ),
+                    JSON_OBJECT(
+                        "segment", "content",
+                        "segment_embedding", "embed",
+                        "document_name", "id"
+                    ),
                     2,
                     %s,
                     NULL,
@@ -270,11 +284,11 @@ class TestVectorStore(MyAITest):
             ),
             ("SELECT @mysql_ai.context_map", None),
             (
-                f"SELECT id, content, metadata FROM {qualified_table_name} WHERE id =%s",
+                f"SELECT id, content, metadata FROM {qualified_table_name} WHERE id = %s",
                 ["internal_ai_id_1"],
             ),
             (
-                f"SELECT id, content, metadata FROM {qualified_table_name} WHERE id =%s",
+                f"SELECT id, content, metadata FROM {qualified_table_name} WHERE id = %s",
                 ["internal_ai_id_2"],
             ),
             (f"DROP TABLE IF EXISTS {qualified_table_name}", None),
