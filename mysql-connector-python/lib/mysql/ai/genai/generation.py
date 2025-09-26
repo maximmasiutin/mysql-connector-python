@@ -30,7 +30,10 @@ import json
 
 from typing import Any, List, Optional
 
-from langchain.llms.base import LLM
+try:
+    from langchain_core.language_models.llms import LLM
+except ImportError:
+    from langchain.llms.base import LLM
 from mysql.ai.utils import atomic_transaction, execute_sql, format_value_sql
 from pydantic import PrivateAttr
 
