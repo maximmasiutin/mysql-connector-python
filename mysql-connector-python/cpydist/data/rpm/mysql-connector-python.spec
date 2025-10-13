@@ -75,10 +75,9 @@ Source0:       https://cdn.mysql.com/Downloads/Connector-Python/mysql-connector-
 
 %{!?with_mysql_capi:BuildRequires: mysql-devel}
 
-%if 0%{?rhel} == 8
+%if 0%{?rhel} < 10
 BuildRequires: python%{python3_pkgversion}-devel
 BuildRequires: python%{python3_pkgversion}-setuptools
-BuildRequires: python%{python3_pkgversion}-rpm-macros
 %endif
 
 %description
@@ -111,7 +110,9 @@ Obsoletes:     mysql-connector-python3-cext < %{version}-%{release}
 Provides:      mysql-connector-python3-cext = %{version}-%{release}
 %endif
 
+%if 0%{?rhel} < 10
 Requires:      python3.12
+%endif
 
 %description -n mysql-connector-python3%{?product_suffix}
 MySQL Connector/Python enables Python programs to access MySQL

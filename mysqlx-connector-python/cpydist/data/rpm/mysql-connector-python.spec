@@ -69,10 +69,9 @@ License:       Copyright (c) 2015, %{current_year}, Oracle and/or its affiliates
 URL:           https://dev.mysql.com/downloads/connector/python/
 Source0:       https://cdn.mysql.com/Downloads/Connector-Python/mysql-connector-python%{?product_suffix}-%{version}-src.tar.gz
 
-%if 0%{?rhel} == 8
+%if 0%{?rhel} < 10
 BuildRequires: python%{python3_pkgversion}-devel
 BuildRequires: python%{python3_pkgversion}-setuptools
-BuildRequires: python%{python3_pkgversion}-rpm-macros
 %endif
 
 %description
@@ -105,7 +104,9 @@ Obsoletes:     mysqlx-connector-python3-cext < %{version}-%{release}
 Provides:      mysqlx-connector-python3-cext = %{version}-%{release}
 %endif
 
+%if 0%{?rhel} < 10
 Requires:      python3.12
+%endif
 
 %description -n mysqlx-connector-python3%{?product_suffix}
 MySQL Connector/Python enables Python programs to access MySQL
