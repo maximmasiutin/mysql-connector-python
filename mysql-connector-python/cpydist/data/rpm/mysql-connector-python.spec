@@ -32,8 +32,8 @@
 %define _build_id_links none
 %define current_year %(date +%Y)
 
-%{!?__python3: %global __python3 /usr/bin/python3.12}
-%{!?python3_pkgversion: %global python3_pkgversion 3.12}
+%global __python3 /usr/bin/python3.12
+%global python3_pkgversion 3.12
 
 %{?mysql_capi: %global with_mysql_capi %{mysql_capi}}
 %{?extra_compile_args: %global extra_compile_args %{extra_compile_args}}

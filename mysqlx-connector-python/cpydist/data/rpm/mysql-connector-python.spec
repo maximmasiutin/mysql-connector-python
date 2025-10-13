@@ -31,8 +31,8 @@
 %undefine _package_note_file
 %define current_year %(date +%Y)
 
-%{!?__python3: %global __python3 /usr/bin/python3.12}
-%{!?python3_pkgversion: %global python3_pkgversion 3.12}
+%global __python3 /usr/bin/python3.12
+%global python3_pkgversion 3.12
 
 %{?protobuf_include_dir: %global with_protobuf_include_dir %{protobuf_include_dir}}
 %{?protobuf_lib_dir: %global with_protobuf_lib_dir %{protobuf_lib_dir}}
