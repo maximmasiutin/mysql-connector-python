@@ -163,7 +163,7 @@ cd mysqlx-connector-python
 %{?scl:EOF}
 
 sed -i -e '/protobuf/d' %{buildroot}%{python3_sitearch}/mysqlx_connector_python-*.egg-info/requires.txt
-%if 0%{?rhel} == 10
+%if 0%{?rhel} > 8
 sed -i -e '/Requires-Dist: protobuf/d' %{buildroot}%{python3_sitearch}/mysqlx_connector_python-*.egg-info/PKG-INFO
 %endif
 
