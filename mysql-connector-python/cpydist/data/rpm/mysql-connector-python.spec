@@ -40,7 +40,7 @@
 %{?extra_link_args: %global extra_link_args %{extra_link_args}}
 
 # set version if not defined through 'rpmbuild'
-%{!?version: %global version 9.5.0}
+%{!?version: %global version 9.6.0}
 
 %global with_openssl_opts ""
 
@@ -174,14 +174,17 @@ cd mysql-connector-python
 %{python3_sitearch}/_mysql_connector.cpython*.so
 
 %changelog
-* Mon Jul 23 2025 Souma Kanti Ghosh <souma.kanti.ghosh@oracle.com> - 9.5.0-1
+* Tue Dec 16 2025 Filipe Silva <filipe.silva@oracle.com> - 9.6.0-1
+- Updated for 9.6.0
+
+* Mon Jul 23 2025 Souma Kanti Ghosh <souma.kanti.ghosh@oracle.com> - 9.5.0-2
 - Updated for 9.5.0
 
 * Wed Jul 16 2025 Oscar Pacheco <oscar.p.pacheco@oracle.com> - 9.5.0-1
 - Removed Python 3.9 support
 - Added Python 3.12 support for EL 8 and 9
 
-* Mon Jun 9 2025 Oscar Pacheco <oscar.p.pacheco@oracle.com> - 9.4.0-1
+* Mon Jun 9 2025 Oscar Pacheco <oscar.p.pacheco@oracle.com> - 9.4.0-2
 - Updated for 9.4.0
 
 * Fri May 30 2025 Souma Kanti Ghosh <souma.kanti.ghosh@oracle.com> - 9.4.0-1
@@ -194,7 +197,7 @@ cd mysql-connector-python
 * Mon Oct 28 2024 Souma Kanti Ghosh <souma.kanti.ghosh@oracle.com> - 9.2.0-1
 - Updated for 9.2.0
 
-* Wed Sep 11 2024 Oscar Pacheco <oscar.p.pacheco@oracle.com> - 9.1.0-1
+* Wed Sep 11 2024 Oscar Pacheco <oscar.p.pacheco@oracle.com> - 9.1.0-2
 - Updated for 9.1.0
 
 * Wed Jul 31 2024 Souma Kanti Ghosh <souma.kanti.ghosh@oracle.com> - 9.1.0-1
@@ -208,7 +211,7 @@ cd mysql-connector-python
 * Wed Feb 28 2024 Oscar Pacheco <oscar.p.pacheco@oracle.com> - 8.4.0-1
 - Updated for 8.4.0
 
-* Wed Dec 6 2023  Oscar Pacheco <oscar.p.pacheco@oracle.com> - 8.3.0-1
+* Wed Dec 6 2023  Oscar Pacheco <oscar.p.pacheco@oracle.com> - 8.3.0-2
 - Updated Python version for openSUSE 15 from 3.9 to 3.11
 
 * Fri Dec 1 2023  Oscar Pacheco <oscar.p.pacheco@oracle.com> - 8.3.0-1
