@@ -29,7 +29,6 @@
 %global wants_py_dnspython_version 2.6.1
 
 %undefine _package_note_file
-%define current_year %(date +%Y)
 
 %global __python3 /usr/bin/python3.12
 %global python3_pkgversion 3.12
@@ -65,7 +64,7 @@ Summary:       Standardized MySQL database driver for Python
 Name:          mysqlx-connector-python%{?product_suffix}
 Version:       %{version}
 Release:       1%{?version_extra:.%{version_extra}}%{?byte_code_only:.1}%{?dist}
-License:       Copyright (c) 2015, %{current_year}, Oracle and/or its affiliates. Under %{?lic_type} license as shown in the Description field.
+License:       Copyright (c) 2015, 2026, Oracle and/or its affiliates. Under %{?lic_type} license as shown in the Description field.
 URL:           https://dev.mysql.com/downloads/connector/python/
 Source0:       https://cdn.mysql.com/Downloads/Connector-Python/mysql-connector-python%{?product_suffix}-%{version}-src.tar.gz
 
