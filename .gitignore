@@ -24,7 +24,7 @@ docs
 dist
 build
 
-# Classic/XDevAPI protocol connector (aka mysql)
+# Classic/X DevAPI protocol connector (aka mysql)
 mysql*-connector-python/build/
 mysql*-connector-python/dist/
 mysql*-connector-python/docs/INFO_BIN

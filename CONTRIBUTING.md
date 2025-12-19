@@ -304,13 +304,13 @@ Due to some `know limitations <https://github.com/docker/for-mac/issues/483>`_ o
 
 That being said, the following there are some examples of possible use cases:
 
-* Running the test modules whose name follows the pattern `c.*` from a mac whose IP is `232.188.98.520`, and the password for `root` is `s3cr3t`. XDevAPI protocol listening on port `33060`:
+* Running the test modules whose name follows the pattern `c.*` from a mac whose IP is `232.188.98.520`, and the password for `root` is `s3cr3t`. X DevAPI protocol listening on port `33060`:
 
 ```bash
     $ TEST_PATTERN='c.*' MYSQL_HOST='192.168.68.111' MYSQL_PASSWORD='s3cr3t' ./tests/docker/runner.sh
 ```
 
-* Running the *mysqlx_crud* test module from Linux with MySQL user account `root`, and password `empty_string`. XDevAPI protocol listening on port `33070`:
+* Running the *mysqlx_crud* test module from Linux with MySQL user account `root`, and password `empty_string`. X DevAPI protocol listening on port `33070`:
 
 ```bash
     $ MYSQLX_PORT='33070' TEST_PATTERN='mysqlx_crud' ./tests/docker/runner.sh
