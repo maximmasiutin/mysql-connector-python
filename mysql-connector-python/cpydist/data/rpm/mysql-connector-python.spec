@@ -1,4 +1,4 @@
-# Copyright (c) 2015, 2025, Oracle and/or its affiliates.
+# Copyright (c) 2015, 2026, Oracle and/or its affiliates.
 #
 # This program is free software; you can redistribute it and/or modify
 # it under the terms of the GNU General Public License, version 2.0, as
@@ -39,7 +39,7 @@
 %{?extra_link_args: %global extra_link_args %{extra_link_args}}
 
 # set version if not defined through 'rpmbuild'
-%{!?version: %global version 9.6.0}
+%{!?version: %global version 9.7.0}
 
 %global with_openssl_opts ""
 
@@ -173,6 +173,9 @@ cd mysql-connector-python
 %{python3_sitearch}/_mysql_connector.cpython*.so
 
 %changelog
+* Fri Jan 9 2026 Filipe Silva <filipe.silva@oracle.com> - 9.7.0-1
+- Updated for 9.7.0
+
 * Tue Dec 16 2025 Filipe Silva <filipe.silva@oracle.com> - 9.6.0-1
 - Updated for 9.6.0
 

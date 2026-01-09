@@ -1,5 +1,5 @@
 /*
-* Copyright (c) 2025, Oracle and/or its affiliates.
+* Copyright (c) 2025, 2026, Oracle and/or its affiliates.
 *
 * This program is free software; you can redistribute it and/or modify
 * it under the terms of the GNU General Public License, version 2.0, as
@@ -34,8 +34,8 @@
 #include <windows.h>
 #include <winver.h>
 
-#define CONPY_VERSION "9.6.0"
-#define CONPY_VERSION_RAW 9,6,0,0
+#define CONPY_VERSION "9.7.0"
+#define CONPY_VERSION_RAW 9,7,0,0
 
 // Set up debug information
 #if DBG
