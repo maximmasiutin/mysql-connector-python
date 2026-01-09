@@ -66,8 +66,8 @@ master_doc = "index"
 
 # General information about the project.
 project = "MySQL Connector/Python X DevAPI Reference"
-copyright = "2016, 2026, Oracle and/or its affiliates. All rights reserved"
-author = "Nuno Mariz"
+copyright = "2016, 2026, Oracle and/or its affiliates."
+author = "MySQL Middleware and Clients"
 
 # The version info for the project you're documenting, acts as replacement for
 # |version| and |release|, also used in various other places throughout the
@@ -279,7 +279,7 @@ latex_documents = [
         master_doc,
         "MySQLConnectorPythonXDevAPIReference.tex",
         "MySQL Connector/Python X DevAPI Reference Documentation",
-        "Nuno Mariz",
+        "MySQL Middleware and Clients",
         "manual",
     ),
 ]

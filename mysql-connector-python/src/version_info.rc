@@ -61,7 +61,7 @@ BEGIN
             VALUE "ProductName",        "MySQL Connector/Python"
             VALUE "ProductVersion",     CONPY_VERSION
             VALUE "FileVersion",        CONPY_VERSION
-            VALUE "LegalCopyright",     "Copyright (c) 2016, 2025, Oracle and/or its affiliates."
+            VALUE "LegalCopyright",     "Copyright (c) 2016, 2026, Oracle and/or its affiliates."
             VALUE "LegalTrademarks",    "Oracle(R), Java, MySQL, and NetSuite are registered trademarks of Oracle and/or its affiliates."
             VALUE "OriginalFilename",   "_mysql_connector.pyd"
             VALUE "InternalName",       "_mysql_connector.pyd"
