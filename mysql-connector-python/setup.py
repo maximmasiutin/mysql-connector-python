@@ -179,29 +179,31 @@ def copy_metadata_files() -> None:
 
 
 def get_long_description() -> str:
-    """Extracts a long description from the README.rst file that is suited for this specific package.
-    """
+    """Extracts a long description from the README.rst file that is suited for this specific package."""
     with open(pathlib.Path(os.getcwd(), "./README.rst")) as file_handle:
         # The README.rst text is meant to be shared by both mysql and mysqlx packages, so after getting it we need to
         # parse it in order to remove the bits of text that are not meaningful for this package (mysql)
         long_description = file_handle.read()
     block_matches = re.finditer(
         pattern=(
-            r'(?P<module_start>\.{2}\s+={2,}\s+(?P<module_tag>\<(?P<module_name>mysql|mysqlx|both)\>)(?P<repls>\s+'
+            r"(?P<module_start>\.{2}\s+={2,}\s+(?P<module_tag>\<(?P<module_name>mysql|mysqlx|both)\>)(?P<repls>\s+"
             r'\[(?:(?:,\s*)?(?:repl(?:-mysql(?:x)?)?)\("(?:[^"]+)",\s*"(?:[^"]*)"\))+\])?\s+={2,})'
-            r'(?P<block_text>.+?(?=\.{2}\s+={2,}))(?P<module_end>\.{2}\s+={2,}\s+\</(?P=module_name)\>\s+={2,})'
+            r"(?P<block_text>.+?(?=\.{2}\s+={2,}))(?P<module_end>\.{2}\s+={2,}\s+\</(?P=module_name)\>\s+={2,})"
         ),
         string=long_description,
-        flags=re.DOTALL)
+        flags=re.DOTALL,
+    )
     for block_match in block_matches:
-        if block_match.group("module_name") == 'mysqlx':
+        if block_match.group("module_name") == "mysqlx":
             long_description = long_description.replace(block_match.group(), "")
         else:
             block_text = block_match.group("block_text")
             if block_match.group("repls"):
-                repl_matches = re.finditer(pattern=r'(?P<repl_name>repl(?:-mysql(?:x)?)?)\("'
-                                                   r'(?P<repl_source>[^"]+)",\s*"(?P<repl_target>[^"]*)"\)+',
-                                           string=block_match.group("repls"))
+                repl_matches = re.finditer(
+                    pattern=r'(?P<repl_name>repl(?:-mysql(?:x)?)?)\("'
+                    r'(?P<repl_source>[^"]+)",\s*"(?P<repl_target>[^"]*)"\)+',
+                    string=block_match.group("repls"),
+                )
                 for repl_match in repl_matches:
                     repl_name = repl_match.group("repl_name")
                     repl_source = repl_match.group("repl_source")
@@ -213,9 +215,11 @@ def get_long_description() -> str:
             long_description = long_description.replace(block_match.group(), block_text)
     # Make replacements for files that are directly accessible within GitHub but not within PyPI
     files_regex_fragment = "|".join(mf.replace(".", r"\.") for mf in METADATA_FILES)
-    long_description = re.sub(pattern=rf"\<(?P<file_name>{files_regex_fragment})\>",
-                              repl=f"<{GITHUB_URL}/blob/trunk/\g<file_name>>",
-                              string=long_description)
+    long_description = re.sub(
+        pattern=rf"\<(?P<file_name>{files_regex_fragment})\>",
+        repl=rf"<{GITHUB_URL}/blob/trunk/\g<file_name>>",
+        string=long_description,
+    )
     return long_description
 
 

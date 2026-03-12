@@ -46,7 +46,6 @@ import sys
 import traceback
 import unittest
 
-from setuptools.dist import Distribution
 from functools import lru_cache, wraps
 from pkgutil import walk_packages
 from time import sleep
@@ -54,6 +53,7 @@ from unittest.case import SkipTest
 from unittest.util import strclass
 
 from cpydist.utils import mysql_c_api_info
+from setuptools.dist import Distribution
 
 ARCH_64BIT = struct.calcsize("P") * 8 == 64
 LOGGER_NAME = "myconnpy_tests"
@@ -137,7 +137,6 @@ __all__ = [
 
 
 class DummySocket:
-
     """Dummy socket class
 
     This class helps to test socket connection without actually making any
@@ -397,6 +396,10 @@ def get_mysql_config(name=None, index=None):
     If no name is given, then we will return the configuration of the
     first added.
     """
+
+    if not MYSQL_SERVERS:
+        return None
+
     if not name and not index:
         return MYSQL_SERVERS[0].client_config.copy()
 
@@ -458,7 +461,6 @@ def cmp_result(result1, result2):
 
 
 class UTCTimeZone(datetime.tzinfo):
-
     """UTC"""
 
     def __init__(self):
@@ -475,7 +477,6 @@ class UTCTimeZone(datetime.tzinfo):
 
 
 class TestTimeZone(datetime.tzinfo):
-
     """Test time zone"""
 
     def __init__(self, hours=0):
@@ -525,13 +526,14 @@ def cnx_aio_config(**extra_config):
 
 def foreach_cnx(*cnx_classes, always_setup=False, **extra_config):
     """
-    Decorator to wrap a function. The decorator sets a self.cnx to 
+    Decorator to wrap a function. The decorator sets a self.cnx to
 
     Args:
         cnx_classes: The cnx classes to iterate/test over for generating different connectors
         always_setup: Whether every invocation should call setUp and tearDown
         extra_config: Additional information for instantiating connectors
     """
+
     def _use_cnx(func):
         @wraps(func)
         def wrapper(self, *args, **kwargs):
@@ -925,7 +927,9 @@ class MySQLConnectorAioTestCase(unittest.IsolatedAsyncioTestCase):
             await cur.execute(f"DROP TABLE IF EXISTS {tbl}")
 
 
-def cmp_timeout_tolerance(actual_timeout_in_secs: float, exp_timeout_in_secs: float) -> bool:
+def cmp_timeout_tolerance(
+    actual_timeout_in_secs: float, exp_timeout_in_secs: float
+) -> bool:
     """
     Compares the read/write/connection timeout expected against a tolerance,
     i.e., an expected margin of error between the 2 timeout values in seconds

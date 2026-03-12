@@ -17,6 +17,7 @@ commit.txt
 cpy_server*/
 dev*.py
 pip-wheel-metadata/
+.venv/
 venv/
 venv2/
 venv3/

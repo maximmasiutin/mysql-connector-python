@@ -70,7 +70,7 @@ import time
 import unittest
 
 try:
-    from urlparse import urlsplit
+    from urlparse import urlsplit  # pyright: ignore[reportMissingImports]
 except ImportError:
     # Python 3
     from urllib.parse import urlsplit
