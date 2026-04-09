@@ -40,7 +40,7 @@
 %{?extra_link_args: %global extra_link_args %{extra_link_args}}
 
 # set version if not defined through 'rpmbuild'
-%{!?version: %global version 9.7.0}
+%{!?version: %global version 10.0.0}
 
 
 # if true set byte_code_only to --byte_code_only
@@ -173,6 +173,9 @@ sed -i -e '/Requires-Dist: protobuf/d' %{buildroot}%{python3_sitearch}/mysqlx_co
 %{python3_sitearch}/_mysqlxpb.cpython*.so
 
 %changelog
+* Thu Apr 9 2026 Filipe Silva <filipe.silva@oracle.com> - 10.0.0-1
+- Updated for 10.0.0
+
 * Fri Jan 9 2026 Filipe Silva <filipe.silva@oracle.com> - 9.7.0-1
 - Updated for 9.7.0
 

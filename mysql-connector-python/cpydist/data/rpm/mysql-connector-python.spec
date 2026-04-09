@@ -39,7 +39,7 @@
 %{?extra_link_args: %global extra_link_args %{extra_link_args}}
 
 # set version if not defined through 'rpmbuild'
-%{!?version: %global version 9.7.0}
+%{!?version: %global version 10.0.0}
 
 %global with_openssl_opts ""
 
@@ -173,6 +173,9 @@ cd mysql-connector-python
 %{python3_sitearch}/_mysql_connector.cpython*.so
 
 %changelog
+* Thu Apr 9 2026 Filipe Silva <filipe.silva@oracle.com> - 10.0.0-1
+- Updated for 10.0.0
+
 * Fri Jan 9 2026 Filipe Silva <filipe.silva@oracle.com> - 9.7.0-1
 - Updated for 9.7.0
 
