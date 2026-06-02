@@ -1,6 +1,24 @@
 MySQL Connector/Python
 ======================
 
+Copyright (c) 2009, 2026, Oracle and/or its affiliates.
+
+This is a release of MySQL Connector/Python, Oracle's Python driver for MySQL.
+
+License information can be found in the LICENSE.txt file.
+This distribution may include materials developed by third parties. For license
+and attribution notices for these materials, please refer to the LICENSE.txt file.
+
+For more information on MySQL Connector/Python visit https://dev.mysql.com/doc/dev/connector-python/
+For additional downloads and the source of MySQL Connector/Python visit http://dev.mysql.com/downloads
+
+Contributing information for code and non-code submissions can be found in the CONTRIBUTING.md file.
+
+MySQL Connector/Python is brought to you by the MySQL team at Oracle.
+
+Description
+-----------
+
 .. === <both> [repl-mysqlx("mysql-connector-python", "mysqlx-connector-python")] ===
 
 .. image::
@@ -326,9 +344,3 @@ Contributing
 
 There are a few ways to contribute to the Connector/Python code. Please refer
 to the `contributing guidelines <CONTRIBUTING.md>`__ for additional information.
-
-License
--------
-
-Please refer to the `README.txt <README.txt>`__ and `LICENSE.txt <LICENSE.txt>`__
-files, available in this repository, for further details.
