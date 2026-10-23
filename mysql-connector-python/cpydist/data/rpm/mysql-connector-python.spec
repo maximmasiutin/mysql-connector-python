@@ -26,7 +26,7 @@
 # along with this program; if not, write to the Free Software Foundation, Inc.,
 # 51 Franklin St, Fifth Floor, Boston, MA 02110-1301  USA
 
-%global wants_py_dnspython_version 2.6.1
+%global wants_py_dnspython_version 2.8.0
 
 %undefine _package_note_file
 %define _build_id_links none
@@ -39,7 +39,7 @@
 %{?extra_link_args: %global extra_link_args %{extra_link_args}}
 
 # set version if not defined through 'rpmbuild'
-%{!?version: %global version 26.7.0}
+%{!?version: %global version 26.10.0}
 
 %global with_openssl_opts ""
 
@@ -173,6 +173,9 @@ cd mysql-connector-python
 %{python3_sitearch}/_mysql_connector.cpython*.so
 
 %changelog
+* Tue Sep 8 2026 Jose Ramirez <jose.m.ramirez@oracle.com> - 26.10.0-1
+- Updated for 26.10.0
+
 * Tue Jun 23 2026 Filipe Silva <filipe.silva@oracle.com> - 26.7.0-1
 - Updated for 26.7.0
 
